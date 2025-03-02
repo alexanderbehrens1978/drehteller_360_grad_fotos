@@ -1,0 +1,149 @@
+<!-- templates/projects.html -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projektverwaltung - 360° Drehteller</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/projects.css">
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h2 class="mb-0">360° Projektverwalter</h2>
+                <a href="/" class="btn btn-light btn-sm">
+                    <i class="bi bi-arrow-left"></i> Zurück
+                </a>
+            </div>
+            <div class="card-body">
+                <!-- Neues Projekt erstellen -->
+                <div class="mb-4">
+                    <h3>Neues Projekt erstellen</h3>
+                    <form action="/projects/create" method="post" class="row g-3">
+                        <div class="col-md-8">
+                            <input type="text" class="form-control" name="name" placeholder="Projektname" required>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="bi bi-plus-circle"></i> Erstellen
+                            </button>
+                        </div>
+                        <div class="col-12">
+                            <textarea class="form-control" name="description" placeholder="Projektbeschreibung (optional)" rows="2"></textarea>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Projekte auflisten -->
+                <h3>Vorhandene Projekte</h3>
+                {% if projects %}
+                    <div class="row row-cols-1 row-cols-md-2 g-4">
+                        {% for project in projects %}
+                            <div class="col">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <h5 class="card-title">{{ project.name }}</h5>
+                                        <p class="card-text text-muted small">
+                                            Erstellt: {{ project.created.split('T')[0] }}<br>
+                                            Bilder: {{ project.image_count }}
+                                        </p>
+                                        {% if project.description %}
+                                            <p class="card-text">{{ project.description }}</p>
+                                        {% endif %}
+                                    </div>
+                                    <div class="card-footer">
+                                        <div class="d-flex justify-content-between">
+                                            <a href="/projects/edit/{{ project.directory }}" class="btn btn-primary btn-sm">
+                                                <i class="bi bi-pencil"></i> Bearbeiten
+                                            </a>
+                                            <a href="/viewer/{{ project.directory }}" class="btn btn-success btn-sm">
+                                                <i class="bi bi-eye"></i> 360° Ansicht
+                                            </a>
+                                            <button class="btn btn-danger btn-sm delete-project"
+                                                    data-project-dir="{{ project.directory }}"
+                                                    data-project-name="{{ project.name }}">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> Keine Projekte vorhanden. Erstellen Sie ein neues Projekt, um zu beginnen.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Lösch-Bestätigungsdialog -->
+    <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Projekt löschen</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
+                </div>
+                <div class="modal-body">
+                    Möchten Sie das Projekt "<span id="projectNameToDelete"></span>" wirklich löschen?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Löschen</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS und Abhängigkeiten -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Lösch-Bestätigungsdialog
+            const deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+            const projectNameToDelete = document.getElementById('projectNameToDelete');
+            const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+            let projectToDelete = null;
+
+            // Event-Listener für Löschbuttons
+            document.querySelectorAll('.delete-project').forEach(button => {
+                button.addEventListener('click', function() {
+                    projectToDelete = this.dataset.projectDir;
+                    projectNameToDelete.textContent = this.dataset.projectName;
+                    deleteModal.show();
+                });
+            });
+
+            // Bestätigungsbutton für Löschen
+            confirmDeleteBtn.addEventListener('click', function() {
+                if (projectToDelete) {
+                    fetch(`/projects/delete/${projectToDelete}`, {
+                        method: 'POST'
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            window.location.reload();
+                        } else {
+                            alert('Fehler beim Löschen des Projekts: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Fehler:', error);
+                        alert('Fehler beim Löschen des Projekts');
+                    });
+                }
+                deleteModal.hide();
+            });
+        });
+    </script>
+</body>
+</html>
