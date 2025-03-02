@@ -1,5 +1,4 @@
-1. README.md
-markdownCopy# 360° Drehteller Fotografie-System
+360° Drehteller Fotografie-System
 
 ## Projektbeschreibung
 Dieses Projekt ist ein komplettes System zur Erstellung interaktiver 360°-Produktansichten mit einem Raspberry Pi, Arduino und einer Kamera. Der Arduino steuert einen Drehteller über ein Relais, während die Kamera automatisch Fotos aufnimmt. Die Web-Oberfläche ermöglicht die Steuerung, Konfiguration und Anzeige der 360°-Ansichten.
