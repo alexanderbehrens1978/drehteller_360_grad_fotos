@@ -1,7 +1,7 @@
 // arduino_drehteller_steuerung.ino
 
 // Definiere den Pin für das Relais
-#define RELAIS_PIN 8
+#define RELAIS_PIN 9
 
 void setup() {
   // Initialisiere die serielle Kommunikation mit 9600 Baud

@@ -1,95 +1,113 @@
-/* static/css/viewer.css */
 body {
     background-color: #f4f4f4;
-    padding-top: 50px;
+    padding-top: 20px;
+    padding-bottom: 20px;
 }
 
 .container {
-    max-width: 900px;
+    max-width: 1200px;
 }
 
 .card {
     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
 
-.viewer-container {
+#viewer-container {
     position: relative;
     width: 100%;
     height: 500px;
-    overflow: hidden;
     background-color: #fff;
-    border-radius: 5px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    overflow: hidden;
+    touch-action: none; /* Verhindert Browser-Scrolling bei Touch-Gesten */
 }
 
-.viewer360-container {
+.viewer-360 {
     width: 100%;
     height: 100%;
-    display: flex;
-    flex-direction: column;
+    position: relative;
+    cursor: grab;
 }
 
-.viewer360-image-container {
-    flex-grow: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+.viewer-360:active {
+    cursor: grabbing;
+}
+
+.viewer-360 img {
+    position: absolute;
+    max-width: 100%;
+    max-height: 100%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    object-fit: contain;
+    display: none !important; /* Wichtig! */
+}
+
+.viewer-360 img.active {
+    display: block !important; /* Wichtig! */
+}
+
+/* Zoom-Effekt */
+.viewer-360.zoomed {
     overflow: hidden;
 }
 
-.viewer360-image {
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
-    user-select: none;
+/* Fullscreen-Modus */
+.fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 9999;
+    background-color: #fff;
+    padding: 20px;
 }
 
-.viewer360-controls {
-    display: flex;
-    align-items: center;
-    padding: 10px;
-    background-color: rgba(0,0,0,0.05);
-    border-top: 1px solid rgba(0,0,0,0.1);
+.fullscreen #viewer-container {
+    height: calc(100vh - 150px);
 }
 
-.viewer360-play-btn {
-    background-color: #0d6efd;
-    color: #fff;
-    border: none;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: 15px;
-    cursor: pointer;
+/* Spinner */
+#spinner {
+    z-index: 10;
 }
 
-.viewer360-play-btn:hover {
-    background-color: #0b5ed7;
+/* Fehlermeldungen */
+.alert {
+    position: relative;
+    z-index: 20;
 }
 
-.viewer360-slider {
-    flex-grow: 1;
-}
-
-.project-info {
-    margin-top: 20px;
-    padding-top: 20px;
-    border-top: 1px solid rgba(0,0,0,0.1);
-}
-
+/* Responsive Anpassungen */
 @media (max-width: 768px) {
-    .viewer-container {
+    #viewer-container {
+        height: 350px;
+    }
+    
+    .container {
+        padding: 0 10px;
+    }
+    
+    .viewer-controls, .zoom-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+    }
+}
+
+@media (max-width: 576px) {
+    #viewer-container {
         height: 300px;
     }
-
-    body {
-        padding-top: 20px;
+    
+    .card-header {
+        flex-direction: column;
+        gap: 10px;
     }
-
-    .container {
-        padding: 0 15px;
+    
+    .btn-sm {
+        padding: 5px 8px;
+        font-size: 0.8rem;
     }
 }

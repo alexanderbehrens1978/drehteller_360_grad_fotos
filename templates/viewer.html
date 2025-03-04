@@ -1,10 +1,9 @@
-<!-- templates/viewer.html -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>360° Ansicht - Drehteller</title>
+    <title>360° Viewer - Drehteller Steuerung</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
@@ -16,45 +15,63 @@
         <div class="card">
             <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                 <h2 class="mb-0">360° Produktansicht</h2>
-                <a href="/" class="btn btn-light btn-sm">
-                    <i class="bi bi-arrow-left"></i> Zurück
-                </a>
+                <div>
+                    <a href="/" class="btn btn-light btn-sm me-2">
+                        <i class="bi bi-house"></i> Zurück zur Steuerung
+                    </a>
+                    <button id="fullscreen-btn" class="btn btn-light btn-sm">
+                        <i class="bi bi-fullscreen"></i>
+                    </button>
+                </div>
             </div>
             <div class="card-body">
-                <div id="viewer-container" class="viewer-container"></div>
-
-                <div class="project-info mt-4">
-                    <h3>Projektdetails</h3>
-                    <dl class="row">
-                        <dt class="col-sm-3">Projektname</dt>
-                        <dd class="col-sm-9">{{ project_name }}</dd>
-
-                        <dt class="col-sm-3">Erstellungsdatum</dt>
-                        <dd class="col-sm-9">{{ created_date }}</dd>
-
-                        <dt class="col-sm-3">Anzahl Bilder</dt>
-                        <dd class="col-sm-9">{{ image_count }}</dd>
-                    </dl>
+                <div id="viewer-container" class="position-relative">
+                    <!-- Viewer wird hier per JavaScript eingefügt -->
+                    <div id="spinner" class="position-absolute top-50 start-50 translate-middle">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Laden...</span>
+                        </div>
+                    </div>
+                    <div id="product-viewer" class="viewer-360"></div>
                 </div>
+
+                <div class="mt-4 d-flex justify-content-between">
+                    <div class="viewer-controls">
+                        <button id="play-btn" class="btn btn-primary">
+                            <i class="bi bi-play-fill"></i> Auto-Rotation
+                        </button>
+                        <button id="reset-btn" class="btn btn-secondary ms-2">
+                            <i class="bi bi-arrow-counterclockwise"></i> Zurücksetzen
+                        </button>
+                    </div>
+
+                    <div class="zoom-controls">
+                        <button id="zoom-in-btn" class="btn btn-outline-secondary">
+                            <i class="bi bi-zoom-in"></i>
+                        </button>
+                        <button id="zoom-out-btn" class="btn btn-outline-secondary ms-2">
+                            <i class="bi bi-zoom-out"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <div class="project-info">
+                        <h4 id="project-name">Projekt: <span></span></h4>
+                        <p id="image-count">Bilder: <span></span></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-footer text-center">
+                <p>Bewegen Sie die Maus oder wischen Sie auf dem Touchscreen, um das Objekt zu drehen.</p>
+                <small class="text-muted">Erstellt mit Drehteller 360° Steuerung</small>
             </div>
         </div>
     </div>
 
-    <!-- Bootstrap JS und Abhängigkeiten -->
+    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/static/js/viewer360.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Bilder-URLs vom Server laden
-            const imageUrls = {{ image_urls|tojson }};
-
-            // 360°-Viewer initialisieren
-            const viewer = new Viewer360('viewer-container', imageUrls, {
-                autoplay: true,
-                autoplaySpeed: 150,
-                dragSensitivity: 5
-            });
-        });
-    </script>
+    <script src="/static/js/viewer.js"></script>
 </body>
 </html>

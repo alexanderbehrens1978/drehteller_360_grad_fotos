@@ -1,0 +1,15 @@
+# Core Flask Application
+flask==2.3.2
+werkzeug==2.3.6
+
+# Camera and Image Processing - mit festen Versionen für Kompatibilität
+numpy==1.26.4  # Die letzte 1.x Version, kompatibel mit Python 3.12
+opencv-python-headless==4.8.1.78  # Diese Version sollte mit NumPy 1.26.x funktionieren
+
+# Andere Abhängigkeiten
+pillow==9.5.0
+pyserial==3.5
+scipy==1.11.3
+pandas==2.1.4
+requests==2.30.0
+imageio==2.31.1
