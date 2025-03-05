@@ -45,11 +45,15 @@ sudo apt-get install -y \
 
 ### 1 Rechte für Serial ändern
 
-# Füge deinen Benutzer zur dialout-Gruppe hinzu
+Füge deinen Benutzer zur dialout-Gruppe hinzu
+```bash
 sudo usermod -a -G dialout dein_benutzername
+```
 
-# Setze die Berechtigungen für den Serial-Port
+Setze die Berechtigungen für den Serial-Port
+```bash
 sudo chmod 666 /dev/ttyACM0
+```
 
 ### 2. Repository klonen
 ```bash
