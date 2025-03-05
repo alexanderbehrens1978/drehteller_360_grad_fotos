@@ -43,7 +43,7 @@ sudo apt-get install -y \
 
 ## Installation
 
-### 1 Rechte für Serial ändern
+### 1. Rechte für Serial ändern
 
 Füge deinen Benutzer zur dialout-Gruppe hinzu
 ```bash
