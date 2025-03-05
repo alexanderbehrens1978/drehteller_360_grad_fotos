@@ -1,7 +1,7 @@
 {
     "camera": {
         "device_path": "/dev/video0",
-        "type": "webcam",
+        "type": "gphoto2",
         "resolution": {
             "width": 3840,
             "height": 2160
@@ -17,5 +17,11 @@
     },
     "simulator": {
         "enabled": false
-    }
+    },
+    "web": {
+        "host": "0.0.0.0",
+        "port": 5000,
+        "debug": true
+    },
+    "_test_flag": true
 }

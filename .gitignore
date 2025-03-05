@@ -1,7 +1,7 @@
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
+*.class
 *.so
 .Python
 venv/
@@ -54,3 +54,6 @@ ENV/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Logs
+*.log

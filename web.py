@@ -3,433 +3,425 @@ import os
 import json
 import time
 import serial
+import platform
+import sys
 import subprocess
-
-# Import config manager
 from config_manager import config_manager
-
-# Import the webcam capture simulator
-from webcam_simulator import WebcamCaptureSimulator
-from sample_images_generator import SampleImagesGenerator
-from webcam_detection_helper import find_working_webcam, get_camera_capabilities, test_webcam_capture
 from device_detector import device_detector
-from viewer_generator import viewer_generator
 
 app = Flask(__name__)
 
-# Configuration retrieval
-USE_SIMULATOR = config_manager.get('simulator.enabled', True)
+# Globale Variablen
+arduino = None
 
-# Initialize webcam capture simulator
-webcam_simulator = WebcamCaptureSimulator()
 
-# Initialize sample images generator (optional, run once to generate images)
-if not os.path.exists('static/sample_images') or len(os.listdir('static/sample_images')) < 5:
-    image_generator = SampleImagesGenerator()
-    image_generator.generate_sample_images(10)
-
-# Arduino connection
-def get_arduino_connection():
+def init_arduino():
     """
-    Establish Arduino connection based on configuration
+    Initialisiert die Arduino-Verbindung
     """
-    try:
-        if USE_SIMULATOR:
-            return None
-        
-        port = config_manager.get('arduino.port', '/dev/ttyACM0')
-        baudrate = config_manager.get('arduino.baudrate', 9600)
-        
-        arduino = serial.Serial(port, baudrate, timeout=1)
-        time.sleep(2)  # Wait for initialization
-        return arduino
-    except Exception as e:
-        print(f"Arduino connection error: {e}")
+    global arduino
+
+    # Simulator-Modus prüfen
+    if config_manager.get('simulator.enabled', True):
+        print("Simulator-Modus aktiv, keine Arduino-Verbindung erforderlich")
         return None
 
-# Global Arduino connection
-arduino = get_arduino_connection()
+    try:
+        # Arduino-Port aus Konfiguration holen
+        port = config_manager.get('arduino.port', '/dev/ttyACM0')
+        baudrate = config_manager.get('arduino.baudrate', 9600)
+
+        # Neue Verbindung öffnen
+        arduino = serial.Serial(port, baudrate, timeout=2)
+        time.sleep(2)  # Warten auf Arduino Reset
+
+        print(f"Arduino-Verbindung hergestellt: {port} ({baudrate} Baud)")
+        return arduino
+    except Exception as e:
+        print(f"Fehler beim Initialisieren der Arduino-Verbindung: {e}")
+        return None
+
 
 def rotate_teller(degrees):
     """
-    Rotate the platform
-    
-    :param degrees: Rotation angle
+    Rotiert den Drehteller um die angegebenen Grad.
+    Öffnet für jeden Befehl eine frische Verbindung.
     """
-    if USE_SIMULATOR:
-        print(f"Simulated rotation: {degrees} degrees")
-        return
-    
-    if arduino is None:
-        print("Arduino not connected!")
-        return
-    
-    # Berechnung der Drehzeit basierend auf der Gradzahl (0,8 Grad pro Sekunde)
-    rotation_time = degrees / 0.8
-    
-    # Relais einschalten (Drehteller starten)
-    arduino.write(b'1')  # '1' senden, um das Relais einzuschalten
-    time.sleep(rotation_time)  # Warte für die berechnete Zeit
-    arduino.write(b'0')  # '0' senden, um das Relais auszuschalten
-    print(f"Drehteller um {degrees} Grad gedreht.")
+    # Wenn Simulator-Modus aktiv ist
+    if config_manager.get('simulator.enabled', True):
+        print(f"Simulator: Rotation um {degrees} Grad")
+        return True
+
+    try:
+        # Arduino-Port aus Konfiguration holen
+        port = config_manager.get('arduino.port', '/dev/ttyACM0')
+        baudrate = config_manager.get('arduino.baudrate', 9600)
+
+        # Neue Verbindung öffnen
+        print(f"Öffne Arduino-Verbindung: {port}")
+        arduino_conn = serial.Serial(port, baudrate, timeout=2)
+        time.sleep(2)  # Warten auf Arduino Reset
+
+        # Befehl zum Einschalten senden
+        print("Sende '1' (Relais ein)")
+        arduino_conn.write(b'1')
+
+        # Berechnete Zeit für die Drehung warten
+        rotation_time = abs(degrees) / 0.8  # 0.8° pro Sekunde
+        print(f"Warte auf Rotation ({rotation_time} Sekunden)")
+        time.sleep(rotation_time)
+
+        # Befehl zum Ausschalten senden
+        print("Sende '0' (Relais aus)")
+        arduino_conn.write(b'0')
+        time.sleep(0.5)
+
+        # Verbindung schließen
+        arduino_conn.close()
+
+        print(f"Drehteller um {degrees} Grad gedreht.")
+        return True
+    except Exception as e:
+        print(f"Fehler beim Drehen des Tellers: {e}")
+        # Versuchen, die Verbindung zu schließen, falls sie noch offen ist
+        try:
+            if 'arduino_conn' in locals() and arduino_conn.is_open:
+                arduino_conn.close()
+        except:
+            pass
+        return False
+
 
 def take_photo(filename=None):
     """
-    Capture a photo
-    
-    :param filename: Optional custom filename
-    :return: Path to the saved photo
+    Nimmt ein Foto auf
     """
-    if USE_SIMULATOR:
-        # Use the webcam simulator to generate a photo
-        # Ensure filename is just the basename
-        if filename:
-            filename = os.path.basename(filename)
-        return webcam_simulator.capture_photo(filename)
-    
+    # Wenn Simulator-Modus aktiv ist
+    if config_manager.get('simulator.enabled', True):
+        print("Simulator: Foto aufnehmen")
+        # Hier würde der Simulator-Code stehen
+        return "simulation.jpg"
+
     try:
-        # Camera device path and resolution from configuration
-        camera_device = config_manager.get('camera.device_path', '/dev/video0')
-        camera_type = config_manager.get('camera.type', 'webcam')
-        
-        # Get camera resolution
-        camera_width = config_manager.get('camera.resolution.width')
-        camera_height = config_manager.get('camera.resolution.height')
-        
-        # Use actual webcam capture for real hardware
+        # Pfad für das Speichern von Fotos
+        photo_dir = 'static/photos'
+        os.makedirs(photo_dir, exist_ok=True)
+
+        # Falls kein Dateiname angegeben wurde, einen generieren
         if not filename:
-            filename = f'photo_{int(time.time())}.jpg'
-        
-        # Ensure filename is just the basename
-        filename = os.path.basename(filename)
-        full_path = os.path.join('static/photos', filename)
-        
-        # Choose capture method based on camera type
+            filename = f"photo_{int(time.time())}.jpg"
+
+        # Kamera-Einstellungen aus Konfiguration holen
+        camera_type = config_manager.get('camera.type', 'webcam')
+        camera_device = config_manager.get('camera.device_path', '/dev/video0')
+
+        # Je nach Kameratyp unterschiedliche Aufnahmemethode
         if camera_type == 'gphoto2':
-            # Use gphoto2 for DSLR cameras
-            subprocess.call(['gphoto2', '--capture-image-and-download', '--filename', full_path])
+            # DSLR mit gphoto2
+            output_path = os.path.join(photo_dir, filename)
+            subprocess.run(['gphoto2', '--capture-image-and-download', '--filename', output_path])
         else:
-            # Default to OpenCV for webcams
+            # Webcam mit OpenCV
             import cv2
             cap = cv2.VideoCapture(camera_device)
-            
-            # Set resolution if specified
-            if camera_width and camera_height:
-                cap.set(cv2.CAP_PROP_FRAME_WIDTH, camera_width)
-                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, camera_height)
-            
+
+            # Auflösung einstellen
+            width = config_manager.get('camera.resolution.width', 1280)
+            height = config_manager.get('camera.resolution.height', 720)
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+
+            # Foto aufnehmen
             ret, frame = cap.read()
-            if ret:
-                cv2.imwrite(full_path, frame)
-                cap.release()
-            else:
-                # Fallback to fswebcam if OpenCV fails
-                subprocess.call(['fswebcam', '--no-banner', 
-                                 '-d', camera_device, 
-                                 full_path])
-        
-        print(f"Foto aufgenommen und als {filename} gespeichert.")
+            if not ret:
+                raise Exception("Fehler beim Auslesen der Kamera")
+
+            # Foto speichern
+            output_path = os.path.join(photo_dir, filename)
+            cv2.imwrite(output_path, frame)
+            cap.release()
+
+        print(f"Foto aufgenommen und gespeichert als: {filename}")
         return filename
     except Exception as e:
         print(f"Fehler beim Aufnehmen des Fotos: {e}")
         return None
 
-@app.route('/generate_sample_images', methods=['POST'])
-def generate_sample_images():
-    """
-    Generate sample images for the simulator
-    """
-    try:
-        # Ensure sample images directory exists
-        os.makedirs('static/sample_images', exist_ok=True)
-        
-        # Generate sample images
-        image_generator = SampleImagesGenerator()
-        generated_images = image_generator.generate_sample_images(10)
-        
-        return jsonify({
-            "status": "success", 
-            "message": f"{len(generated_images)} sample images generated",
-            "images": generated_images
-        })
-    except Exception as e:
-        print(f"Error generating sample images: {e}")
-        return jsonify({
-            "status": "error", 
-            "message": str(e)
-        }), 500
 
-@app.route('/test_webcam_simulator', methods=['POST'])
-def test_webcam_simulator():
-    """
-    Test the webcam simulator by capturing a sample image
-    """
-    try:
-        # Ensure photos directory exists
-        os.makedirs('static/photos', exist_ok=True)
-        
-        # Capture a test photo using the simulator
-        photo_path = webcam_simulator.capture_photo('test_simulator.jpg')
-        
-        # Return the photo path relative to static folder
-        return photo_path.replace('static/', '/static/')
-    except Exception as e:
-        print(f"Error testing webcam simulator: {e}")
-        return jsonify({
-            "status": "error", 
-            "message": str(e)
-        }), 500
-
-@app.route('/camera_capabilities', methods=['GET'])
-def camera_capabilities():
-    """
-    Get camera device capabilities
-    """
-    try:
-        # Get camera device from configuration
-        camera_device = config_manager.get('camera.device_path', '/dev/video0')
-        
-        # Get camera capabilities
-        capabilities = get_camera_capabilities(camera_device)
-        
-        return jsonify({
-            "status": "success",
-            "capabilities": capabilities
-        })
-    except Exception as e:
-        print(f"Error getting camera capabilities: {e}")
-        return jsonify({
-            "status": "error", 
-            "message": str(e)
-        }), 500
-
-# Routes
+# Routen
 @app.route('/')
 def index():
+    """Hauptseite"""
     return render_template('index.html')
+
 
 @app.route('/settings')
 def settings():
+    """Einstellungsseite"""
     return render_template('settings.html')
 
-@app.route('/viewer')
-def view_360():
-    """Zeigt den 360°-Viewer an."""
-    return render_template('viewer.html')
-
-@app.route('/projects')
-def projects_page():
-    """Zeigt die Projektverwaltungsseite an."""
-    return render_template('projects.html')
-
-@app.route('/get_config')
-def get_config():
-    """
-    Retrieve current configuration
-    """
-    return jsonify(config_manager.config)
-
-@app.route('/save_config', methods=['POST'])
-def save_config():
-    """
-    Save new configuration
-    """
-    try:
-        # Prüfen, ob JSON-Daten empfangen wurden
-        if not request.is_json:
-            return jsonify({
-                "status": "error", 
-                "message": "Keine JSON-Daten empfangen. Content-Type muss application/json sein."
-            }), 400
-        
-        # JSON-Daten abrufen
-        new_config = request.json
-        
-        if not new_config:
-            return jsonify({
-                "status": "error", 
-                "message": "Leere Konfigurationsdaten empfangen"
-            }), 400
-        
-        # Konfigurationsdaten ausgeben für Debugging
-        print("Empfangene Konfiguration:", json.dumps(new_config, indent=2))
-        
-        # Versuchen, die Konfiguration zu speichern
-        try:
-            # Konfiguration mit bestehender Konfiguration zusammenführen
-            # (Direkte Implementierung ohne die fehlende _merge_configs-Methode)
-            merged_config = {}
-            
-            # Erst die bestehende Konfiguration kopieren
-            for key, value in config_manager.config.items():
-                merged_config[key] = value
-                
-            # Dann die neue Konfiguration einarbeiten (rekursiv)
-            def recursive_update(target, source):
-                for key, value in source.items():
-                    if isinstance(value, dict) and key in target and isinstance(target[key], dict):
-                        recursive_update(target[key], value)
-                    else:
-                        target[key] = value
-            
-            recursive_update(merged_config, new_config)
-            
-            # Aktualisierte Konfiguration speichern
-            config_manager.config = merged_config
-            
-            # In Datei speichern
-            with open(config_manager.config_path, 'w') as f:
-                json.dump(merged_config, f, indent=4)
-                
-            print(f"Konfiguration gespeichert in: {config_manager.config_path}")
-            return jsonify({"status": "success"})
-        except Exception as config_error:
-            print(f"Fehler beim Speichern der Konfiguration: {config_error}")
-            return jsonify({
-                "status": "error", 
-                "message": f"Fehler beim Speichern: {str(config_error)}"
-            }), 500
-            
-    except Exception as e:
-        print(f"Allgemeiner Fehler beim Speichern der Konfiguration: {e}")
-        return jsonify({
-            "status": "error", 
-            "message": f"Allgemeiner Fehler: {str(e)}"
-        }), 500
-
-@app.route('/api/project/<project_id>')
-def get_project(project_id):
-    """Liefert Projektdaten für den 360°-Viewer."""
-    try:
-        project_dir = os.path.join('static/projects', project_id)
-        metadata_path = os.path.join(project_dir, 'metadata.json')
-        
-        if not os.path.exists(metadata_path):
-            return jsonify({"error": "Projekt nicht gefunden"}), 404
-        
-        with open(metadata_path, 'r') as f:
-            metadata = json.load(f)
-        
-        return jsonify(metadata)
-    except Exception as e:
-        print(f"Fehler beim Laden der Projektdaten: {e}")
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/projects')
-def get_projects():
-    """Liefert eine Liste aller verfügbaren Projekte."""
-    try:
-        projects_dir = 'static/projects'
-        projects = []
-        
-        # Verzeichnisse durchsuchen
-        for project_id in os.listdir(projects_dir):
-            project_path = os.path.join(projects_dir, project_id)
-            
-            # Nur Verzeichnisse berücksichtigen
-            if os.path.isdir(project_path):
-                metadata_path = os.path.join(project_path, 'metadata.json')
-                
-                # Prüfen, ob Metadaten existieren
-                if os.path.exists(metadata_path):
-                    with open(metadata_path, 'r') as f:
-                        metadata = json.load(f)
-                        
-                    # Projekt-ID hinzufügen
-                    metadata['id'] = project_id
-                    projects.append(metadata)
-                else:
-                    # Fallback, wenn keine Metadaten existieren
-                    images = [f for f in os.listdir(project_path) 
-                             if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
-                    projects.append({
-                        'id': project_id,
-                        'name': f"Projekt {project_id}",
-                        'created': os.path.getctime(project_path),
-                        'images': images,
-                        'image_count': len(images)
-                    })
-        
-        return jsonify(projects)
-    except Exception as e:
-        print(f"Fehler beim Laden der Projekte: {e}")
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/project/<project_id>', methods=['DELETE'])
-def delete_project(project_id):
-    """Löscht ein Projekt."""
-    try:
-        project_dir = os.path.join('static/projects', project_id)
-        
-        if not os.path.exists(project_dir):
-            return jsonify({"error": "Projekt nicht gefunden"}), 404
-        
-        import shutil
-        shutil.rmtree(project_dir)
-        
-        return jsonify({"status": "success"})
-    except Exception as e:
-        print(f"Fehler beim Löschen des Projekts: {e}")
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/devices')
-def get_devices():
-    """Liefert eine Liste aller erkannten Geräte."""
-    return jsonify(device_detector.get_devices())
-
-@app.route('/generate_360', methods=['POST'])
-def generate_360():
-    """Generiert einen 360°-Viewer aus den aufgenommenen Bildern."""
-    try:
-        # Liste der Fotos nach Zeitstempel sortieren
-        photo_dir = 'static/photos'
-        photos = sorted([f for f in os.listdir(photo_dir) 
-                        if f.lower().endswith(('.jpg', '.jpeg', '.png'))])
-        
-        if not photos:
-            return jsonify({"error": "Keine Fotos gefunden"}), 400
-        
-        # Optionale Metadaten aus der Anfrage
-        metadata = request.get_json() if request.is_json else {}
-        
-        # 360°-Viewer generieren
-        viewer_url = viewer_generator.generate_viewer(photos, metadata)
-        
-        if viewer_url:
-            return jsonify({"status": "success", "url": viewer_url})
-        else:
-            return jsonify({"error": "Fehler beim Generieren des Viewers"}), 500
-    except Exception as e:
-        print(f"Fehler beim Generieren des 360°-Viewers: {e}")
-        return jsonify({"error": str(e)}), 500
 
 @app.route('/rotate', methods=['POST'])
 def rotate():
-    degrees = int(request.form['degrees'])
-    interval = float(request.form.get('interval', 5))  # Default 5 seconds if not specified
-    
-    # Rotate platform
-    rotate_teller(degrees)
-    
-    # Capture photo with timestamp to prevent caching
-    filename = f'photo_{int(time.time())}_{degrees}.jpg'
-    photo_path = take_photo(filename)
-    
-    # Return photo name relative to static folder
-    if photo_path:
-        return f'/static/photos/{os.path.basename(photo_path)}'
-    else:
-        return 'Error capturing photo', 500
+    """Rotiert den Drehteller und macht ein Foto"""
+    try:
+        # Daten aus der Anfrage holen
+        degrees = int(request.form['degrees'])
+
+        # Drehteller rotieren
+        rotation_success = rotate_teller(degrees)
+        if not rotation_success:
+            return 'Fehler bei der Rotation', 500
+
+        # Foto aufnehmen
+        photo = take_photo()
+        if not photo:
+            return 'Fehler beim Aufnehmen des Fotos', 500
+
+        # Erfolg zurückgeben
+        return f'/static/photos/{photo}'
+    except Exception as e:
+        print(f"Fehler bei der Rotation: {e}")
+        return str(e), 500
+
+
+@app.route('/get_config')
+def get_config():
+    """Gibt die aktuelle Konfiguration zurück"""
+    return jsonify(config_manager.config)
+
+
+@app.route('/save_config', methods=['POST'])
+def save_config():
+    """Speichert die Konfiguration"""
+    try:
+        # Check if request contains JSON data
+        if not request.is_json:
+            print("Request is not JSON")
+            return jsonify({"status": "error", "message": "Missing JSON data"}), 400
+
+        new_config = request.json
+        if not new_config:
+            print("Empty JSON data")
+            return jsonify({"status": "error", "message": "Empty configuration data"}), 400
+
+        print("Received configuration:", json.dumps(new_config, indent=2))
+
+        # Use direct file writing instead of config_manager.save_config
+        try:
+            # Load current config file
+            config_path = config_manager.config_path
+
+            # Read current config
+            with open(config_path, 'r') as f:
+                current_config = json.load(f)
+
+            # Update configuration with new values
+            def update_config(target, source):
+                for key, value in source.items():
+                    if isinstance(value, dict) and key in target and isinstance(target[key], dict):
+                        update_config(target[key], value)
+                    else:
+                        target[key] = value
+
+            # Merge configs
+            update_config(current_config, new_config)
+
+            # Write back to file
+            with open(config_path, 'w') as f:
+                json.dump(current_config, f, indent=4)
+
+            # Update config_manager's config
+            config_manager.config = current_config
+
+            print("Configuration saved successfully")
+            return jsonify({"status": "success"})
+        except Exception as e:
+            import traceback
+            print("Error saving configuration:", str(e))
+            traceback.print_exc()
+            return jsonify({"status": "error", "message": f"Error saving config: {str(e)}"}), 500
+
+    except Exception as e:
+        import traceback
+        print("General error:", str(e))
+        traceback.print_exc()
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 
 @app.route('/static/photos/<filename>')
 def serve_photo(filename):
+    """Liefert ein Foto aus"""
     return send_from_directory('static/photos', filename)
 
+
+# --- NEUE DIAGNOSE-FUNKTIONEN ---
+
+@app.route('/diagnostics')
+def diagnostics():
+    """Diagnoseseite, die Informationen zu den angeschlossenen Geräten anzeigt"""
+    diagnostic_data = {
+        'system': {
+            'python_version': sys.version,
+            'platform': platform.platform(),
+            'user': os.getlogin(),
+            'current_directory': os.getcwd()
+        },
+        'devices': device_detector.get_devices(),
+        'config': config_manager.config
+    }
+
+    # Füge Infos über serielle Ports hinzu
+    try:
+        import serial.tools.list_ports
+        ports = []
+        for port in serial.tools.list_ports.comports():
+            ports.append({
+                'device': port.device,
+                'name': port.name,
+                'description': port.description,
+                'hwid': port.hwid,
+                'vid': hex(port.vid) if port.vid is not None else None,
+                'pid': hex(port.pid) if port.pid is not None else None
+            })
+        diagnostic_data['serial_ports'] = ports
+    except Exception as e:
+        diagnostic_data['serial_ports_error'] = str(e)
+
+    # Überprüfe Dateiberechtigungen
+    config_path = config_manager.config_path
+    diagnostic_data['file_permissions'] = {
+        'config_path': config_path,
+        'exists': os.path.exists(config_path),
+        'readable': os.access(config_path, os.R_OK) if os.path.exists(config_path) else None,
+        'writable': os.access(config_path, os.W_OK) if os.path.exists(config_path) else None,
+        'permissions': oct(os.stat(config_path).st_mode)[-3:] if os.path.exists(config_path) else None
+    }
+
+    # Versuche, die Arduino-Verbindung zu testen
+    if diagnostic_data['devices']['arduino']:
+        arduino_port = diagnostic_data['devices']['arduino'][0]['port']
+        try:
+            with serial.Serial(arduino_port, 9600, timeout=1) as ser:
+                time.sleep(2)  # Warte auf Arduino Reset
+                ser.write(b'1')  # Sende Test-Befehl
+                time.sleep(0.5)
+                ser.write(b'0')
+                diagnostic_data['arduino_test'] = 'success'
+        except Exception as e:
+            diagnostic_data['arduino_test'] = f'error: {str(e)}'
+
+    return render_template('diagnostics.html', data=diagnostic_data)
+
+
+@app.route('/refresh_devices', methods=['POST'])
+def refresh_devices():
+    """Aktualisiert die Liste der erkannten Geräte"""
+    try:
+        # Device Detector neu initialisieren und alle Geräte suchen
+        device_detector.get_devices()
+        return jsonify({"status": "success"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)})
+
+
+@app.route('/update_config_from_devices', methods=['POST'])
+def update_config_from_devices():
+    """Aktualisiert die Konfiguration basierend auf erkannten Geräten"""
+    try:
+        # Aktuelle Konfiguration laden
+        current_config = config_manager.config.copy()
+
+        # Geräte erkennen
+        devices = device_detector.get_devices()
+
+        # Arduino-Konfiguration aktualisieren, wenn Geräte gefunden wurden
+        if devices['arduino']:
+            if 'arduino' not in current_config:
+                current_config['arduino'] = {}
+            current_config['arduino']['port'] = devices['arduino'][0]['port']
+
+        # Kamera-Konfiguration aktualisieren, wenn Geräte gefunden wurden
+        if 'camera' not in current_config:
+            current_config['camera'] = {}
+
+        if devices['webcam']:
+            current_config['camera']['device_path'] = devices['webcam'][0]['device']
+            current_config['camera']['type'] = 'webcam'
+        elif devices['gphoto2']:
+            current_config['camera']['device_path'] = 'auto'
+            current_config['camera']['type'] = 'gphoto2'
+
+        # Simulator deaktivieren, wenn echte Geräte gefunden wurden
+        if devices['arduino'] or devices['webcam'] or devices['gphoto2']:
+            if 'simulator' not in current_config:
+                current_config['simulator'] = {}
+            current_config['simulator']['enabled'] = False
+
+        # Konfiguration speichern
+        result = config_manager.save_config(current_config)
+
+        if result:
+            return jsonify({"status": "success"})
+        else:
+            return jsonify({"status": "error", "message": "Fehler beim Speichern der Konfiguration"})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"status": "error", "message": str(e)})
+
+
+@app.route('/restart_service', methods=['POST'])
+def restart_service():
+    """Startet den Drehteller-Service neu (erfordert sudo-Rechte)"""
+    try:
+        # Prüfen, ob wir sudo-Rechte haben
+        result = subprocess.run(['systemctl', 'is-active', 'drehteller360.service'],
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        # Service neustarten
+        subprocess.run(['sudo', 'systemctl', 'restart', 'drehteller360.service'],
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        return jsonify({"status": "success"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)})
+
+
+@app.route('/fix_permissions', methods=['POST'])
+def fix_permissions():
+    """Repariert die Berechtigungen für die Konfigurationsdatei"""
+    try:
+        config_path = config_manager.config_path
+
+        # Prüfen, ob die Datei existiert
+        if not os.path.exists(config_path):
+            # Verzeichnis erstellen, falls es nicht existiert
+            os.makedirs(os.path.dirname(config_path), exist_ok=True)
+
+            # Leere Konfiguration erstellen
+            with open(config_path, 'w') as f:
+                json.dump({}, f)
+
+        # Berechtigungen setzen
+        # Achtung: Dies funktioniert nur, wenn der Webserver-Prozess entsprechende Rechte hat
+        os.chmod(config_path, 0o644)
+
+        return jsonify({"status": "success"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)})
+
+
 if __name__ == '__main__':
-    # Ensure static directories exist
+    # Stelle sicher, dass die Verzeichnisse existieren
     os.makedirs('static/photos', exist_ok=True)
-    os.makedirs('static/sample_images', exist_ok=True)
-    os.makedirs('static/projects', exist_ok=True)
-    
-    # Run the Flask app
-    app.run(host='0.0.0.0', port=5000, debug=True)
+
+    # Initialisiere Arduino-Verbindung
+    init_arduino()
+
+    # Starte die Flask-App
+    host = config_manager.get('web.host', '0.0.0.0')
+    port = config_manager.get('web.port', 5000)
+    debug = config_manager.get('web.debug', True)
+
+    app.run(host=host, port=port, debug=debug)
