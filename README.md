@@ -43,13 +43,21 @@ sudo apt-get install -y \
 
 ## Installation
 
-### 1. Repository klonen
+### 1 Rechte für Serial ändern
+
+# Füge deinen Benutzer zur dialout-Gruppe hinzu
+sudo usermod -a -G dialout dein_benutzername
+
+# Setze die Berechtigungen für den Serial-Port
+sudo chmod 666 /dev/ttyACM0
+
+### 2. Repository klonen
 ```bash
 git clone https://github.com/[DEIN_BENUTZERNAME]/360-drehteller.git
 cd 360-drehteller
 ```
 
-### 2. Python-Umgebung einrichten
+### 3. Python-Umgebung einrichten
 ```bash
 # Virtuelle Umgebung erstellen
 python3 -m venv myenv
@@ -64,13 +72,13 @@ pip install --upgrade pip setuptools wheel
 pip install -r requirements.txt
 ```
 
-### 3. Arduino-Sketch hochladen
+### 4. Arduino-Sketch hochladen
 1. Öffnen Sie die Arduino IDE
 2. Öffnen Sie die Datei `arduino/drehteller_controller.ino`
 3. Wählen Sie das richtige Board (Arduino Uno) und den richtigen Port
 4. Klicken Sie auf "Hochladen"
 
-### 4. Anwendung starten
+### 5. Anwendung starten
 ```bash
 # Stellen Sie sicher, dass die virtuelle Umgebung aktiviert ist
 python web.py
@@ -124,10 +132,5 @@ Die Webanwendung ist nun unter http://localhost:5000 erreichbar.
 - Verwenden Sie Schutzausrüstung
 - Trennen Sie die Stromversorgung bei Wartungsarbeiten
 
-## Lizenz
-Dieses Projekt steht unter der MIT-Lizenz. Weitere Informationen in der LICENSE-Datei.
-
-## Mitwirkende
-[DEINE NAME/ORGANISATION]
 
 Fehler oder Verbesserungsvorschläge? Eröffnen Sie gerne ein Issue im GitHub-Repository!
