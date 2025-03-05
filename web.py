@@ -2,13 +2,15 @@ from flask import Flask, render_template, request, send_from_directory, jsonify
 import os
 import json
 import time
-import serial
 import subprocess
 
 # Import config manager
 from config_manager import config_manager
 
-# Import the webcam capture simulator
+# Import the Arduino reconnection manager
+from arduino_reconnect import ArduinoReconnectManager
+
+# Import other modules
 from webcam_simulator import WebcamCaptureSimulator
 from sample_images_generator import SampleImagesGenerator
 from webcam_detection_helper import find_working_webcam, get_camera_capabilities, test_webcam_capture
@@ -28,27 +30,26 @@ if not os.path.exists('static/sample_images') or len(os.listdir('static/sample_i
     image_generator = SampleImagesGenerator()
     image_generator.generate_sample_images(10)
 
-# Arduino connection
-def get_arduino_connection():
+# Global Arduino connection manager instance
+arduino_manager = None
+
+def get_arduino_manager():
     """
-    Establish Arduino connection based on configuration
+    Get or create the Arduino connection manager
     """
-    try:
-        if USE_SIMULATOR:
-            return None
-        
+    global arduino_manager
+    
+    # If simulator is enabled, return None
+    if USE_SIMULATOR:
+        return None
+    
+    # Create the connection manager if it doesn't exist
+    if arduino_manager is None:
         port = config_manager.get('arduino.port', '/dev/ttyACM0')
         baudrate = config_manager.get('arduino.baudrate', 9600)
-        
-        arduino = serial.Serial(port, baudrate, timeout=1)
-        time.sleep(2)  # Wait for initialization
-        return arduino
-    except Exception as e:
-        print(f"Arduino connection error: {e}")
-        return None
-
-# Global Arduino connection
-arduino = get_arduino_connection()
+        arduino_manager = ArduinoReconnectManager(port, baudrate)
+    
+    return arduino_manager
 
 def rotate_teller(degrees):
     """
@@ -58,20 +59,31 @@ def rotate_teller(degrees):
     """
     if USE_SIMULATOR:
         print(f"Simulated rotation: {degrees} degrees")
-        return
+        return True
     
+    # Get Arduino manager and ensure it's connected
+    arduino = get_arduino_manager()
     if arduino is None:
-        print("Arduino not connected!")
-        return
+        print("Arduino manager not available")
+        return False
     
-    # Berechnung der Drehzeit basierend auf der Gradzahl (0,8 Grad pro Sekunde)
+    if not arduino.ensure_connection():
+        print("Arduino not connected and reconnection failed")
+        return False
+    
+    # Calculate rotation time based on degrees (0.8° per second)
     rotation_time = degrees / 0.8
+    rotation_time_ms = int(rotation_time * 1000)
     
-    # Relais einschalten (Drehteller starten)
-    arduino.write(b'1')  # '1' senden, um das Relais einzuschalten
-    time.sleep(rotation_time)  # Warte für die berechnete Zeit
-    arduino.write(b'0')  # '0' senden, um das Relais auszuschalten
-    print(f"Drehteller um {degrees} Grad gedreht.")
+    # Use the rotation duration method from the manager
+    success = arduino.rotate_for_duration(rotation_time_ms)
+    
+    if success:
+        print(f"Drehteller um {degrees} Grad gedreht.")
+    else:
+        print(f"Fehler beim Drehen des Tellers um {degrees} Grad")
+    
+    return success
 
 def take_photo(filename=None):
     """
@@ -203,6 +215,44 @@ def camera_capabilities():
             "message": str(e)
         }), 500
 
+@app.route('/test_arduino_connection', methods=['POST'])
+def test_arduino_connection():
+    """
+    Test the Arduino connection
+    """
+    try:
+        # Get Arduino connection info from request
+        port = request.form.get('port', config_manager.get('arduino.port', '/dev/ttyACM0'))
+        baudrate = int(request.form.get('baudrate', config_manager.get('arduino.baudrate', 9600)))
+        
+        # Create temporary manager to test the connection
+        test_manager = ArduinoReconnectManager(port, baudrate)
+        connected = test_manager.ensure_connection()
+        
+        # Run a short test if connected
+        test_result = False
+        if connected:
+            test_result = test_manager.rotate_for_duration(1000)  # 1 second test
+        
+        # Disconnect the test manager
+        test_manager.disconnect()
+        
+        # Return result
+        return jsonify({
+            "status": "success" if connected else "error",
+            "connected": connected,
+            "test_result": test_result,
+            "message": "Arduino connected and tested successfully" if test_result else 
+                      "Arduino connected but test failed" if connected else 
+                      "Could not connect to Arduino"
+        })
+    except Exception as e:
+        print(f"Error testing Arduino connection: {e}")
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
 # Routes
 @app.route('/')
 def index():
@@ -217,11 +267,6 @@ def view_360():
     """Zeigt den 360°-Viewer an."""
     return render_template('viewer.html')
 
-@app.route('/projects')
-def projects_page():
-    """Zeigt die Projektverwaltungsseite an."""
-    return render_template('projects.html')
-
 @app.route('/get_config')
 def get_config():
     """
@@ -235,67 +280,35 @@ def save_config():
     Save new configuration
     """
     try:
-        # Prüfen, ob JSON-Daten empfangen wurden
-        if not request.is_json:
-            return jsonify({
-                "status": "error", 
-                "message": "Keine JSON-Daten empfangen. Content-Type muss application/json sein."
-            }), 400
-        
-        # JSON-Daten abrufen
         new_config = request.json
-        
         if not new_config:
-            return jsonify({
-                "status": "error", 
-                "message": "Leere Konfigurationsdaten empfangen"
-            }), 400
+            return jsonify({"status": "error", "message": "Keine Konfigurationsdaten empfangen"}), 400
+            
+        # Konfiguration speichern
+        success = config_manager.save_config(new_config)
         
-        # Konfigurationsdaten ausgeben für Debugging
-        print("Empfangene Konfiguration:", json.dumps(new_config, indent=2))
-        
-        # Versuchen, die Konfiguration zu speichern
-        try:
-            # Konfiguration mit bestehender Konfiguration zusammenführen
-            # (Direkte Implementierung ohne die fehlende _merge_configs-Methode)
-            merged_config = {}
+        if success:
+            # Get current Arduino configuration
+            old_port = config_manager.get('arduino.port')
+            old_baudrate = config_manager.get('arduino.baudrate')
             
-            # Erst die bestehende Konfiguration kopieren
-            for key, value in config_manager.config.items():
-                merged_config[key] = value
-                
-            # Dann die neue Konfiguration einarbeiten (rekursiv)
-            def recursive_update(target, source):
-                for key, value in source.items():
-                    if isinstance(value, dict) and key in target and isinstance(target[key], dict):
-                        recursive_update(target[key], value)
-                    else:
-                        target[key] = value
+            # Check if Arduino configuration has changed
+            new_port = new_config.get('arduino', {}).get('port')
+            new_baudrate = new_config.get('arduino', {}).get('baudrate')
             
-            recursive_update(merged_config, new_config)
+            if (new_port and new_port != old_port) or (new_baudrate and new_baudrate != old_baudrate):
+                # Reset the Arduino manager so it will reconnect with new settings
+                global arduino_manager
+                if arduino_manager:
+                    arduino_manager.disconnect("Configuration changed")
+                    arduino_manager = None
             
-            # Aktualisierte Konfiguration speichern
-            config_manager.config = merged_config
-            
-            # In Datei speichern
-            with open(config_manager.config_path, 'w') as f:
-                json.dump(merged_config, f, indent=4)
-                
-            print(f"Konfiguration gespeichert in: {config_manager.config_path}")
             return jsonify({"status": "success"})
-        except Exception as config_error:
-            print(f"Fehler beim Speichern der Konfiguration: {config_error}")
-            return jsonify({
-                "status": "error", 
-                "message": f"Fehler beim Speichern: {str(config_error)}"
-            }), 500
-            
+        else:
+            return jsonify({"status": "error", "message": "Fehler beim Speichern der Konfiguration"}), 500
     except Exception as e:
-        print(f"Allgemeiner Fehler beim Speichern der Konfiguration: {e}")
-        return jsonify({
-            "status": "error", 
-            "message": f"Allgemeiner Fehler: {str(e)}"
-        }), 500
+        print(f"Error saving configuration: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/api/project/<project_id>')
 def get_project(project_id):
@@ -313,63 +326,6 @@ def get_project(project_id):
         return jsonify(metadata)
     except Exception as e:
         print(f"Fehler beim Laden der Projektdaten: {e}")
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/projects')
-def get_projects():
-    """Liefert eine Liste aller verfügbaren Projekte."""
-    try:
-        projects_dir = 'static/projects'
-        projects = []
-        
-        # Verzeichnisse durchsuchen
-        for project_id in os.listdir(projects_dir):
-            project_path = os.path.join(projects_dir, project_id)
-            
-            # Nur Verzeichnisse berücksichtigen
-            if os.path.isdir(project_path):
-                metadata_path = os.path.join(project_path, 'metadata.json')
-                
-                # Prüfen, ob Metadaten existieren
-                if os.path.exists(metadata_path):
-                    with open(metadata_path, 'r') as f:
-                        metadata = json.load(f)
-                        
-                    # Projekt-ID hinzufügen
-                    metadata['id'] = project_id
-                    projects.append(metadata)
-                else:
-                    # Fallback, wenn keine Metadaten existieren
-                    images = [f for f in os.listdir(project_path) 
-                             if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
-                    projects.append({
-                        'id': project_id,
-                        'name': f"Projekt {project_id}",
-                        'created': os.path.getctime(project_path),
-                        'images': images,
-                        'image_count': len(images)
-                    })
-        
-        return jsonify(projects)
-    except Exception as e:
-        print(f"Fehler beim Laden der Projekte: {e}")
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/project/<project_id>', methods=['DELETE'])
-def delete_project(project_id):
-    """Löscht ein Projekt."""
-    try:
-        project_dir = os.path.join('static/projects', project_id)
-        
-        if not os.path.exists(project_dir):
-            return jsonify({"error": "Projekt nicht gefunden"}), 404
-        
-        import shutil
-        shutil.rmtree(project_dir)
-        
-        return jsonify({"status": "success"})
-    except Exception as e:
-        print(f"Fehler beim Löschen des Projekts: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/devices')
@@ -408,8 +364,11 @@ def rotate():
     degrees = int(request.form['degrees'])
     interval = float(request.form.get('interval', 5))  # Default 5 seconds if not specified
     
-    # Rotate platform
-    rotate_teller(degrees)
+    # Rotate platform with improved error handling
+    rotation_success = rotate_teller(degrees)
+    
+    if not rotation_success:
+        return 'Error rotating platform', 500
     
     # Capture photo with timestamp to prevent caching
     filename = f'photo_{int(time.time())}_{degrees}.jpg'
@@ -425,11 +384,43 @@ def rotate():
 def serve_photo(filename):
     return send_from_directory('static/photos', filename)
 
+@app.route('/arduino_status', methods=['GET'])
+def arduino_status():
+    """Check the current status of the Arduino connection"""
+    
+    if USE_SIMULATOR:
+        return jsonify({
+            "status": "simulator",
+            "message": "Simulator is enabled, no Arduino connection needed"
+        })
+    
+    arduino = get_arduino_manager()
+    if arduino is None:
+        return jsonify({
+            "status": "error",
+            "message": "Arduino manager is not available"
+        })
+    
+    connected = arduino.ensure_connection()
+    
+    return jsonify({
+        "status": "connected" if connected else "disconnected",
+        "port": arduino.port,
+        "baudrate": arduino.baudrate,
+        "message": "Arduino is connected and ready" if connected else "Arduino is not connected"
+    })
+
+# When the flask application exits, clean up the Arduino connection
+@app.teardown_appcontext
+def teardown_arduino(exception):
+    global arduino_manager
+    if arduino_manager:
+        arduino_manager.disconnect("Application shutdown")
+
 if __name__ == '__main__':
     # Ensure static directories exist
     os.makedirs('static/photos', exist_ok=True)
     os.makedirs('static/sample_images', exist_ok=True)
-    os.makedirs('static/projects', exist_ok=True)
     
     # Run the Flask app
     app.run(host='0.0.0.0', port=5000, debug=True)
