@@ -3,7 +3,8 @@
 ## Projektbeschreibung
 Dieses Projekt ist ein komplettes System zur Erstellung interaktiver 360°-Produktansichten mit einem Laptop / Raspberry Pi 4, Arduino und einer Kamera. Der Arduino steuert einen Drehteller über ein Relais, während die Kamera automatisch Fotos aufnimmt. Die Web-Oberfläche ermöglicht die Steuerung, Konfiguration und Anzeige der 360°-Ansichten.
 
-![Drehteller System](static/placeholder.jpg)
+![image](https://github.com/user-attachments/assets/9b665173-186d-4473-9a0b-8c1d37c44559)
+
 
 ## Voraussetzungen
 
