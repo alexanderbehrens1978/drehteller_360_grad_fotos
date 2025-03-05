@@ -47,7 +47,7 @@ sudo apt-get install -y \
 
 Füge deinen Benutzer zur dialout-Gruppe hinzu
 ```bash
-sudo usermod -a -G dialout dein_benutzername
+sudo usermod -a -G dialout alex
 ```
 
 Setze die Berechtigungen für den Serial-Port
@@ -58,7 +58,7 @@ sudo chmod 666 /dev/ttyACM0
 ### 2. Repository klonen
 ```bash
 gh repo clone alexanderbehrens1978/drehteller_360_grad_fotos
-cd 360-drehteller
+cd drehteller_360_grad_fotos
 ```
 
 ### 3. Python-Umgebung einrichten
