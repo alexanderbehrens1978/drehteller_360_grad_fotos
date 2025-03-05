@@ -15,7 +15,7 @@ BRANCH_NAME="web-vom-$(date +%d-%m-%y_%H-%M)"
 PROJECT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # GitHub-Repository-URL (bitte anpassen)
-REPO_URL="https://github.com/DEIN_GITHUB_USERNAME/360-drehteller.git"
+REPO_URL="https://github.com/alexanderbehrens/drehteller_360_grad_fotos.git"
 
 # Vor dem Commit ausschließen
 EXCLUDE_FILES=(
