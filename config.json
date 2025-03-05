@@ -17,5 +17,11 @@
     },
     "simulator": {
         "enabled": false
-    }
+    },
+    "web": {
+        "host": "0.0.0.0",
+        "port": 5000,
+        "debug": true
+    },
+    "_test_flag": true
 }

@@ -1,0 +1,272 @@
+<!-- templates/diagnostics.html -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drehteller 360 - Diagnose</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .diagnostic-section {
+            margin-bottom: 30px;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .diagnostic-title {
+            font-size: 1.2em;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        .device-list {
+            margin-left: 20px;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+        .warning {
+            color: orange;
+            font-weight: bold;
+        }
+        .actions {
+            margin-top: 20px;
+        }
+        .action-button {
+            padding: 8px 16px;
+            margin-right: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .action-button:hover {
+            background-color: #45a049;
+        }
+        code {
+            background-color: #f0f0f0;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Drehteller 360 - Systemdiagnose</h1>
+            <p>Diese Seite zeigt diagnostische Informationen zum Drehteller-System an.</p>
+        </header>
+
+        <div class="content">
+            <div class="diagnostic-section">
+                <div class="diagnostic-title">Systeminfo</div>
+                <div>
+                    <p><strong>Python-Version:</strong> {{ data.system.python_version }}</p>
+                    <p><strong>Plattform:</strong> {{ data.system.platform }}</p>
+                    <p><strong>Benutzer:</strong> {{ data.system.user }}</p>
+                    <p><strong>Arbeitsverzeichnis:</strong> {{ data.system.current_directory }}</p>
+                </div>
+            </div>
+
+            <div class="diagnostic-section">
+                <div class="diagnostic-title">Arduino-Geräte</div>
+                {% if data.devices.arduino %}
+                    <div class="success">{{ data.devices.arduino|length }} Arduino-Gerät(e) erkannt</div>
+                    <ul class="device-list">
+                        {% for device in data.devices.arduino %}
+                            <li>
+                                <strong>Port:</strong> {{ device.port }}<br>
+                                <strong>Beschreibung:</strong> {{ device.description }}<br>
+                                <strong>Hardware-ID:</strong> {{ device.hwid }}
+
+                                {% if data.arduino_test is defined %}
+                                    <div>
+                                        <strong>Verbindungstest:</strong>
+                                        {% if data.arduino_test == 'success' %}
+                                            <span class="success">Erfolgreich</span>
+                                        {% else %}
+                                            <span class="error">{{ data.arduino_test }}</span>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <div class="error">Keine Arduino-Geräte erkannt!</div>
+                    <p>Mögliche Ursachen:</p>
+                    <ul>
+                        <li>Arduino ist nicht angeschlossen</li>
+                        <li>Arduino-Treiber sind nicht installiert</li>
+                        <li>Berechtigungsprobleme für serielle Ports</li>
+                    </ul>
+                {% endif %}
+            </div>
+
+            <div class="diagnostic-section">
+                <div class="diagnostic-title">Kamera-Geräte</div>
+                <div class="diagnostic-title">Webcams</div>
+                {% if data.devices.webcam %}
+                    <div class="success">{{ data.devices.webcam|length }} Webcam(s) erkannt</div>
+                    <ul class="device-list">
+                        {% for device in data.devices.webcam %}
+                            <li>
+                                <strong>Gerät:</strong> {{ device.device }}<br>
+                                <strong>Beschreibung:</strong> {{ device.description }}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <div class="warning">Keine Webcams erkannt</div>
+                {% endif %}
+
+                <div class="diagnostic-title">DSLR-Kameras (gphoto2)</div>
+                {% if data.devices.gphoto2 %}
+                    <div class="success">{{ data.devices.gphoto2|length }} DSLR-Kamera(s) erkannt</div>
+                    <ul class="device-list">
+                        {% for device in data.devices.gphoto2 %}
+                            <li>
+                                <strong>Modell:</strong> {{ device.model }}<br>
+                                <strong>Port:</strong> {{ device.port }}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <div class="warning">Keine DSLR-Kameras erkannt</div>
+                {% endif %}
+            </div>
+
+            <div class="diagnostic-section">
+                <div class="diagnostic-title">Serielle Ports (Detailansicht)</div>
+                {% if data.serial_ports %}
+                    <div class="success">{{ data.serial_ports|length }} serielle(r) Port(s) verfügbar</div>
+                    <ul class="device-list">
+                        {% for port in data.serial_ports %}
+                            <li>
+                                <strong>Gerät:</strong> {{ port.device }}<br>
+                                <strong>Name:</strong> {{ port.name }}<br>
+                                <strong>Beschreibung:</strong> {{ port.description }}<br>
+                                <strong>Hardware-ID:</strong> {{ port.hwid }}<br>
+                                <strong>VID:PID:</strong> {{ port.vid }}:{{ port.pid }}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% elif data.serial_ports_error is defined %}
+                    <div class="error">Fehler bei der Abfrage serieller Ports: {{ data.serial_ports_error }}</div>
+                {% else %}
+                    <div class="error">Keine seriellen Ports gefunden!</div>
+                {% endif %}
+            </div>
+
+            <div class="diagnostic-section">
+                <div class="diagnostic-title">Konfiguration</div>
+                <div>
+                    <p><strong>Konfigurationsdatei:</strong> {{ data.file_permissions.config_path }}</p>
+                    <p><strong>Existiert:</strong> {% if data.file_permissions.exists %}Ja{% else %}Nein{% endif %}</p>
+
+                    {% if data.file_permissions.exists %}
+                        <p><strong>Lesbar:</strong> {% if data.file_permissions.readable %}Ja{% else %}<span class="error">Nein</span>{% endif %}</p>
+                        <p><strong>Schreibbar:</strong> {% if data.file_permissions.writable %}Ja{% else %}<span class="error">Nein</span>{% endif %}</p>
+                        <p><strong>Berechtigungen:</strong> {{ data.file_permissions.permissions }}</p>
+                    {% endif %}
+                </div>
+
+                <div class="diagnostic-title">Aktuelle Konfiguration</div>
+                <pre>{{ data.config|tojson(indent=2) }}</pre>
+            </div>
+
+            <div class="actions">
+                <h3>Aktionen</h3>
+                <button id="refreshDevices" class="action-button">Geräte neu erkennen</button>
+                <button id="updateConfig" class="action-button">Konfiguration aktualisieren</button>
+                <button id="restartService" class="action-button">Service neustarten</button>
+                <button id="fixPermissions" class="action-button">Berechtigungen reparieren</button>
+            </div>
+        </div>
+
+        <footer>
+            <p><a href="/">Zurück zur Startseite</a></p>
+        </footer>
+    </div>
+
+    <script>
+        // JavaScript für die Aktionen
+        document.getElementById('refreshDevices').addEventListener('click', function() {
+            if (confirm('Möchtest du die Geräte neu erkennen?')) {
+                fetch('/refresh_devices', { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            alert('Geräte erfolgreich aktualisiert. Seite wird neu geladen.');
+                            location.reload();
+                        } else {
+                            alert('Fehler: ' + data.message);
+                        }
+                    })
+                    .catch(error => alert('Fehler: ' + error));
+            }
+        });
+
+        document.getElementById('updateConfig').addEventListener('click', function() {
+            if (confirm('Möchtest du die Konfiguration mit den erkannten Geräten aktualisieren?')) {
+                fetch('/update_config_from_devices', { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            alert('Konfiguration erfolgreich aktualisiert. Seite wird neu geladen.');
+                            location.reload();
+                        } else {
+                            alert('Fehler: ' + data.message);
+                        }
+                    })
+                    .catch(error => alert('Fehler: ' + error));
+            }
+        });
+
+        document.getElementById('restartService').addEventListener('click', function() {
+            if (confirm('Möchtest du den Drehteller-Service neustarten? Dies kann einige Sekunden dauern.')) {
+                fetch('/restart_service', { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            alert('Service wird neugestartet. Bitte warte einen Moment und aktualisiere dann diealert('Service wird neugestartet. Bitte warte einen Moment und aktualisiere dann die Seite.');
+                            // Verzögertes Neuladen der Seite, um dem Service Zeit zum Neustarten zu geben
+                            setTimeout(() => location.reload(), 5000);
+                        } else {
+                            alert('Fehler: ' + data.message);
+                        }
+                    })
+                    .catch(error => alert('Fehler: ' + error));
+            }
+        });
+
+        document.getElementById('fixPermissions').addEventListener('click', function() {
+            if (confirm('Möchtest du die Berechtigungen für die Konfigurationsdatei reparieren?')) {
+                fetch('/fix_permissions', { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            alert('Berechtigungen erfolgreich repariert. Seite wird neu geladen.');
+                            location.reload();
+                        } else {
+                            alert('Fehler: ' + data.message);
+                        }
+                    })
+                    .catch(error => alert('Fehler: ' + error));
+            }
+        });
+    </script>
+</body>
+</html>
