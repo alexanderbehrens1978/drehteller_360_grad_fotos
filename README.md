@@ -57,7 +57,7 @@ sudo chmod 666 /dev/ttyACM0
 
 ### 2. Repository klonen
 ```bash
-git clone https://github.com/[DEIN_BENUTZERNAME]/360-drehteller.git
+gh repo clone alexanderbehrens1978/drehteller_360_grad_fotos
 cd 360-drehteller
 ```
 
