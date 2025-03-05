@@ -1,145 +1,133 @@
-360° Drehteller Fotografie-System
+# 360° Drehteller Fotografie-System
 
 ## Projektbeschreibung
-Dieses Projekt ist ein komplettes System zur Erstellung interaktiver 360°-Produktansichten mit einem Laptop / Raspberry Pi 4, Arduino und einer Kamera. Der Arduino steuert einen Drehteller über ein Relais, während die Kamera automatisch Fotos aufnimmt. Die Web-Oberfläche ermöglicht die Steuerung, Konfiguration und Anzeige der 360°-Ansichten.
+Dieses Projekt ist ein vollständiges System zur Erstellung interaktiver 360°-Produktansichten mit einem Computer, Arduino und einer Kamera. Der Arduino steuert einen Drehteller über ein Relais, während die Kamera automatisch Fotos aufnimmt. Die Web-Oberfläche ermöglicht die Steuerung, Konfiguration und Anzeige der 360°-Ansichten.
 
 ![image](https://github.com/user-attachments/assets/9b665173-186d-4473-9a0b-8c1d37c44559)
-
 
 ## Voraussetzungen
 
 ### Hardware
-- Raspberry Pi 4 (mit Raspbian) / besser PC
+- Computer mit Linux (empfohlen: Linux Mint, Ubuntu)
 - Arduino Uno
 - Relais-Modul (für 220V/30W Drehmotor)
 - Webcam oder DSLR-Kamera mit USB-Anschluss
-- Schneckengetriebe-Drehteller (0,8° CW Drehgeschwindigkeit)
+- Drehteller mit Schneckengetriebe (0,8° CW Drehgeschwindigkeit, 30W, 220V)
 
 ### Software
-- Python 3.8+
-- pip
+- Python 3.12+
+- pip (Python-Paketmanager)
 - Arduino IDE (für die Programmierung des Arduino)
-- Git (optional, für Versionskontrolle)
+- git (optional, für Versionskontrolle)
+
+## Systemvoraussetzungen
+
+### Erforderliche Systempakete
+Installieren Sie vor der Einrichtung folgende Systempakete:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y \
+    python3-dev \
+    python3-venv \
+    build-essential \
+    libopenblas-dev \
+    liblapack-dev \
+    libv4l-dev \
+    v4l-utils \
+    fswebcam \
+    gphoto2 \
+    git \
+    curl
+```
 
 ## Installation
 
 ### 1. Repository klonen
 ```bash
-git clone https://github.com/[USERNAME]/360-drehteller.git
+git clone https://github.com/[DEIN_BENUTZERNAME]/360-drehteller.git
 cd 360-drehteller
-2. Abhängigkeiten installieren
-Führe das Installationsskript mit Administratorrechten aus:
-bashCopysudo ./install_pip_modules.sh
-Dieses Skript:
+```
 
-Aktualisiert pip
-Erstellt eine virtuelle Python-Umgebung
-Installiert alle benötigten Python-Pakete
-Erstellt die Verzeichnisstruktur
-Generiert ein Platzhalter-Bild
+### 2. Python-Umgebung einrichten
+```bash
+# Virtuelle Umgebung erstellen
+python3 -m venv myenv
 
-3. Arduino-Code übertragen
-Verbinde deinen Arduino Uno mit dem Raspberry Pi und übertrage den Steuerungscode:
-bashCopy./upload_arduino_sketch.sh
-Schnellstart
+# Virtuelle Umgebung aktivieren
+source myenv/bin/activate
 
-Aktiviere die virtuelle Umgebung:
+# pip aktualisieren
+pip install --upgrade pip setuptools wheel
 
-bashCopysource myenv/bin/activate
+# Abhängigkeiten installieren
+pip install -r requirements.txt
+```
 
-Starte die Web-Anwendung:
+### 3. Arduino-Sketch hochladen
+1. Öffnen Sie die Arduino IDE
+2. Öffnen Sie die Datei `arduino/drehteller_controller.ino`
+3. Wählen Sie das richtige Board (Arduino Uno) und den richtigen Port
+4. Klicken Sie auf "Hochladen"
 
-bashCopypython web.py
+### 4. Anwendung starten
+```bash
+# Stellen Sie sicher, dass die virtuelle Umgebung aktiviert ist
+python web.py
+```
 
-Öffne einen Browser und navigiere zu:
+Die Webanwendung ist nun unter http://localhost:5000 erreichbar.
 
-Copyhttp://localhost:5000
-Oder von einem anderen Gerät im Netzwerk:
-Copyhttp://[Raspberry-Pi-IP]:5000
-Funktionen
-Hauptfunktionen
+## Erste Schritte
 
-Responsive Webanwendung: Funktioniert auf PC, Tablet und Smartphone
-Kamerasimulator: Ermöglicht Tests ohne angeschlossene Hardware
-Projektverwaltung: Organisiert verschiedene 360°-Aufnahmen
-Interaktiver 360°-Viewer: Ähnlich professionellen Produktansichten im E-Commerce
-Arduino-Steuerung: Präzise Steuerung des Drehtellers mit einstellbaren Winkeln
+1. Verbinden Sie Arduino und Kamera
+2. Öffnen Sie die Einstellungsseite
+3. Konfigurieren Sie Arduino-Port und Kameraeinstellungen
+4. Erstellen Sie ein neues Projekt
+5. Starten Sie eine 360°-Aufnahmesession
 
-Einstellungsmöglichkeiten
+## Projektstruktur
 
-Kameraauswahl und -konfiguration
-Arduino-Port und Baudrate
-Drehwinkel und Intervall
-Bildauflösung
+```
+360-drehteller/
+├── web.py                  # Hauptanwendung
+├── config_manager.py       # Konfigurationsmanagement
+├── device_detector.py      # Geräte-Erkennung
+├── arduino/                # Arduino-Sketche
+│   └── drehteller_controller.ino
+├── static/                 # Statische Dateien
+│   ├── photos/             # Aufgenommene Fotos
+│   └── projects/           # 360°-Projekt-Dateien
+├── templates/              # HTML-Templates
+├── requirements.txt        # Python-Abhängigkeiten
+└── README.md               # Dieses Dokument
+```
 
-Verzeichnisstruktur
-Copy360-drehteller/
-├── web.py                      # Hauptanwendung (Flask)
-├── project_manager.py          # Projektverwaltung
-├── config_manager.py           # Konfigurationsmanagement
-├── git_uploader.py             # Git-Upload-Werkzeug
-├── arduino_drehteller_steuerung.ino  # Arduino-Sketch
-├── upload_arduino_sketch.sh    # Arduino-Upload-Skript
-├── install_pip_modules.sh      # Installationsskript
-├── templates/                  # HTML-Templates
-│   ├── index.html              # Hauptseite
-│   ├── settings.html           # Einstellungen
-│   ├── projects.html           # Projektverwaltung
-│   ├── project_edit.html       # Projektbearbeitung
-│   └── viewer.html             # 360°-Viewer
-├── static/                     # Statische Dateien
-│   ├── css/                    # Stylesheet-Dateien
-│   ├── js/                     # JavaScript-Dateien
-│   ├── photos/                 # Aufgenommene Fotos
-│   └── sample_images/          # Beispielbilder für Simulator
-└── projects/                   # Projektdaten
-Konfiguration
-Kameraeinstellungen
+## Fehlerbehebung
 
-Unterstützt Webcams und DSLR-Kameras (via gphoto2)
-Konfigurierbare Auflösung
-Automatische Kameraerkennung
+### Arduino-Verbindung
+- Überprüfen Sie den seriellen Port
+- Stellen Sie sicher, dass der richtige Arduino-Sketch hochgeladen ist
+- Prüfen Sie die Baudrate (Standard: 9600)
 
-Arduino-Verbindung
+### Kamera-Probleme
+- Webcams: `v4l2-ctl --list-devices`
+- DSLR-Kameras: `gphoto2 --auto-detect`
+- Stellen Sie sicher, dass keine andere Anwendung die Kamera blockiert
 
-Standard-Port: /dev/ttyACM0
-Baudrate: 9600
-Einfache Steuerung über serielle Befehle (0/1)
+### Drehteller-Motor
+- Überprüfen Sie die Verkabelung des Relais
+- Stellen Sie sicher, dass der Motor korrekt angeschlossen ist
 
-Fehlerbehandlung
-Häufige Probleme
+## Sicherheitshinweise
+- Arbeiten Sie vorsichtig mit 220V-Geräten
+- Verwenden Sie Schutzausrüstung
+- Trennen Sie die Stromversorgung bei Wartungsarbeiten
 
-Arduino nicht erkannt
+## Lizenz
+Dieses Projekt steht unter der MIT-Lizenz. Weitere Informationen in der LICENSE-Datei.
 
-Überprüfe den Port unter Einstellungen
-Stelle sicher, dass die richtige Firmware hochgeladen ist
+## Mitwirkende
+[DEINE NAME/ORGANISATION]
 
-
-Kamera funktioniert nicht
-
-Überprüfe mit v4l2-ctl --list-devices
-Stelle sicher, dass die Kamera erkannt wird
-
-
-Relais schaltet nicht
-
-Überprüfe die Verkabelung
-Teste den Arduino mit dem Test-Skript
-
-
-
-Entwicklung
-Beiträge
-Beiträge zum Projekt sind willkommen! Bitte folge diesen Schritten:
-
-Fork des Repositories
-Feature-Branch erstellen
-Änderungen committen
-Pull Request einreichen
-
-
-Kontakt
-Bei Fragen oder Anregungen stehe ich gerne zur Verfügung.
-
-E-Mail: info €at) alexanderbehrensPungDcom
-GitHub: https://github.com/alexanderbehrens1978/drehteller
+Fehler oder Verbesserungsvorschläge? Eröffnen Sie gerne ein Issue im GitHub-Repository!
