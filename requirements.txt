@@ -1,15 +1,37 @@
-# Core Flask Application
-flask==2.3.2
-werkzeug==2.3.6
+# Webframework
+flask>=2.3.3
+werkzeug>=2.3.8
+jinja2>=3.1.3
 
-# Camera and Image Processing - mit festen Versionen für Kompatibilität
-numpy==1.26.4  # Die letzte 1.x Version, kompatibel mit Python 3.12
-opencv-python-headless==4.8.1.78  # Diese Version sollte mit NumPy 1.26.x funktionieren
+# Serielle Kommunikation
+pyserial>=3.5
 
-# Andere Abhängigkeiten
-pillow==9.5.0
-pyserial==3.5
-scipy==1.11.3
-pandas==2.1.4
-requests==2.30.0
-imageio==2.31.1
+# Bildverarbeitung
+opencv-python-headless>=4.8.1
+numpy>=1.26.0
+pillow>=10.2.0
+
+# Wissenschaftliche Berechnungen
+scipy>=1.12.0
+
+# Datenverarbeitung
+pandas>=2.2.0
+
+# Netzwerk und Requests
+requests>=2.31.0
+
+# Bildverarbeitung
+imageio>=2.33.0
+
+# Zusätzliche Utilities
+python-dotenv>=1.0.0
+gunicorn>=22.0.0
+
+# Webcam und Kamera-Unterstützung
+v4l2-python3>=0.3.2
+
+# Optional: für erweiterte Bildverarbeitung
+scikit-image>=0.22.0
+
+# Optional: für Videoaufnahme
+opencv-python>=4.8.1
