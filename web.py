@@ -412,6 +412,131 @@ def fix_permissions():
         return jsonify({"status": "error", "message": str(e)})
 
 
+@app.route('/generate_360', methods=['POST'])
+def generate_360():
+    """Generiert einen 360°-Viewer aus den aufgenommenen Bildern."""
+    try:
+        # Liste der Fotos nach Zeitstempel sortieren
+        photo_dir = 'static/photos'
+        photos = sorted([f for f in os.listdir(photo_dir)
+                         if f.lower().endswith(('.jpg', '.jpeg', '.png'))])
+
+        if not photos:
+            return jsonify({"status": "error", "message": "Keine Fotos gefunden"}), 400
+
+        # Metadaten aus der Anfrage
+        metadata = {}
+        if request.is_json:
+            metadata = request.json
+        elif request.form:
+            metadata = request.form.to_dict()
+
+        # Projekt-Verzeichnis erstellen
+        project_id = f"project_{int(time.time())}"
+        project_dir = os.path.join('static/projects', project_id)
+        os.makedirs(project_dir, exist_ok=True)
+
+        # Fotos in das Projektverzeichnis kopieren
+        import shutil
+        for i, photo in enumerate(photos):
+            source = os.path.join(photo_dir, photo)
+            target = os.path.join(project_dir, f"image_{i:03d}.jpg")
+            shutil.copy2(source, target)
+
+        # Metadaten speichern
+        metadata_file = {
+            'id': project_id,
+            'name': metadata.get('name', f"Projekt {project_id}"),
+            'description': metadata.get('description', ''),
+            'created': int(time.time()),
+            'images': [f"image_{i:03d}.jpg" for i in range(len(photos))]
+        }
+
+        metadata_path = os.path.join(project_dir, 'metadata.json')
+        with open(metadata_path, 'w') as f:
+            json.dump(metadata_file, f, indent=2)
+
+        # Erfolg zurückgeben
+        return jsonify({
+            "status": "success",
+            "url": f"/viewer?project={project_id}"
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/viewer')
+def viewer():
+    """Zeigt den 360°-Viewer an."""
+    print("Viewer-Route aufgerufen!")
+    return render_template('viewer.html')
+
+
+@app.route('/api/project/<project_id>')
+def get_project(project_id):
+    """Liefert Projektdaten für den 360°-Viewer."""
+    try:
+        print(f"Projekt-API aufgerufen für ID: {project_id}")
+        project_dir = os.path.join('static/projects', project_id)
+        metadata_path = os.path.join(project_dir, 'metadata.json')
+
+        if not os.path.exists(metadata_path):
+            print(f"Metadaten nicht gefunden: {metadata_path}")
+            return jsonify({"error": "Projekt nicht gefunden"}), 404
+
+        with open(metadata_path, 'r') as f:
+            metadata = json.load(f)
+
+        print(f"Metadaten gefunden: {metadata}")
+        return jsonify(metadata)
+    except Exception as e:
+        print(f"Fehler beim Laden der Projektdaten: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/projects')
+def projects():
+    """Zeigt die Projektliste an."""
+    print("Projects-Route aufgerufen")
+    return render_template('projects.html')
+
+
+@app.route('/projects/list')
+def list_projects():
+    """Liefert eine Liste aller vorhandenen Projekte."""
+    try:
+        projects_dir = 'static/projects'
+        projects = []
+
+        # Stelle sicher, dass das Verzeichnis existiert
+        if not os.path.exists(projects_dir):
+            os.makedirs(projects_dir)
+            return jsonify(projects)
+
+        # Durchsuche das Projektverzeichnis
+        for project_id in os.listdir(projects_dir):
+            metadata_path = os.path.join(projects_dir, project_id, 'metadata.json')
+            if os.path.exists(metadata_path):
+                try:
+                    with open(metadata_path, 'r') as f:
+                        metadata = json.load(f)
+                    projects.append(metadata)
+                except:
+                    # Ignoriere ungültige Projektdateien
+                    pass
+
+        # Sortiere Projekte nach Erstellungsdatum (neueste zuerst)
+        projects.sort(key=lambda x: x.get('created', 0), reverse=True)
+
+        return jsonify(projects)
+    except Exception as e:
+        print(f"Fehler beim Auflisten der Projekte: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == '__main__':
     # Stelle sicher, dass die Verzeichnisse existieren
     os.makedirs('static/photos', exist_ok=True)
