@@ -415,6 +415,7 @@ def fix_permissions():
 if __name__ == '__main__':
     # Stelle sicher, dass die Verzeichnisse existieren
     os.makedirs('static/photos', exist_ok=True)
+    os.makedirs('static/test', exist_ok=True)
 
     # Initialisiere Arduino-Verbindung
     init_arduino()
