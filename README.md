@@ -66,9 +66,19 @@ Je nach Bedarf können Sie weitere Konfigurationen vornehmen:
 
 ### 4. Arduino-Sketch hochladen
 
+Das Programm erkennt automatisch ob ein Arduino angeschlossen ist.
+
+getestet wurde es mit einem Ardunio UNO R3.
+
+Es wird der gefundene Port von Ardunio angezeigt.
+
+Pfad übernehmen, UNO Version auswählen, der Upload zum UNO läuft dann automatisch.
+
 ```bash
 ./upload_arduino_sketch.sh
 ```
+
+
 
 ## Verwendung des Systems
 
@@ -78,6 +88,7 @@ Nach erfolgreicher Installation ist die Webanwendung unter folgender URL erreich
 - http://IHRE-IP (wenn Nginx als Reverse-Proxy aktiviert wurde)
 
 ### Verwaltung des Dienstes
+
 Das System bietet ein Hilfsskript für die einfache Verwaltung des Dienstes:
 
 ```bash
