@@ -103,7 +103,7 @@ opencv-python==4.11.0.86
 # opencv-python-headless==4.11.0.86  # Für Server ohne GUI
 
 # Aktualisiert für bessere Kompatibilität
-Pillow==10.1.0
+Pillow>=10.3.0
 
 # Kamerasteuerung
 gphoto2==2.3.4
@@ -131,7 +131,7 @@ numpy==1.24.3
 opencv-python-headless==4.7.0.72
 
 # Bildbearbeitung
-Pillow==9.5.0
+Pillow>=10.3.0
 
 # Kamerasteuerung
 gphoto2==2.3.4
