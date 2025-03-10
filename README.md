@@ -59,10 +59,10 @@ Je nach Bedarf können Sie weitere Konfigurationen vornehmen:
 ```
 
 ### 4. Arduino-Sketch hochladen
-1. Öffnen Sie die Arduino IDE
-2. Öffnen Sie die Datei `arduino/turntable_controller.ino`
-3. Wählen Sie das richtige Board (Arduino Uno) und den richtigen Port
-4. Klicken Sie auf "Hochladen"
+
+```bash
+./upload_arduino_sketch.sh
+```
 
 ## Verwendung des Systems
 
