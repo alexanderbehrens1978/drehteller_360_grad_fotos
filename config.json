@@ -12,8 +12,8 @@
         "baudrate": 9600
     },
     "rotation": {
-        "default_degrees": 1,
-        "default_interval": 1
+        "default_degrees": 15,
+        "default_interval": 5
     },
     "simulator": {
         "enabled": false
