@@ -1,0 +1,497 @@
+<!-- Datei: templates/base.html - Basis-Template für alle Seiten -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}360° Drehteller Fotografie-System{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="app-container">
+        <nav class="main-nav">
+            <div class="logo">
+                <h1>360° Drehteller</h1>
+            </div>
+            <ul class="nav-links">
+                <li><a href="{{ url_for('index') }}">Projekte</a></li>
+                <li><a href="{{ url_for('app_settings') }}">Einstellungen</a></li>
+            </ul>
+        </nav>
+
+        <main class="main-content">
+            {% block content %}{% endblock %}
+        </main>
+
+        <footer class="main-footer">
+            <p>360° Drehteller Fotografie-System &copy; 2025</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
+
+<!-- Datei: templates/index.html - Hauptseite mit Projekten -->
+{% extends "base.html" %}
+
+{% block title %}Projekte - 360° Drehteller Fotografie-System{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Projekte</h2>
+    <a href="{{ url_for('new_project') }}" class="btn primary-btn">Neues Projekt</a>
+</div>
+
+<div class="projects-container">
+    {% if projects %}
+        {% for project in projects %}
+            <div class="project-card">
+                <div class="project-header">
+                    <h3>{{ project.name }}</h3>
+                    <span class="project-date">Erstellt: {{ project.created_at|datetime }}</span>
+                </div>
+                <div class="project-description">
+                    <p>{{ project.description }}</p>
+                </div>
+                <div class="project-details">
+                    <div class="detail-item">
+                        <span class="detail-label">Winkelschritt:</span>
+                        <span class="detail-value">{{ project.angle_step }}°</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Sessions:</span>
+                        <span class="detail-value">{{ project.sessions|length }}</span>
+                    </div>
+                </div>
+                <div class="project-actions">
+                    <a href="{{ url_for('view_project', project_id=project.id) }}" class="btn secondary-btn">Anzeigen</a>
+                    <a href="{{ url_for('edit_project', project_id=project.id) }}" class="btn secondary-btn">Bearbeiten</a>
+                    <a href="{{ url_for('capture_session', project_id=project.id) }}" class="btn primary-btn">Neue Aufnahme</a>
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty-state">
+            <p>Noch keine Projekte vorhanden. Erstellen Sie Ihr erstes Projekt!</p>
+            <a href="{{ url_for('new_project') }}" class="btn primary-btn">Neues Projekt</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+<!-- Datei: templates/project.html - Projekt anzeigen/erstellen/bearbeiten -->
+{% extends "base.html" %}
+
+{% block title %}
+    {% if mode == 'new' %}
+        Neues Projekt
+    {% elif mode == 'edit' %}
+        Projekt bearbeiten
+    {% else %}
+        {{ project.name }}
+    {% endif %}
+    - 360° Drehteller Fotografie-System
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>
+        {% if mode == 'new' %}
+            Neues Projekt
+        {% elif mode == 'edit' %}
+            Projekt bearbeiten
+        {% else %}
+            {{ project.name }}
+        {% endif %}
+    </h2>
+    {% if mode == 'view' %}
+        <div class="header-actions">
+            <a href="{{ url_for('edit_project', project_id=project.id) }}" class="btn secondary-btn">Bearbeiten</a>
+            <a href="{{ url_for('capture_session', project_id=project.id) }}" class="btn primary-btn">Neue Aufnahme</a>
+        </div>
+    {% endif %}
+</div>
+
+{% if mode == 'new' or mode == 'edit' %}
+    <div class="form-container">
+        <form method="post" class="standard-form">
+            <div class="form-group">
+                <label for="name">Projektname:</label>
+                <input type="text" id="name" name="name" value="{{ project.name if project else '' }}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="description">Beschreibung:</label>
+                <textarea id="description" name="description" rows="4">{{ project.description if project else '' }}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="angle_step">Winkelschritt (Grad):</label>
+                <select id="angle_step" name="angle_step">
+                    <option value="5" {% if project and project.angle_step == 5 %}selected{% endif %}>5°</option>
+                    <option value="10" {% if project and project.angle_step == 10 %}selected{% endif %}>10°</option>
+                    <option value="15" {% if project and project.angle_step == 15 %}selected{% endif %}>15°</option>
+                    <option value="20" {% if project and project.angle_step == 20 %}selected{% endif %}>20°</option>
+                    <option value="30" {% if project and project.angle_step == 30 %}selected{% endif %}>30°</option>
+                    <option value="45" {% if project and project.angle_step == 45 %}selected{% endif %}>45°</option>
+                    <option value="60" {% if project and project.angle_step == 60 %}selected{% endif %}>60°</option>
+                    <option value="90" {% if project and project.angle_step == 90 %}selected{% endif %}>90°</option>
+                </select>
+            </div>
+
+            <div class="form-actions">
+                <a href="{{ url_for('index') }}" class="btn secondary-btn">Abbrechen</a>
+                <button type="submit" class="btn primary-btn">
+                    {% if mode == 'new' %}
+                        Projekt erstellen
+                    {% else %}
+                        Änderungen speichern
+                    {% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+{% elif mode == 'view' %}
+    <div class="project-detail">
+        <div class="detail-section">
+            <h3>Projektinformationen</h3>
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <span class="detail-label">Name:</span>
+                    <span class="detail-value">{{ project.name }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Beschreibung:</span>
+                    <span class="detail-value">{{ project.description }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Winkelschritt:</span>
+                    <span class="detail-value">{{ project.angle_step }}°</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Erstellt:</span>
+                    <span class="detail-value">{{ project.created_at|datetime }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Zuletzt aktualisiert:</span>
+                    <span class="detail-value">{{ project.updated_at|datetime }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="sessions-section">
+            <h3>Aufnahmesessions</h3>
+
+            {% if project.sessions %}
+                <div class="sessions-grid">
+                    {% for session in project.sessions %}
+                        <div class="session-card">
+                            <div class="session-header">
+                                <h4>{{ session.name }}</h4>
+                                <span class="session-date">{{ session.timestamp|datetime }}</span>
+                            </div>
+                            <div class="session-details">
+                                <div class="detail-item">
+                                    <span class="detail-label">Fotos:</span>
+                                    <span class="detail-value">{{ session.photos|length }}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Winkelschritt:</span>
+                                    <span class="detail-value">{{ session.angle_step }}°</span>
+                                </div>
+                            </div>
+                            <div class="session-actions">
+                                <a href="{{ url_for('view_360', project_id=project.id, session_id=session.id) }}" class="btn primary-btn">360° Ansicht</a>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <p>Noch keine Aufnahmesessions vorhanden.</p>
+                    <a href="{{ url_for('capture_session', project_id=project.id) }}" class="btn primary-btn">Neue Aufnahme starten</a>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="danger-zone">
+            <h3>Gefahrenzone</h3>
+            <p>Diese Aktionen können nicht rückgängig gemacht werden.</p>
+            <a href="{{ url_for('delete_project', project_id=project.id) }}" class="btn danger-btn" onclick="return confirm('Sind Sie sicher, dass Sie dieses Projekt löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.')">Projekt löschen</a>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}
+
+<!-- Datei: templates/capture.html - Aufnahmesession -->
+{% extends "base.html" %}
+
+{% block title %}Neue Aufnahme - {{ project.name }} - 360° Drehteller Fotografie-System{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Neue 360°-Aufnahme</h2>
+    <div class="header-actions">
+        <a href="{{ url_for('view_project', project_id=project.id) }}" class="btn secondary-btn">Zurück zum Projekt</a>
+    </div>
+</div>
+
+<div class="capture-container">
+    {% if error %}
+        <div class="error-message">
+            <p>{{ error }}</p>
+        </div>
+    {% endif %}
+
+    <div class="capture-setup">
+        <h3>Aufnahme-Einstellungen</h3>
+
+        <div class="setup-details">
+            <div class="detail-item">
+                <span class="detail-label">Projekt:</span>
+                <span class="detail-value">{{ project.name }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Winkelschritt:</span>
+                <span class="detail-value">{{ project.angle_step }}°</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Anzahl Fotos:</span>
+                <span class="detail-value">{{ 360 // project.angle_step }}</span>
+            </div>
+        </div>
+
+        <form method="post" class="standard-form capture-form">
+            <div class="form-group">
+                <label for="session_name">Name der Aufnahmesession:</label>
+                <input type="text" id="session_name" name="session_name" value="Session {{ now()|datetime('short') }}" required>
+            </div>
+
+            <div class="form-actions">
+                <a href="{{ url_for('view_project', project_id=project.id) }}" class="btn secondary-btn">Abbrechen</a>
+                <button type="submit" class="btn primary-btn">Aufnahme starten</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="hardware-status">
+        <h3>Hardware-Status</h3>
+
+        <div class="status-grid">
+            <div class="status-item" id="arduino-status">
+                <span class="status-label">Arduino:</span>
+                <span class="status-value loading">Wird geprüft...</span>
+            </div>
+            <div class="status-item" id="camera-status">
+                <span class="status-label">Kamera:</span>
+                <span class="status-value loading">Wird geprüft...</span>
+            </div>
+        </div>
+
+        <div class="status-actions">
+            <button id="check-status-btn" class="btn secondary-btn">Status aktualisieren</button>
+        </div>
+    </div>
+
+    <div class="capture-preview" id="capture-preview">
+        <h3>Vorschau</h3>
+        <div class="preview-container">
+            <img id="preview-image" src="{{ url_for('static', filename='img/placeholder.jpg') }}" alt="Vorschau">
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/capture.js') }}"></script>
+{% endblock %}
+
+<!-- Datei: templates/settings.html - Einstellungen -->
+{% extends "base.html" %}
+
+{% block title %}Einstellungen - 360° Drehteller Fotografie-System{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Einstellungen</h2>
+</div>
+
+<div class="settings-container">
+    <form method="post" class="standard-form settings-form">
+        <div class="settings-section">
+            <h3>Arduino-Einstellungen</h3>
+
+            <div class="form-group">
+                <label for="arduino_port">Arduino-Port:</label>
+                <select id="arduino_port" name="arduino_port">
+                    <option value="">-- Automatisch erkennen --</option>
+                    {% for port in arduino_ports %}
+                        <option value="{{ port.device }}"
+                                {% if settings.arduino_port == port.device %}selected{% endif %}
+                                {% if port.is_arduino %}class="arduino-device"{% endif %}>
+                            {{ port.device }} - {{ port.description }} {% if port.is_arduino %}(Arduino){% endif %}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="arduino_baudrate">Baudrate:</label>
+                <select id="arduino_baudrate" name="arduino_baudrate">
+                    <option value="9600" {% if settings.arduino_baudrate == 9600 %}selected{% endif %}>9600</option>
+                    <option value="19200" {% if settings.arduino_baudrate == 19200 %}selected{% endif %}>19200</option>
+                    <option value="57600" {% if settings.arduino_baudrate == 57600 %}selected{% endif %}>57600</option>
+                    <option value="115200" {% if settings.arduino_baudrate == 115200 %}selected{% endif %}>115200</option>
+                </select>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" id="test-arduino-btn" class="btn secondary-btn">Arduino testen</button>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <h3>Kamera-Einstellungen</h3>
+
+            <div class="form-group">
+                <label for="camera_type">Kameratyp:</label>
+                <select id="camera_type" name="camera_type">
+                    <option value="webcam" {% if settings.camera_type == 'webcam' %}selected{% endif %}>Webcam</option>
+                    <option value="gphoto2" {% if settings.camera_type == 'gphoto2' %}selected{% endif %}>DSLR (gphoto2)</option>
+                </select>
+            </div>
+
+            <div class="form-group webcam-option" {% if settings.camera_type != 'webcam' %}style="display: none;"{% endif %}>
+                <label for="webcam_device">Webcam:</label>
+                <select id="webcam_device" name="camera_device">
+                    {% for camera in cameras %}
+                        <option value="{{ camera.device }}" {% if settings.camera_device == camera.device %}selected{% endif %}>
+                            {{ camera.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group gphoto-option" {% if settings.camera_type != 'gphoto2' %}style="display: none;"{% endif %}>
+                <label for="gphoto_device">DSLR-Kamera:</label>
+                <select id="gphoto_device" name="camera_device">
+                    <option value="auto">Automatisch erkennen</option>
+                    {% for camera in gphoto_cameras %}
+                        <option value="{{ camera.device }}" {% if settings.camera_device == camera.device %}selected{% endif %}>
+                            {{ camera.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="camera_resolution">Bildauflösung:</label>
+                <select id="camera_resolution" name="camera_resolution">
+                    <option value="640x480" {% if settings.camera_resolution == '640x480' %}selected{% endif %}>640 x 480</option>
+                    <option value="1280x720" {% if settings.camera_resolution == '1280x720' %}selected{% endif %}>1280 x 720 (HD)</option>
+                    <option value="1920x1080" {% if settings.camera_resolution == '1920x1080' %}selected{% endif %}>1920 x 1080 (Full HD)</option>
+                    <option value="2560x1440" {% if settings.camera_resolution == '2560x1440' %}selected{% endif %}>2560 x 1440 (2K)</option>
+                    <option value="3840x2160" {% if settings.camera_resolution == '3840x2160' %}selected{% endif %}>3840 x 2160 (4K)</option>
+                </select>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" id="test-camera-btn" class="btn secondary-btn">Kamera testen</button>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <h3>Pfad-Einstellungen</h3>
+
+            <div class="form-group">
+                <label for="project_dir">Projektverzeichnis:</label>
+                <input type="text" id="project_dir" name="project_dir" value="{{ settings.project_dir }}">
+            </div>
+        </div>
+
+        <div class="form-actions main-actions">
+            <a href="{{ url_for('index') }}" class="btn secondary-btn">Abbrechen</a>
+            <button type="submit" class="btn primary-btn">Einstellungen speichern</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+{% endblock %}
+
+<!-- Datei: templates/viewer.html - 360° Viewer -->
+{% extends "base.html" %}
+
+{% block title %}360° Ansicht - {{ project.name }} - 360° Drehteller Fotografie-System{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/viewer.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>360° Ansicht: {{ project.name }}</h2>
+    <div class="header-actions">
+        <a href="{{ url_for('view_project', project_id=project.id) }}" class="btn secondary-btn">Zurück zum Projekt</a>
+    </div>
+</div>
+
+<div class="viewer-container">
+    <div class="viewer-content">
+        <div id="viewer360" class="viewer-360">
+            <img id="currentImage" src="{{ url_for('static', filename='img/placeholder.jpg') }}" alt="360° Ansicht">
+            <div class="viewer-controls">
+                <button id="playPauseBtn" class="control-btn">Pause</button>
+                <input type="range" id="rotationSlider" min="0" max="0" value="0" class="slider">
+            </div>
+        </div>
+    </div>
+
+    <div class="viewer-sidebar">
+        <div class="session-info">
+            <h3>Session: {{ session.name }}</h3>
+            <div class="info-item">
+                <span class="info-label">Datum:</span>
+                <span class="info-value">{{ session.timestamp|datetime }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Winkelschritt:</span>
+                <span class="info-value">{{ session.angle_step }}°</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Anzahl Bilder:</span>
+                <span class="info-value">{{ session.photos|length }}</span>
+            </div>
+        </div>
+
+        <div class="viewer-actions">
+            <a href="#" id="download-btn" class="btn primary-btn">Als HTML exportieren</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Daten für den Viewer
+    const sessionData = {
+        project_id: "{{ project.id }}",
+        session_id: "{{ session.id }}",
+        angle_step: {{ session.angle_step }},
+        photos: [
+        {% for angle, path in session.photos.items() %}
+            {
+                angle: {{ angle }},
+                path: "{{ path }}"
+            }{% if not loop.last %},{% endif %}
+        {% endfor %}
+        ]
+    };
+</script>
+<script src="{{ url_for('static', filename='js/viewer.js') }}"></script>
+{% endblock %}

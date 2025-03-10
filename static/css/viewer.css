@@ -1,0 +1,148 @@
+/* Datei: static/css/viewer.css - Stilvorlage für den 360° Viewer */
+
+.viewer-container {
+    display: grid;
+    grid-template-columns: 3fr 1fr;
+    gap: 1.5rem;
+}
+
+.viewer-content {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.viewer-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.session-info, .viewer-actions {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 1.5rem;
+}
+
+.session-info h3 {
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #eee;
+}
+
+.info-item {
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.info-label {
+    font-weight: 500;
+    color: #666;
+}
+
+.viewer-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.viewer-360 {
+    position: relative;
+    width: 100%;
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+}
+
+.viewer-360 img {
+    max-width: 100%;
+    max-height: 70vh;
+    display: block;
+    cursor: grab;
+}
+
+.viewer-360 img:active {
+    cursor: grabbing;
+}
+
+.viewer-controls {
+    width: 100%;
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.control-btn {
+    padding: 0.5rem 1rem;
+    background-color: #4682B4;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color 0.2s;
+}
+
+.control-btn:hover {
+    background-color: #3A6D96;
+}
+
+.slider {
+    flex-grow: 1;
+    max-width: 500px;
+    height: 6px;
+    appearance: none;
+    background-color: #ddd;
+    border-radius: 3px;
+    outline: none;
+}
+
+.slider::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background-color: #4682B4;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    background-color: #4682B4;
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+}
+
+/* Responsives Design */
+@media (max-width: 768px) {
+    .viewer-container {
+        grid-template-columns: 1fr;
+    }
+
+    .viewer-360 {
+        min-height: 300px;
+    }
+
+    .viewer-controls {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .slider {
+        width: 100%;
+    }
+
+    .control-btn {
+        width: 100%;
+    }
+}

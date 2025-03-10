@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projektverwaltung - 360° Drehteller Steuerung</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f4f4f4;
+            padding-top: 50px;
+        }
+        
+        .container {
+            max-width: 800px;
+        }
+        
+        .card {
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .project-card {
+            transition: transform 0.2s;
+            margin-bottom: 20px;
+        }
+        
+        .project-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .project-thumbnail {
+            height: 180px;
+            background-color: #e9ecef;
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+        
+        .project-actions {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        
+        .project-card:hover .project-actions {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h2 class="mb-0">Projektverwaltung</h2>
+                <a href="/" class="btn btn-light btn-sm">
+                    <i class="bi bi-house"></i> Zurück zur Steuerung
+                </a>
+            </div>
+            <div class="card-body">
+                <div id="projects-container" class="row">
+                    <!-- Projekte werden hier dynamisch eingefügt -->
+                    <div class="col-12 text-center py-5" id="loading">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Lade...</span>
+                        </div>
+                        <p class="mt-2">Projekte werden geladen...</p>
+                    </div>
+                    
+                    <div class="col-12 text-center py-5 d-none" id="no-projects">
+                        <i class="bi bi-folder-x" style="font-size: 3rem; color: #adb5bd;"></i>
+                        <h4 class="mt-3">Keine Projekte gefunden</h4>
+                        <p class="text-muted">Erstellen Sie Ihr erstes 360° Projekt auf der Hauptseite.</p>
+                        <a href="/" class="btn btn-primary mt-2">
+                            <i class="bi bi-plus-circle"></i> Neues Projekt erstellen
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lösch-Bestätigungsdialog -->
+    <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteModalLabel">Projekt löschen</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
+                </div>
+                <div class="modal-body">
+                    Sind Sie sicher, dass Sie das Projekt <span id="delete-project-name" class="fw-bold"></span> löschen möchten? 
+                    Diese Aktion kann nicht rückgängig gemacht werden.
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                    <button type="button" class="btn btn-danger" id="confirm-delete">Löschen</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Projekt-Template -->
+    <template id="project-template">
+        <div class="col-md-6 col-lg-4 project-card">
+            <div class="card h-100">
+                <div class="project-thumbnail">
+                    <div class="project-actions">
+                        <button class="btn btn-sm btn-danger delete-btn" title="Projekt löschen">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title project-name">Projektname</h5>
+                    <p class="card-text">
+                        <small class="text-muted project-date">Erstellungsdatum</small><br>
+                        <span class="project-image-count">0 Bilder</span>
+                    </p>
+                </div>
+                <div class="card-footer d-grid">
+                    <a href="#" class="btn btn-primary view-btn">
+                        <i class="bi bi-eye"></i> 360° Ansicht öffnen
+                    </a>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            loadProjects();
+            
+            // Lösch-Dialog Setup
+            const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+            let projectToDelete = null;
+            
+            document.getElementById('confirm-delete').addEventListener('click', () => {
+                if (projectToDelete) {
+                    deleteProject(projectToDelete);
+                    deleteModal.hide();
+                }
+            });
+        });
+        
+        // Projekte laden
+        async function loadProjects() {
+            try {
+                const response = await fetch('/api/projects');
+                const projects = await response.json();
+                
+                const loadingElement = document.getElementById('loading');
+                const noProjectsElement = document.getElementById('no-projects');
+                const projectsContainer = document.getElementById('projects-container');
+                
+                // Loading ausblenden
+                loadingElement.remove();
+                
+                if (projects.length === 0) {
+                    noProjectsElement.classList.remove('d-none');
+                    return;
+                }
+                
+                // Projekte sortieren (neueste zuerst)
+                projects.sort((a, b) => b.created - a.created);
+                
+                // Projekte anzeigen
+                projects.forEach(project => {
+                    const projectElement = createProjectElement(project);
+                    projectsContainer.appendChild(projectElement);
+                });
+                
+            } catch (error) {
+                console.error('Fehler beim Laden der Projekte:', error);
+                document.getElementById('loading').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle"></i> Fehler beim Laden der Projekte: ${error.message}
+                    </div>
+                `;
+            }
+        }
+        
+        // Projekt-Element erstellen
+        function createProjectElement(project) {
+            const template = document.getElementById('project-template');
+            const projectElement = template.content.cloneNode(true);
+            
+            // Projektdaten einfügen
+            const thumbnailElement = projectElement.querySelector('.project-thumbnail');
+            const nameElement = projectElement.querySelector('.project-name');
+            const dateElement = projectElement.querySelector('.project-date');
+            const imageCountElement = projectElement.querySelector('.project-image-count');
+            const viewButton = projectElement.querySelector('.view-btn');
+            const deleteButton = projectElement.querySelector('.delete-btn');
+            
+            // Thumbnail setzen (erstes Bild im Projekt)
+            if (project.images && project.images.length > 0) {
+                thumbnailElement.style.backgroundImage = `url('/static/projects/${project.id}/${project.images[0]}')`;
+            }
+            
+            // Projektname setzen
+            nameElement.textContent = project.name || project.id;
+            
+            // Datum formatieren
+            const date = new Date(project.created * 1000);
+            dateElement.textContent = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+            
+            // Bildanzahl
+            const imageCount = project.image_count || (project.images ? project.images.length : 0);
+            imageCountElement.textContent = `${imageCount} Bilder`;
+            
+            // Link zum Viewer
+            viewButton.href = `/viewer?project=${project.id}`;
+            
+            // Lösch-Button
+            deleteButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.getElementById('delete-project-name').textContent = project.name || project.id;
+                projectToDelete = project.id;
+                const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+                deleteModal.show();
+            });
+            
+            return projectElement.firstElementChild;
+        }
+        
+        // Projekt löschen
+        async function deleteProject(projectId) {
+            try {
+                const response = await fetch(`/api/project/${projectId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    // Projekt erfolgreich gelöscht, Seite neu laden
+                    window.location.reload();
+                } else {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Unbekannter Fehler beim Löschen');
+                }
+            } catch (error) {
+                console.error('Fehler beim Löschen des Projekts:', error);
+                alert(`Fehler beim Löschen: ${error.message}`);
+            }
+        }
+    </script>
+</body>
+</html>

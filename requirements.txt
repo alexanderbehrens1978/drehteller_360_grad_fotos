@@ -1,0 +1,27 @@
+# Datei: requirements.txt
+# Python-Abhängigkeiten für das 360° Drehteller Fotografie-System
+# Angepasst für Python 3.12
+
+# Webframework
+Flask==2.2.3
+Werkzeug==2.2.3
+Jinja2==3.1.2
+
+# Serielle Kommunikation
+pyserial==3.5
+
+# Bildverarbeitung für Python 3.12
+numpy==2.0.0
+opencv-python==4.11.0.86
+# Wähle eine der folgenden OpenCV-Varianten:
+# opencv-contrib-python==4.11.0.86  # Mit zusätzlichen Funktionen
+# opencv-python-headless==4.11.0.86  # Für Server ohne GUI
+
+# Aktualisiert für bessere Kompatibilität
+Pillow==10.1.0
+
+# Kamerasteuerung
+gphoto2==2.3.4
+
+# Utilities
+python-dotenv==1.0.0

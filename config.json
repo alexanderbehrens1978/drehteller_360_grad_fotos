@@ -1,0 +1,21 @@
+{
+    "camera": {
+        "device_path": "/dev/video0",
+        "type": "webcam",
+        "resolution": {
+            "width": 3840,
+            "height": 2160
+        }
+    },
+    "arduino": {
+        "port": "/dev/ttyACM0",
+        "baudrate": 9600
+    },
+    "rotation": {
+        "default_degrees": 1,
+        "default_interval": 1
+    },
+    "simulator": {
+        "enabled": false
+    }
+}
