@@ -76,13 +76,13 @@ Das System bietet ein Hilfsskript für die einfache Verwaltung des Dienstes:
 
 ```bash
 # Dienst starten
-./drehteller.sh start
+sudo ./drehteller.sh start
 
 # Dienst stoppen
-./drehteller.sh stop
+sudo ./drehteller.sh stop
 
 # Dienst neustarten
-./drehteller.sh restart
+sudo ./drehteller.sh restart
 
 # Status des Dienstes anzeigen
 ./drehteller.sh status
