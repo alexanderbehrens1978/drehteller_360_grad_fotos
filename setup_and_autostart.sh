@@ -88,8 +88,8 @@ if [[ "$PYTHON_VERSION" == "3.12" ]]; then
 # Angepasst für Python 3.12
 
 # Webframework
-Flask==2.2.3
-Werkzeug==2.2.3
+Flask>=3.0.3
+Werkzeug>=3.0.6
 Jinja2==3.1.2
 
 # Serielle Kommunikation
@@ -119,8 +119,8 @@ else
 # Angepasst für Python ${PYTHON_VERSION}
 
 # Webframework
-Flask==2.2.3
-Werkzeug==2.2.3
+Flask>=3.0.3
+Werkzeug>=3.0.6
 Jinja2==3.1.2
 
 # Serielle Kommunikation
@@ -348,7 +348,7 @@ case "\$1" in
         fi
         
         # Pillow aktualisieren
-        pip install pillow==10.1.0
+        pip install pillow>=10.3.0
         
         echo -e "\${GREEN}Module repariert. Starte Dienst neu...\${NC}"
         sudo systemctl restart drehteller360.service
