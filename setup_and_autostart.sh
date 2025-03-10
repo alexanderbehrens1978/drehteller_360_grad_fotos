@@ -90,7 +90,7 @@ if [[ "$PYTHON_VERSION" == "3.12" ]]; then
 # Webframework
 Flask>=3.0.3
 Werkzeug>=3.0.6
-Jinja2==3.1.2
+Jinja2==3.1.6
 
 # Serielle Kommunikation
 pyserial==3.5
@@ -121,7 +121,7 @@ else
 # Webframework
 Flask>=3.0.3
 Werkzeug>=3.0.6
-Jinja2==3.1.2
+Jinja2==3.1.6
 
 # Serielle Kommunikation
 pyserial==3.5
