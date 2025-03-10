@@ -1,168 +1,161 @@
-class Viewer360 {
-    constructor(containerId, imagesUrls, options = {}) {
-        this.container = document.getElementById(containerId);
-        this.images = [];
-        this.imagesUrls = imagesUrls;
-        this.currentIndex = 0;
-        this.isPlaying = false;
-        this.playInterval = null;
-        this.options = {
-            autoplay: true,
-            autoplaySpeed: 100,
-            dragSensitivity: 5,
-            ...options
-        };
+import React, { useState, useEffect, useRef } from 'react';
 
-        // Maus-/Touch-Positions-Tracking
-        this.dragStartX = 0;
-        this.isDragging = false;
+const Viewer360 = () => {
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [images, setImages] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const viewerRef = useRef(null);
 
-        this.init();
+  // Simuliere das Laden von Bildern (in der Praxis würden diese von deinem Server kommen)
+  useEffect(() => {
+    // In einer realen Implementierung würdest du hier deine Bilder vom Server laden
+    const loadImages = async () => {
+      setIsLoading(true);
+
+      // Hier würden normalerweise deine tatsächlichen Bilder geladen werden
+      // Für die Demo erstellen wir 36 Bildpfade (alle 10 Grad eine Aufnahme)
+      const demoImages = Array.from({ length: 36 }, (_, i) =>
+        `/static/sample_images/sample_image_${i % 10}.jpg`
+      );
+
+      setImages(demoImages);
+      setIsLoading(false);
+    };
+
+    loadImages();
+  }, []);
+
+  // Öffne den Viewer
+  const openViewer = () => {
+    setIsViewerOpen(true);
+    document.body.style.overflow = 'hidden'; // Verhindere Scrollen im Hintergrund
+  };
+
+  // Schließe den Viewer
+  const closeViewer = () => {
+    setIsViewerOpen(false);
+    document.body.style.overflow = 'auto'; // Erlaube Scrollen wieder
+  };
+
+  // Mauszieh-Ereignisse für die Rotation
+  const handleMouseDown = (e) => {
+    setIsDragging(true);
+    setStartX(e.clientX);
+  };
+
+  const handleTouchStart = (e) => {
+    setIsDragging(true);
+    setStartX(e.touches[0].clientX);
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDragging) return;
+
+    const deltaX = e.clientX - startX;
+
+    if (Math.abs(deltaX) > 5) { // Kleine Bewegungen ignorieren
+      // Berechne den Index basierend auf der Bewegungsrichtung
+      const direction = deltaX > 0 ? -1 : 1; // Nach rechts ziehen = nach links rotieren
+
+      // Berechne neuen Index und stelle sicher, dass er im gültigen Bereich liegt
+      const newIndex = (currentImageIndex + direction + images.length) % images.length;
+
+      setCurrentImageIndex(newIndex);
+      setStartX(e.clientX);
     }
+  };
 
-    async init() {
-        if (!this.container) {
-            console.error('Container nicht gefunden!');
-            return;
-        }
+  const handleTouchMove = (e) => {
+    if (!isDragging) return;
 
-        // UI-Elemente erstellen
-        this.container.innerHTML = `
-            <div class="viewer360-container">
-                <div class="viewer360-image-container">
-                    <img class="viewer360-image" src="" alt="360° Ansicht">
-                </div>
-                <div class="viewer360-controls">
-                    <button class="viewer360-play-btn">
-                        <i class="bi bi-play-fill"></i>
-                    </button>
-                    <input type="range" class="viewer360-slider" min="0" max="100" value="0">
-                </div>
-            </div>
-        `;
+    const deltaX = e.touches[0].clientX - startX;
 
-        // Elemente referenzieren
-        this.imageElement = this.container.querySelector('.viewer360-image');
-        this.playButton = this.container.querySelector('.viewer360-play-btn');
-        this.slider = this.container.querySelector('.viewer360-slider');
+    if (Math.abs(deltaX) > 5) {
+      const direction = deltaX > 0 ? -1 : 1;
+      const newIndex = (currentImageIndex + direction + images.length) % images.length;
 
-        // Event-Listener
-        this.playButton.addEventListener('click', () => this.togglePlayPause());
-        this.slider.addEventListener('input', (e) => {
-            const sliderPercentage = e.target.value / 100;
-            const imageIndex = Math.floor(sliderPercentage * (this.imagesUrls.length - 1));
-            this.showImage(imageIndex);
-        });
-
-        // Dragging-Funktionalität
-        this.container.addEventListener('mousedown', (e) => this.onDragStart(e));
-        this.container.addEventListener('touchstart', (e) => this.onDragStart(e.touches[0]), { passive: true });
-
-        window.addEventListener('mousemove', (e) => this.onDragMove(e));
-        window.addEventListener('touchmove', (e) => this.onDragMove(e.touches[0]));
-
-        window.addEventListener('mouseup', () => this.onDragEnd());
-        window.addEventListener('touchend', () => this.onDragEnd());
-
-        // Bilder laden
-        await this.loadImages();
-
-        // Slider aktualisieren
-        this.slider.max = this.imagesUrls.length - 1;
-
-        // Erstes Bild anzeigen
-        this.showImage(0);
-
-        // Autoplay starten, wenn aktiviert
-        if (this.options.autoplay) {
-            this.play();
-        }
+      setCurrentImageIndex(newIndex);
+      setStartX(e.touches[0].clientX);
     }
+  };
 
-    async loadImages() {
-        // Bilder vorladen für flüssigere Anzeige
-        const loadPromises = this.imagesUrls.map(url => {
-            return new Promise((resolve, reject) => {
-                const img = new Image();
-                img.onload = () => resolve(img);
-                img.onerror = reject;
-                img.src = url;
-                this.images.push(img);
-            });
-        });
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
 
-        try {
-            await Promise.all(loadPromises);
-            console.log(`${this.images.length} Bilder erfolgreich geladen.`);
-        } catch (error) {
-            console.error('Fehler beim Laden der Bilder:', error);
-        }
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+  };
+
+  // Event-Listener für globale Maus- und Touch-Ereignisse hinzufügen/entfernen
+  useEffect(() => {
+    if (isViewerOpen) {
+      window.addEventListener('mouseup', handleMouseUp);
+      window.addEventListener('touchend', handleTouchEnd);
+
+      return () => {
+        window.removeEventListener('mouseup', handleMouseUp);
+        window.removeEventListener('touchend', handleTouchEnd);
+      };
     }
+  }, [isViewerOpen, isDragging]);
 
-    showImage(index) {
-        if (index < 0) index = this.imagesUrls.length - 1;
-        if (index >= this.imagesUrls.length) index = 0;
+  return (
+    <div className="w-full">
+      {!isViewerOpen ? (
+        // Logo/Vorschau, die den Viewer öffnet
+        <div
+          className="cursor-pointer mx-auto text-center"
+          onClick={openViewer}
+        >
+          <div className="bg-blue-600 text-white rounded-lg p-4 shadow-lg inline-block">
+            <div className="text-4xl mb-2">360°</div>
+            <div className="text-sm">Klicken für 360° Ansicht</div>
+          </div>
+        </div>
+      ) : (
+        // Vollbild-Viewer
+        <div className="fixed inset-0 z-50 bg-black flex flex-col">
+          {/* Schließen-Button */}
+          <button
+            className="absolute top-4 right-4 z-10 text-white bg-red-600 rounded-full w-10 h-10 flex items-center justify-center"
+            onClick={closeViewer}
+          >
+            ✕
+          </button>
 
-        this.currentIndex = index;
-        this.imageElement.src = this.imagesUrls[index];
-        this.slider.value = index;
-    }
+          {/* Viewer Container */}
+          <div
+            ref={viewerRef}
+            className="flex-1 flex items-center justify-center cursor-grab active:cursor-grabbing"
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+          >
+            {isLoading ? (
+              <div className="text-white text-xl">Lade Bilder...</div>
+            ) : (
+              <img
+                src={images[currentImageIndex]}
+                alt={`360-Grad Ansicht ${currentImageIndex}`}
+                className="max-h-full max-w-full object-contain select-none"
+                draggable="false"
+              />
+            )}
+          </div>
 
-    play() {
-        if (this.isPlaying) return;
+          {/* Hinweistext */}
+          <div className="text-white text-center p-2 bg-black bg-opacity-50">
+            Mit der Maus klicken und ziehen, um zu drehen
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
-        this.isPlaying = true;
-        this.playButton.innerHTML = '<i class="bi bi-pause-fill"></i>';
-
-        this.playInterval = setInterval(() => {
-            this.showImage((this.currentIndex + 1) % this.imagesUrls.length);
-        }, this.options.autoplaySpeed);
-    }
-
-    pause() {
-        if (!this.isPlaying) return;
-
-        this.isPlaying = false;
-        clearInterval(this.playInterval);
-        this.playButton.innerHTML = '<i class="bi bi-play-fill"></i>';
-    }
-
-    togglePlayPause() {
-        if (this.isPlaying) {
-            this.pause();
-        } else {
-            this.play();
-        }
-    }
-
-    onDragStart(event) {
-        this.isDragging = true;
-        this.dragStartX = event.clientX;
-
-        // Autoplay bei Interaktion pausieren
-        this.pause();
-    }
-
-    onDragMove(event) {
-        if (!this.isDragging) return;
-
-        const dragDelta = event.clientX - this.dragStartX;
-
-        // Wenn genug bewegt wurde, ändern wir das Bild
-        if (Math.abs(dragDelta) > this.options.dragSensitivity) {
-            // Nach rechts ziehen zeigt vorheriges Bild (Drehung gegen den Uhrzeigersinn)
-            // Nach links ziehen zeigt nächstes Bild (Drehung im Uhrzeigersinn)
-            const direction = dragDelta > 0 ? -1 : 1;
-            this.showImage((this.currentIndex + direction + this.imagesUrls.length) % this.imagesUrls.length);
-
-            this.dragStartX = event.clientX;
-        }
-    }
-
-    onDragEnd() {
-        this.isDragging = false;
-    }
-}
-
-// Beispiel für die Verwendung:
-// const viewer = new Viewer360('viewer-container', ['/static/photos/image1.jpg', '/static/photos/image2.jpg']);
+export default Viewer360;

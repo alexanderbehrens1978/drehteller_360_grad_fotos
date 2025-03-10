@@ -1,10 +1,10 @@
 {
     "camera": {
         "device_path": "/dev/video0",
-        "type": "webcam",
+        "type": "gphoto2",
         "resolution": {
-            "width": 3840,
-            "height": 2160
+            "width": 640,
+            "height": 480
         }
     },
     "arduino": {

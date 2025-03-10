@@ -62,7 +62,7 @@ case "$1" in
         fi
         
         # Pillow aktualisieren
-        pip install pillow==10.1.0
+        pip install pillow>=10.3.0
         
         echo -e "${GREEN}Module repariert. Starte Dienst neu...${NC}"
         sudo systemctl restart drehteller360.service

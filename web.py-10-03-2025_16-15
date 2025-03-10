@@ -357,54 +357,16 @@ def get_projects():
 
 @app.route('/api/project/<project_id>', methods=['DELETE'])
 def delete_project(project_id):
-    """Löscht ein Projekt und alle zugehörigen Bilder."""
+    """Löscht ein Projekt."""
     try:
-        # Pfad zum Projektverzeichnis
         project_dir = os.path.join('static/projects', project_id)
-        
+
         if not os.path.exists(project_dir):
             return jsonify({"error": "Projekt nicht gefunden"}), 404
-        
-        # Metadaten lesen, um Bildinformationen zu erhalten
-        metadata_path = os.path.join(project_dir, 'metadata.json')
-        images_to_delete = []
-        
-        if os.path.exists(metadata_path):
-            try:
-                with open(metadata_path, 'r') as f:
-                    metadata = json.load(f)
-                
-                # Unterverzeichnisse wie sessions/sessions_id/images prüfen
-                if 'sessions' in metadata:
-                    for session in metadata.get('sessions', []):
-                        session_photos = session.get('photos', {})
-                        for photo_path in session_photos.values():
-                            if os.path.exists(photo_path) and os.path.isfile(photo_path):
-                                images_to_delete.append(photo_path)
-            except Exception as metadata_error:
-                print(f"Warnung: Konnte Metadaten nicht lesen: {metadata_error}")
-        
-        # Verzeichnisstruktur des Projekts durchsuchen
-        for root, dirs, files in os.walk(project_dir):
-            for file in files:
-                if file.lower().endswith(('.jpg', '.jpeg', '.png', '.gif')):
-                    file_path = os.path.join(root, file)
-                    images_to_delete.append(file_path)
-        
-        # Zuerst die einzelnen Bilddateien löschen
-        for image_path in images_to_delete:
-            try:
-                if os.path.exists(image_path) and os.path.isfile(image_path):
-                    os.remove(image_path)
-                    print(f"Gelöschtes Bild: {image_path}")
-            except Exception as image_error:
-                print(f"Warnung: Konnte Bild nicht löschen: {image_error}")
-        
-        # Dann das gesamte Projektverzeichnis löschen
+
         import shutil
         shutil.rmtree(project_dir)
-        print(f"Projekt {project_id} und alle zugehörigen Dateien wurden gelöscht.")
-        
+
         return jsonify({"status": "success"})
     except Exception as e:
         print(f"Fehler beim Löschen des Projekts: {e}")
