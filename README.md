@@ -10,6 +10,8 @@
 
 ![image](https://github.com/user-attachments/assets/639e2584-87db-4fe8-8bff-98d3f3b27b8e)
 
+![image](https://github.com/user-attachments/assets/3541e4b0-605d-4e92-912b-5248ef8e91a4)
+
 
 ## Projektbeschreibung
 Dieses Projekt ist ein komplettes System zur Erstellung interaktiver 360°-Produktansichten mit einem Computer, Arduino und einer Kamera. Der Arduino steuert einen Drehteller über ein Relais, während die Kamera automatisch Fotos aufnimmt. Die Web-Oberfläche ermöglicht die Steuerung, Konfiguration und Anzeige der 360°-Ansichten.
