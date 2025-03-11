@@ -8,25 +8,11 @@ import subprocess
 # Import config manager
 from config_manager import config_manager
 
-# Import the webcam capture simulator
-from webcam_simulator import WebcamCaptureSimulator
-from sample_images_generator import SampleImagesGenerator
-from webcam_detection_helper import find_working_webcam, get_camera_capabilities, test_webcam_capture
+# Import device detector and viewer generator
 from device_detector import device_detector
 from viewer_generator import viewer_generator
 
 app = Flask(__name__)
-
-# Configuration retrieval
-USE_SIMULATOR = config_manager.get('simulator.enabled', True)
-
-# Initialize webcam capture simulator
-webcam_simulator = WebcamCaptureSimulator()
-
-# Initialize sample images generator (optional, run once to generate images)
-if not os.path.exists('static/sample_images') or len(os.listdir('static/sample_images')) < 5:
-    image_generator = SampleImagesGenerator()
-    image_generator.generate_sample_images(10)
 
 # Arduino connection
 def get_arduino_connection():
@@ -34,9 +20,6 @@ def get_arduino_connection():
     Establish Arduino connection based on configuration
     """
     try:
-        if USE_SIMULATOR:
-            return None
-
         port = config_manager.get('arduino.port', '/dev/ttyACM0')
         baudrate = config_manager.get('arduino.baudrate', 9600)
 
@@ -56,10 +39,6 @@ def rotate_teller(degrees):
 
     :param degrees: Rotation angle
     """
-    if USE_SIMULATOR:
-        print(f"Simulated rotation: {degrees} degrees")
-        return
-
     if arduino is None:
         print("Arduino not connected!")
         return
@@ -72,136 +51,6 @@ def rotate_teller(degrees):
     time.sleep(rotation_time)  # Warte für die berechnete Zeit
     arduino.write(b'0')  # '0' senden, um das Relais auszuschalten
     print(f"Drehteller um {degrees} Grad gedreht.")
-
-def take_photo(filename=None):
-    """
-    Capture a photo
-
-    :param filename: Optional custom filename
-    :return: Path to the saved photo
-    """
-    if USE_SIMULATOR:
-        # Use the webcam simulator to generate a photo
-        # Ensure filename is just the basename
-        if filename:
-            filename = os.path.basename(filename)
-        return webcam_simulator.capture_photo(filename)
-
-    try:
-        # Camera device path and resolution from configuration
-        camera_device = config_manager.get('camera.device_path', '/dev/video0')
-        camera_type = config_manager.get('camera.type', 'webcam')
-
-        # Get camera resolution
-        camera_width = config_manager.get('camera.resolution.width')
-        camera_height = config_manager.get('camera.resolution.height')
-
-        # Use actual webcam capture for real hardware
-        if not filename:
-            filename = f'photo_{int(time.time())}.jpg'
-
-        # Ensure filename is just the basename
-        filename = os.path.basename(filename)
-        full_path = os.path.join('static/photos', filename)
-
-        # Choose capture method based on camera type
-        if camera_type == 'gphoto2':
-            # Use gphoto2 for DSLR cameras
-            subprocess.call(['gphoto2', '--capture-image-and-download', '--filename', full_path])
-        else:
-            # Default to OpenCV for webcams
-            import cv2
-            cap = cv2.VideoCapture(camera_device)
-
-            # Set resolution if specified
-            if camera_width and camera_height:
-                cap.set(cv2.CAP_PROP_FRAME_WIDTH, camera_width)
-                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, camera_height)
-
-            ret, frame = cap.read()
-            if ret:
-                cv2.imwrite(full_path, frame)
-                cap.release()
-            else:
-                # Fallback to fswebcam if OpenCV fails
-                subprocess.call(['fswebcam', '--no-banner',
-                                 '-d', camera_device,
-                                 full_path])
-
-        print(f"Foto aufgenommen und als {filename} gespeichert.")
-        return filename
-    except Exception as e:
-        print(f"Fehler beim Aufnehmen des Fotos: {e}")
-        return None
-
-@app.route('/generate_sample_images', methods=['POST'])
-def generate_sample_images():
-    """
-    Generate sample images for the simulator
-    """
-    try:
-        # Ensure sample images directory exists
-        os.makedirs('static/sample_images', exist_ok=True)
-
-        # Generate sample images
-        image_generator = SampleImagesGenerator()
-        generated_images = image_generator.generate_sample_images(10)
-
-        return jsonify({
-            "status": "success",
-            "message": f"{len(generated_images)} sample images generated",
-            "images": generated_images
-        })
-    except Exception as e:
-        print(f"Error generating sample images: {e}")
-        return jsonify({
-            "status": "error",
-            "message": str(e)
-        }), 500
-
-@app.route('/test_webcam_simulator', methods=['POST'])
-def test_webcam_simulator():
-    """
-    Test the webcam simulator by capturing a sample image
-    """
-    try:
-        # Ensure photos directory exists
-        os.makedirs('static/photos', exist_ok=True)
-
-        # Capture a test photo using the simulator
-        photo_path = webcam_simulator.capture_photo('test_simulator.jpg')
-
-        # Return the photo path relative to static folder
-        return photo_path.replace('static/', '/static/')
-    except Exception as e:
-        print(f"Error testing webcam simulator: {e}")
-        return jsonify({
-            "status": "error",
-            "message": str(e)
-        }), 500
-
-@app.route('/camera_capabilities', methods=['GET'])
-def camera_capabilities():
-    """
-    Get camera device capabilities
-    """
-    try:
-        # Get camera device from configuration
-        camera_device = config_manager.get('camera.device_path', '/dev/video0')
-
-        # Get camera capabilities
-        capabilities = get_camera_capabilities(camera_device)
-
-        return jsonify({
-            "status": "success",
-            "capabilities": capabilities
-        })
-    except Exception as e:
-        print(f"Error getting camera capabilities: {e}")
-        return jsonify({
-            "status": "error",
-            "message": str(e)
-        }), 500
 
 # Routes
 @app.route('/')
@@ -449,15 +298,7 @@ def rotate():
     # Rotate platform
     rotate_teller(degrees)
 
-    # Capture photo with timestamp to prevent caching
-    filename = f'photo_{int(time.time())}_{degrees}.jpg'
-    photo_path = take_photo(filename)
-
-    # Return photo name relative to static folder
-    if photo_path:
-        return f'/static/photos/{os.path.basename(photo_path)}'
-    else:
-        return 'Error capturing photo', 500
+    return jsonify({"status": "success", "message": f"Drehung um {degrees} Grad abgeschlossen"})
 
 @app.route('/static/photos/<filename>')
 def serve_photo(filename):
@@ -466,7 +307,6 @@ def serve_photo(filename):
 if __name__ == '__main__':
     # Ensure static directories exist
     os.makedirs('static/photos', exist_ok=True)
-    os.makedirs('static/sample_images', exist_ok=True)
     os.makedirs('static/projects', exist_ok=True)
 
     # Run the Flask app

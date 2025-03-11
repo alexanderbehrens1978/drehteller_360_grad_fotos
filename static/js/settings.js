@@ -48,6 +48,44 @@ async function loadDevices() {
     }
 }
 
+
+async function loadConfig() {
+    try {
+        // Ändern Sie die URL von '/get_config' zu '/settings/get_config'
+        const response = await fetch('/settings/get_config');
+        const config = await response.json();
+        console.log('Geladene Konfiguration:', config);
+        
+        // Konfiguration ausfüllen
+        document.getElementById('camera-device-path').value = config.camera.device_path;
+        document.getElementById('camera-type').value = config.camera.type;
+        document.getElementById('camera-width').value = config.camera.resolution.width;
+        document.getElementById('camera-height').value = config.camera.resolution.height;
+        
+        document.getElementById('arduino-port').value = config.arduino.port;
+        document.getElementById('arduino-baudrate').value = config.arduino.baudrate;
+        
+        document.getElementById('rotation-degrees').value = config.rotation.default_degrees;
+        document.getElementById('rotation-interval').value = config.rotation.default_interval;
+        
+        if (config.simulator.enabled) {
+            document.getElementById('simulator-on').checked = true;
+        } else {
+            document.getElementById('simulator-off').checked = true;
+        }
+    } catch (error) {
+        console.error('Fehler beim Laden der Konfiguration:', error);
+    }
+}
+
+// Laden Sie die Konfiguration, wenn die Seite geladen wird
+document.addEventListener('DOMContentLoaded', loadConfig);
+
+
+
+
+
+
 // Geräte-UI aktualisieren
 function updateDeviceUI(devices) {
     // Bestehende Listen entfernen (um Duplikate zu vermeiden)
@@ -255,7 +293,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Formular-Abschicken
+
+
 document.getElementById('settings-form').addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -265,8 +304,8 @@ document.getElementById('settings-form').addEventListener('submit', async (e) =>
             device_path: document.getElementById('camera-device-path').value,
             type: document.getElementById('camera-type').value,
             resolution: {
-                width: parseInt(cameraWidthInput.value || 0),
-                height: parseInt(cameraHeightInput.value || 0)
+                width: parseInt(document.getElementById('camera-width').value || 0),
+                height: parseInt(document.getElementById('camera-height').value || 0)
             }
         },
         arduino: {
@@ -282,59 +321,26 @@ document.getElementById('settings-form').addEventListener('submit', async (e) =>
         }
     };
 
-    console.log("Einstellungen zum Speichern:", config);
-
     try {
-        // Statusnachricht anzeigen
-        const statusMsg = document.createElement('div');
-        statusMsg.className = 'alert alert-info mt-3';
-        statusMsg.textContent = 'Einstellungen werden gespeichert...';
-        
-        const existingMsg = document.querySelector('.save-status-msg');
-        if (existingMsg) existingMsg.remove();
-        
-        statusMsg.classList.add('save-status-msg');
-        document.getElementById('settings-form').appendChild(statusMsg);
-        
-        // Send configuration to server
-        const response = await fetch('/save_config', {
+        const response = await fetch('/settings/save_config', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify(config)
         });
-        
-        // Antwort parsen
-        const data = await response.json();
-        console.log("Server-Antwort:", data);
-        
-        if (response.ok && data.status === 'success') {
-            // Show success message
-            statusMsg.className = 'alert alert-success mt-3 save-status-msg';
-            statusMsg.textContent = 'Einstellungen erfolgreich gespeichert!';
-            
-            // Redirect to main page after a short delay
-            setTimeout(() => {
-                window.location.href = '/';
-            }, 1500);
+
+        const result = await response.json();
+
+        if (result.status === 'success') {
+            alert('Einstellungen erfolgreich gespeichert!');
+            // Optional: Weiterleitung zur Startseite
+            window.location.href = '/';
         } else {
-            // Show error message
-            statusMsg.className = 'alert alert-danger mt-3 save-status-msg';
-            statusMsg.textContent = 'Fehler beim Speichern der Einstellungen: ' + 
-                                  (data.message || 'Unbekannter Fehler');
-            console.error('Fehler vom Server:', data);
+            alert(`Fehler: ${result.message}`);
         }
     } catch (error) {
-        console.error('Verbindungsfehler:', error);
-        
-        const statusMsg = document.querySelector('.save-status-msg') || 
-                         document.createElement('div');
-        statusMsg.className = 'alert alert-danger mt-3 save-status-msg';
-        statusMsg.textContent = 'Verbindungsfehler: ' + error.message;
-        
-        if (!document.querySelector('.save-status-msg')) {
-            document.getElementById('settings-form').appendChild(statusMsg);
-        }
+        console.error('Fehler:', error);
+        alert('Fehler beim Speichern der Einstellungen');
     }
 });
