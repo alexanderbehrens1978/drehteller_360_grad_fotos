@@ -32,14 +32,12 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Event-Listener für Projekt-Auswahl
         projectSelect.addEventListener('change', function() {
-            const selectedValue = this.value;
-            
-            if (selectedValue === 'new') {
-                // Modal für Projekterstellung anzeigen
-                showProjectModal();
-            } else if (selectedValue) {
-                // Zu einem bestehenden Projekt navigieren
-                window.location.href = '/?project_id=' + selectedValue;
+            if (this.value) {
+                if (this.value === 'new') {
+                    showProjectModal();
+                } else {
+                    window.location.href = '/?project_id=' + this.value;
+                }
             }
         });
     }
@@ -51,11 +49,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Event-Listener für das Projektformular
     if (projectForm) {
-        projectForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            createProject();
-            return false;
-        });
+        projectForm.addEventListener('submit', createProject);
     }
     
     // Event-Listener für den Abbrechen-Button im Modal
@@ -66,8 +60,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Wenn kein Projekt ausgewählt ist, Modal nicht automatisch anzeigen
-    // (Dies würde die Benutzer zu sehr einschränken)
+    // Wenn kein Projekt ausgewählt ist, Modal anzeigen
+    if (!currentProjectId && !projectSelect && projectModal) {
+        showProjectModal();
+    }
 });
 
 // Projekte laden
@@ -75,6 +71,8 @@ function loadProjects() {
     fetch('/api/projects')
         .then(response => response.json())
         .then(projects => {
+            if (!projectSelect) return;
+            
             projectSelect.innerHTML = '<option value="">Bitte wählen...</option>';
             projectSelect.innerHTML += '<option value="new">+ Neues Projekt erstellen</option>';
             
@@ -97,7 +95,9 @@ function loadProjects() {
         })
         .catch(error => {
             console.error('Fehler beim Laden der Projekte:', error);
-            projectSelect.innerHTML = '<option value="">Fehler beim Laden der Projekte</option>';
+            if (projectSelect) {
+                projectSelect.innerHTML = '<option value="">Fehler beim Laden der Projekte</option>';
+            }
         });
 }
 
@@ -113,15 +113,17 @@ function hideProjectModal() {
     if (projectModal) {
         projectModal.style.display = 'none';
         
-        // Dropdown zurücksetzen
+        // Select zurücksetzen
         if (projectSelect) {
-            projectSelect.value = currentProjectId || "";
+            projectSelect.value = currentProjectId || '';
         }
     }
 }
 
 // Neues Projekt erstellen
-function createProject() {
+function createProject(e) {
+    e.preventDefault();
+    
     const formData = new FormData(projectForm);
     
     fetch('/projects/create', {
@@ -140,10 +142,8 @@ function createProject() {
     .catch(error => {
         console.error('Fehler beim Erstellen des Projekts:', error);
         alert('Fehler beim Erstellen des Projekts: ' + error.message);
-        hideProjectModal();
     });
 }
-
 
 // Einzelne Rotation und Fotoaufnahme
 function singleRotation() {
@@ -186,11 +186,11 @@ function singleRotation() {
             });
             
             // Bild anzeigen
-            displayImage(data.photo, data.angle);
+            displayImage(data.photo, angle);  // Hier wird jetzt der tatsächliche Winkel verwendet
             
             // Statusmeldung aktualisieren
             if (rotationStatus) {
-                rotationStatus.textContent = `Foto aufgenommen bei ${data.angle}°`;
+                rotationStatus.textContent = `Foto aufgenommen bei ${angle}°`;
                 setTimeout(() => {
                     rotationStatus.style.display = "none";
                 }, 3000);
@@ -237,18 +237,30 @@ function displayImage(imagePath, angle) {
     
     // Winkel-Anzeige erstellen
     const angleLabel = document.createElement('div');
-    angleLabel.className = 'image-info';
+    angleLabel.className = 'angle-label';
     angleLabel.textContent = `${angle}°`;
     
     // Container erstellen und Elemente hinzufügen
     const container = document.createElement('div');
-    container.className = 'image-item';
+    container.className = 'image-container';
     container.appendChild(img);
     container.appendChild(angleLabel);
     
     // Container zur Vorschau hinzufügen
     imagePreview.appendChild(container);
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 // Automatische Rotation und Fotoaufnahme
 function startRotation() {

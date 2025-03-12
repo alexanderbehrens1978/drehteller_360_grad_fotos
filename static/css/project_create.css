@@ -1,0 +1,21 @@
+/* Stile für die Projekterstellungsseite */
+.project-form-container {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.error-message {
+    background-color: #f8d7da;
+    color: #721c24;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    border-radius: 4px;
+    border: 1px solid #f5c6cb;
+}
+
+.form-actions {
+    margin-top: 2rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+}

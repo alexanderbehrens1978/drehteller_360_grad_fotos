@@ -38,6 +38,7 @@ def projects_page():
         logger.error(f"Fehler beim Laden der Projekte: {str(e)}")
         return render_template('error.html', message=f"Fehler beim Laden der Projekte: {str(e)}"), 500
 
+
 @projects_bp.route('/create', methods=['GET', 'POST'])
 def create_project():
     """Erstellt ein neues Projekt"""
@@ -53,7 +54,10 @@ def create_project():
                     raise ValueError("Ungültiger Winkelschritt")
             except ValueError:
                 logger.error(f"Ungültiger Winkelschritt: {request.form.get('angle_step')}")
-                return render_template('project_create.html', error="Ungültiger Winkelschritt, bitte eine positive Zahl eingeben."), 400
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return jsonify({"error": "Ungültiger Winkelschritt, bitte eine positive Zahl eingeben."}), 400
+                else:
+                    return render_template('project_create.html', error="Ungültiger Winkelschritt, bitte eine positive Zahl eingeben."), 400
             
             # Neues Projekt erstellen
             project = Project(
@@ -68,7 +72,10 @@ def create_project():
             
             if not success:
                 logger.error(f"Projekt konnte nicht gespeichert werden: {project.id}")
-                return render_template('project_create.html', error="Fehler beim Speichern des Projekts."), 500
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return jsonify({"error": "Fehler beim Speichern des Projekts."}), 500
+                else:
+                    return render_template('project_create.html', error="Fehler beim Speichern des Projekts."), 500
             
             logger.info(f"Neues Projekt erstellt: {project.id} - {project.name}")
             
@@ -79,7 +86,25 @@ def create_project():
         return render_template('project_create.html')
     except Exception as e:
         logger.error(f"Fehler beim Erstellen eines Projekts: {str(e)}")
-        return render_template('project_create.html', error=f"Ein Fehler ist aufgetreten: {str(e)}"), 500
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({"error": str(e)}), 500
+        else:
+            return render_template('project_create.html', error=f"Ein Fehler ist aufgetreten: {str(e)}"), 500
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 @projects_bp.route('/<project_id>')
 def view_project(project_id):
@@ -115,11 +140,18 @@ def delete_project(project_id):
     """Löscht ein Projekt"""
     try:
         # Projekt-ID validieren
+        from app.utils.secure_path import validate_project_id
         if not validate_project_id(project_id):
             logger.warning(f"Ungültige Projekt-ID: {project_id}")
             return render_template('error.html', message="Ungültige Projekt-ID"), 400
             
         # Projekt löschen
+        from app.models.project import ProjectManager
+        from app.utils.path_manager import PathManager
+        
+        path_manager = PathManager()
+        project_manager = ProjectManager(path_manager.projects_dir)
+        
         success = project_manager.delete_project(project_id)
         
         if success:

@@ -53,7 +53,8 @@ def secure_join(base_path, *paths):
     # Stelle sicher, dass der Basispfad ein absoluter Pfad ist
     base_path = os.path.abspath(base_path)
     
-    # Normalisiere alle Pfadsegmente und entferne potenziell gefährliche Teile
+    #
+# Normalisiere alle Pfadsegmente und entferne potenziell gefährliche Teile
     clean_paths = []
     for i, path in enumerate(paths):
         if i == len(paths) - 1 and path:  # Letztes Element könnte ein Dateiname sein
