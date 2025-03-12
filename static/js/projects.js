@@ -1,147 +1,143 @@
-// projects.js - Hauptskript für die Projektseite
-document.addEventListener('DOMContentLoaded', () => {
-    // DOM-Elemente
-    const projectsContainer = document.getElementById('projects-container');
-    const loadingElement = document.getElementById('loading');
-    const noProjectsElement = document.getElementById('no-projects');
-    
-    // Lösch-Dialog
-    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
-    const deleteProjectNameElement = document.getElementById('delete-project-name');
-    const confirmDeleteButton = document.getElementById('confirm-delete');
-    
-    // Aktuell zu löschendes Projekt
-    let projectToDelete = null;
-    
+/**
+ * projects.js
+ * JavaScript für die Projektverwaltungsseite
+ */
+
+document.addEventListener('DOMContentLoaded', function() {
     // Projekte laden
-    async function loadProjects() {
-        try {
-            const response = await fetch('/api/projects');
-            const projects = await response.json();
+    loadProjects();
+    
+    // Event-Listener für das Löschen von Projekten
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('delete-project-btn')) {
+            e.preventDefault();
+            deleteProject(e.target.dataset.projectId, e.target.dataset.projectName);
+        }
+    });
+});
+
+// Projekte laden
+function loadProjects() {
+    const projectsList = document.getElementById('projectsList');
+    if (!projectsList) return;
+    
+    const loadingIndicator = document.createElement('div');
+    loadingIndicator.className = 'loading-indicator';
+    loadingIndicator.textContent = 'Projekte werden geladen...';
+    projectsList.appendChild(loadingIndicator);
+    
+    fetch('/api/projects')
+        .then(response => response.json())
+        .then(projects => {
+            projectsList.innerHTML = '';
             
-            // Loading-Element entfernen
-            if (loadingElement) {
-                loadingElement.remove();
-            }
-            
-            // Prüfen, ob Projekte vorhanden sind
             if (projects.length === 0) {
-                if (noProjectsElement) {
-                    noProjectsElement.classList.remove('d-none');
-                }
+                const noProjects = document.createElement('div');
+                noProjects.className = 'no-projects';
+                noProjects.textContent = 'Keine Projekte vorhanden. Erstellen Sie ein neues Projekt, um zu beginnen.';
+                projectsList.appendChild(noProjects);
                 return;
             }
             
-            // Projekte sortieren (neueste zuerst)
-            projects.sort((a, b) => b.created - a.created);
-            
             // Projekte anzeigen
             projects.forEach(project => {
-                const projectElement = createProjectElement(project);
-                projectsContainer.appendChild(projectElement);
+                const card = createProjectCard(project);
+                projectsList.appendChild(card);
             });
-        } catch (error) {
+        })
+        .catch(error => {
             console.error('Fehler beim Laden der Projekte:', error);
-            
-            if (loadingElement) {
-                loadingElement.innerHTML = `
-                    <div class="alert alert-danger">
-                        <i class="bi bi-exclamation-triangle"></i> Fehler beim Laden der Projekte: ${error.message}
-                    </div>
-                `;
-            }
-        }
-    }
-    
-    // Projekt-Element erstellen
-    function createProjectElement(project) {
-        const template = document.getElementById('project-template');
-        const projectElement = template.content.cloneNode(true);
-        
-        // Wichtig: Projekt-ID als data-Attribut speichern
-        const projectCard = projectElement.querySelector('.project-card');
-        projectCard.dataset.projectId = project.id;
-        
-        console.log('Erstelle Projektelement für Projekt-ID:', project.id);
-        
-        // Projektdaten einfügen
-        const thumbnailElement = projectElement.querySelector('.project-thumbnail');
-        const nameElement = projectElement.querySelector('.project-name');
-        const dateElement = projectElement.querySelector('.project-date');
-        const imageCountElement = projectElement.querySelector('.project-image-count');
-        const viewButton = projectElement.querySelector('.view-btn');
-        const deleteButton = projectElement.querySelector('.delete-btn');
-        
-        // Thumbnail setzen (erstes Bild im Projekt)
-        if (project.images && project.images.length > 0) {
-            thumbnailElement.style.backgroundImage = `url('/static/projects/${project.id}/${project.images[0]}')`;
-        }
-        
-        // Projektname setzen
-        nameElement.textContent = project.name || project.id;
-        
-        // Datum formatieren
-        const date = new Date(project.created * 1000);
-        dateElement.textContent = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
-        
-        // Bildanzahl
-        const imageCount = project.image_count || (project.images ? project.images.length : 0);
-        imageCountElement.textContent = `${imageCount} Bilder`;
-        
-        // Link zum Viewer
-        viewButton.href = `/viewer?project=${project.id}`;
-        
-        // Lösch-Button
-        if (deleteButton) {
-            deleteButton.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('Löschen von Projekt mit ID:', project.id);
-                deleteProjectNameElement.textContent = project.name || project.id;
-                projectToDelete = project.id;
-                deleteModal.show();
-            });
-        }
-        
-        return projectElement.firstElementChild;
-    }
-    
-    // Projekt löschen
-    async function deleteProject(projectId) {
-        console.log('Starte Löschvorgang für Projekt:', projectId);
-        
-        try {
-            const response = await fetch(`/api/project/${projectId}`, {
-                method: 'DELETE'
-            });
-            
-            console.log('Löschanfrage-Status:', response.status);
-            
-            if (response.ok) {
-                console.log('Projekt erfolgreich gelöscht, lade Seite neu');
-                window.location.reload();
-            } else {
-                const errorData = await response.json();
-                console.error('Server-Fehler beim Löschen:', errorData);
-                throw new Error(errorData.error || 'Unbekannter Fehler beim Löschen');
-            }
-        } catch (error) {
-            console.error('Fehler beim Löschen des Projekts:', error);
-            alert(`Fehler beim Löschen: ${error.message}`);
-        }
-    }
-    
-    // Event-Listener für den Bestätigungs-Button
-    if (confirmDeleteButton) {
-        confirmDeleteButton.addEventListener('click', () => {
-            if (projectToDelete) {
-                console.log('Bestätigung zum Löschen von Projekt:', projectToDelete);
-                deleteProject(projectToDelete);
-                deleteModal.hide();
-            }
+            projectsList.innerHTML = '<div class="error">Fehler beim Laden der Projekte. Bitte versuchen Sie es später erneut.</div>';
         });
+}
+
+// Projektkarte erstellen
+function createProjectCard(project) {
+    const card = document.createElement('div');
+    card.className = 'project-card';
+    
+    const title = document.createElement('h3');
+    title.textContent = project.name;
+    
+    const meta = document.createElement('div');
+    meta.className = 'project-meta';
+    
+    if (project.description) {
+        const desc = document.createElement('p');
+        desc.textContent = project.description;
+        meta.appendChild(desc);
+    } else {
+        const noDesc = document.createElement('p');
+        noDesc.className = 'no-description';
+        noDesc.textContent = 'Keine Beschreibung';
+        meta.appendChild(noDesc);
     }
     
-    // Projekte laden
-    loadProjects();
-});
+    const date = document.createElement('p');
+    date.className = 'created-date';
+    const createdDate = new Date(project.created_at * 1000);
+    date.textContent = `Erstellt: ${createdDate.toLocaleDateString()} ${createdDate.toLocaleTimeString()}`;
+    meta.appendChild(date);
+    
+    const imageCount = document.createElement('p');
+    imageCount.className = 'image-count';
+    imageCount.textContent = `Bilder: ${project.images ? project.images.length : 0}`;
+    meta.appendChild(imageCount);
+    
+    const actions = document.createElement('div');
+    actions.className = 'project-actions';
+    
+    const viewLink = document.createElement('a');
+    viewLink.href = `/projects/${project.id}`;
+    viewLink.className = 'btn btn-secondary';
+    viewLink.textContent = 'Anzeigen';
+    actions.appendChild(viewLink);
+    
+    const captureLink = document.createElement('a');
+    captureLink.href = `/?project_id=${project.id}`;
+    captureLink.className = 'btn btn-primary';
+    captureLink.textContent = 'Bilder aufnehmen';
+    actions.appendChild(captureLink);
+    
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'btn btn-danger delete-project-btn';
+    deleteBtn.textContent = 'Löschen';
+    deleteBtn.dataset.projectId = project.id;
+    deleteBtn.dataset.projectName = project.name;
+    actions.appendChild(deleteBtn);
+    
+    card.appendChild(title);
+    card.appendChild(meta);
+    card.appendChild(actions);
+    
+    return card;
+}
+
+// Projekt löschen
+function deleteProject(projectId, projectName) {
+    if (!confirm(`Möchten Sie das Projekt "${projectName}" wirklich löschen?`)) {
+        return;
+    }
+    
+    fetch(`/projects/delete/${projectId}`, {
+        method: 'POST'
+    })
+    .then(response => {
+        if (response.ok) {
+            // Projekt erfolgreich gelöscht, Seite neu laden
+            window.location.reload();
+        } else {
+            return response.json();
+        }
+    })
+    .then(data => {
+        if (data && data.error) {
+            alert(`Fehler beim Löschen des Projekts: ${data.error}`);
+        }
+    })
+    .catch(error => {
+        console.error('Fehler beim Löschen des Projekts:', error);
+        alert('Fehler beim Löschen des Projekts');
+    });
+}

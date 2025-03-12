@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neues Projekt erstellen - 360° Drehteller Steuerung</title>
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="/static/css/project_create.css">
+</head>
+<body>
+    <header>
+        <h1>360° Drehteller Steuerung</h1>
+        <nav>
+            <a href="/">Startseite</a>
+            <a href="/projects">Projekte</a>
+            <a href="/settings">Einstellungen</a>
+        </nav>
+    </header>
+    
+    <main>
+        <div class="card project-form-container">
+            <h2>Neues Projekt erstellen</h2>
+            
+            {% if error %}
+            <div class="error-message">
+                {{ error }}
+            </div>
+            {% endif %}
+            
+            <form id="projectForm" action="{{ url_for('projects.create_project') }}" method="POST">
+                <div class="form-group">
+                    <label for="name">Projektname:</label>
+                    <input type="text" id="name" name="name" required value="{{ request.form.get('name', '') }}">
+                </div>
+                
+                <div class="form-group">
+                    <label for="description">Beschreibung:</label>
+                    <textarea id="description" name="description" rows="4">{{ request.form.get('description', '') }}</textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="angle_step">Winkelschritt (Grad):</label>
+                    <input type="number" id="angle_step" name="angle_step" min="1" max="90" value="{{ request.form.get('angle_step', 15) }}">
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Projekt erstellen</button>
+                    <a href="{{ url_for('projects.projects_page') }}" class="btn btn-secondary">Abbrechen</a>
+                </div>
+            </form>
+        </div>
+    </main>
+    
+    <footer>
+        <p>&copy; 2025 360° Drehteller Steuerung</p>
+    </footer>
+    
+    <script src="/static/js/project_create.js"></script>
+</body>
+</html>
