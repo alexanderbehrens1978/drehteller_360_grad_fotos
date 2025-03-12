@@ -10,12 +10,32 @@ import json
 import time
 import uuid
 import logging
+import string
 import shutil
 from pathlib import Path
 from app.models.photo_session import PhotoSession
 
 # Logger einrichten
 logger = logging.getLogger(__name__)
+
+# Sicherheitsfunktionen
+def secure_filename(filename):
+    """Bereinigt einen Dateinamen und entfernt potenziell gefährliche Zeichen."""
+    if filename:
+        filename = os.path.basename(filename)
+        allowed_chars = set(string.ascii_letters + string.digits + '-_.')
+        filename = ''.join(c for c in filename if c in allowed_chars)
+    return filename
+
+def secure_join(base_path, *paths):
+    """Verbindet Pfadsegmente sicher und verhindert Verzeichnistraversierungsangriffe."""
+    base_path = os.path.abspath(base_path)
+    safe_path = os.path.abspath(os.path.join(base_path, *[secure_filename(p) if i == len(paths)-1 else p for i, p in enumerate(paths)]))
+    
+    if not safe_path.startswith(base_path):
+        return base_path
+        
+    return safe_path
 
 class Project:
     """Klasse zur Darstellung eines Projekts"""
@@ -39,6 +59,7 @@ class Project:
         self.updated_at = self.created_at
         self.sessions = []
         self.path = path or ""
+        self.images = []
         
         logger.debug(f"Projekt erstellt: {self.name} (ID: {self.id})")
 
@@ -85,6 +106,46 @@ class Project:
                 logger.debug(f"Session {session_id} aus Projekt {self.id} entfernt")
                 return True
         return False
+    
+    def add_image(self, image_path, angle=None, timestamp=None):
+        """
+        Fügt ein Bild zum Projekt hinzu
+        
+        Args:
+            image_path: Pfad zum Bild
+            angle: Optional, Winkel bei dem das Bild aufgenommen wurde
+            timestamp: Optional, Zeitstempel wann das Bild aufgenommen wurde
+        
+        Returns:
+            True bei Erfolg, False bei Fehler
+        """
+        try:
+            # Sicherstellen, dass das Bild existiert
+            if not os.path.exists(image_path):
+                logger.error(f"Bild existiert nicht: {image_path}")
+                return False
+                
+            # Sicherstellen, dass das Bild-Verzeichnis existiert
+            images_dir = os.path.join(self.path, 'images')
+            os.makedirs(images_dir, exist_ok=True)
+            
+            # Bildmetadaten speichern
+            image_info = {
+                'path': os.path.relpath(image_path, self.path),
+                'timestamp': timestamp or time.time(),
+                'angle': angle
+            }
+            
+            self.images.append(image_info)
+            self.updated_at = time.time()
+            
+            # Projekt speichern
+            self.save()
+            
+            return True
+        except Exception as e:
+            logger.error(f"Fehler beim Hinzufügen des Bildes: {str(e)}")
+            return False
 
     def to_dict(self):
         """
@@ -101,7 +162,8 @@ class Project:
             'created_at': self.created_at,
             'updated_at': self.updated_at,
             'sessions': [session.to_dict() for session in self.sessions],
-            'path': self.path
+            'path': self.path,
+            'images': self.images
         }
 
     @classmethod
@@ -125,6 +187,7 @@ class Project:
 
         project.created_at = data.get('created_at', time.time())
         project.updated_at = data.get('updated_at', time.time())
+        project.images = data.get('images', [])
 
         # Sessions laden
         for session_data in data.get('sessions', []):
@@ -144,8 +207,15 @@ class Project:
             return False
 
         try:
+            # Sichere Pfadverarbeitung
+            project_path = os.path.abspath(self.path)
+            
+            # Stelle sicher, dass das Verzeichnis existiert
+            os.makedirs(project_path, exist_ok=True)
+            
+            metadata_path = os.path.join(project_path, "project.json")
+            
             # Metadaten-Datei speichern
-            metadata_path = os.path.join(self.path, "project.json")
             with open(metadata_path, 'w') as f:
                 json.dump(self.to_dict(), f, indent=4)
                 
@@ -184,7 +254,11 @@ class ProjectManager:
         Returns:
             Pfad zum Projekt
         """
-        return os.path.join(self.projects_dir, project_id)
+        # Sichere Pfadverarbeitung
+        if not project_id or '..' in project_id or '/' in project_id or '\\' in project_id:
+            return None
+            
+        return secure_join(self.projects_dir, project_id)
 
     def get_all_projects(self):
         """
@@ -198,12 +272,13 @@ class ProjectManager:
         try:
             # Durchsuche das Projektverzeichnis nach Projektordnern
             for item in os.listdir(self.projects_dir):
-                project_path = os.path.join(self.projects_dir, item)
+                # Sichere Pfadverarbeitung
+                project_path = secure_join(self.projects_dir, item)
 
                 # Prüfen, ob es sich um ein Verzeichnis handelt
                 if os.path.isdir(project_path):
                     # Prüfen, ob eine Projektdatei existiert
-                    project_file = os.path.join(project_path, "project.json")
+                    project_file = secure_join(project_path, "project.json")
                     if os.path.isfile(project_file):
                         try:
                             with open(project_file, 'r') as f:
@@ -230,8 +305,12 @@ class ProjectManager:
         Returns:
             Project-Instanz oder None
         """
-        project_path = self.get_project_path(project_id)
-        project_file = os.path.join(project_path, "project.json")
+        # Sichere Pfadverarbeitung
+        if not project_id or '..' in project_id or '/' in project_id or '\\' in project_id:
+            return None
+            
+        project_path = secure_join(self.projects_dir, project_id)
+        project_file = secure_join(project_path, "project.json")
 
         if os.path.isfile(project_file):
             try:
@@ -256,23 +335,38 @@ class ProjectManager:
         Returns:
             True bei Erfolg, False bei Fehler
         """
-        # Stelle sicher, dass das Projekt eine ID hat
-        if not project.id:
-            project.id = str(uuid.uuid4())
-
-        # Projektpfad erstellen
-        project_path = self.get_project_path(project.id)
-        os.makedirs(project_path, exist_ok=True)
-
-        # Sessions-Verzeichnis erstellen
-        sessions_path = os.path.join(project_path, "sessions")
-        os.makedirs(sessions_path, exist_ok=True)
-
-        # Pfad im Projekt aktualisieren
-        project.path = project_path
-
-        # Projekt speichern
-        return project.save()
+        try:
+            # Stelle sicher, dass das Projekt eine ID hat
+            if not project.id:
+                project.id = str(uuid.uuid4())
+    
+            # Projektpfad erstellen mit sicherer Pfadverarbeitung
+            project_path = secure_join(self.projects_dir, project.id)
+            os.makedirs(project_path, exist_ok=True)
+    
+            # Sessions-Verzeichnis erstellen
+            sessions_path = secure_join(project_path, "sessions")
+            os.makedirs(sessions_path, exist_ok=True)
+            
+            # Images-Verzeichnis erstellen
+            images_path = secure_join(project_path, "images")
+            os.makedirs(images_path, exist_ok=True)
+    
+            # Pfad im Projekt aktualisieren
+            project.path = project_path
+    
+            # Projekt speichern
+            success = project.save()
+            
+            if success:
+                self.logger.info(f"Projekt erfolgreich gespeichert: {project.id} in {project_path}")
+            else:
+                self.logger.error(f"Fehler beim Speichern des Projekts: {project.id}")
+                
+            return success
+        except Exception as e:
+            self.logger.error(f"Fehler in save_project: {str(e)}")
+            return False
 
     def delete_project(self, project_id):
         """
@@ -284,7 +378,11 @@ class ProjectManager:
         Returns:
             True bei Erfolg, False bei Fehler
         """
-        project_path = self.get_project_path(project_id)
+        # Sichere Pfadverarbeitung
+        if not project_id or '..' in project_id or '/' in project_id or '\\' in project_id:
+            return False
+            
+        project_path = secure_join(self.projects_dir, project_id)
 
         if os.path.isdir(project_path):
             try:

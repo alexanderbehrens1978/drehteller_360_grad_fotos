@@ -3,95 +3,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Projektverwaltung - 360° Drehteller Steuerung</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/projects.css">
+    <title>Projekte - 360° Drehteller Steuerung</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body>
-    <div class="container">
-        <div class="card">
-            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                <h2 class="mb-0">Projektverwaltung</h2>
-                <a href="/" class="btn btn-light btn-sm">
-                    <i class="bi bi-house"></i> Zurück zur Steuerung
-                </a>
+    <header>
+        <h1>Projektverwaltung</h1>
+        <nav>
+            <a href="/">Startseite</a>
+            <a href="/projects">Projekte</a>
+            <a href="/settings">Einstellungen</a>
+        </nav>
+    </header>
+    
+    <main>
+        <section class="project-actions">
+            <div class="action-buttons">
+                <a href="{{ url_for('projects.create_project') }}" class="btn btn-primary">Neues Projekt erstellen</a>
             </div>
-            <div class="card-body">
-                <div id="projects-container" class="row">
-                    <!-- Projekte werden hier dynamisch eingefügt -->
-                    <div class="col-12 text-center py-5" id="loading">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Lade...</span>
-                        </div>
-                        <p class="mt-2">Projekte werden geladen...</p>
-                    </div>
+        </section>
+        
+        <section class="project-list">
+            <h2>Vorhandene Projekte</h2>
+            
+            <div class="projects-container">
+                <!-- Projekte werden per JavaScript geladen -->
+                <div id="projectsList"></div>
+            </div>
+        </section>
+        
+        <div class="loading" id="loadingProjects">
+            <p>Projekte werden geladen...</p>
+        </div>
+    </main>
+    
+    <footer>
+        <p>&copy; 2025 360° Drehteller Steuerung</p>
+    </footer>
+    
+    <script>
+        // JavaScript zum Laden der Projekte
+        document.addEventListener('DOMContentLoaded', function() {
+            const projectsList = document.getElementById('projectsList');
+            const loadingElement = document.getElementById('loadingProjects');
+            
+            // Projekte laden
+            fetch('/api/projects')
+                .then(response => response.json())
+                .then(projects => {
+                    loadingElement.style.display = 'none';
                     
-                    <div class="col-12 text-center py-5 d-none" id="no-projects">
-                        <i class="bi bi-folder-x" style="font-size: 3rem; color: #adb5bd;"></i>
-                        <h4 class="mt-3">Keine Projekte gefunden</h4>
-                        <p class="text-muted">Erstellen Sie Ihr erstes 360° Projekt auf der Hauptseite.</p>
-                        <a href="/" class="btn btn-primary mt-2">
-                            <i class="bi bi-plus-circle"></i> Neues Projekt erstellen
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Lösch-Bestätigungsdialog -->
-    <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="deleteModalLabel">Projekt löschen</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
-                </div>
-                <div class="modal-body">
-                    Sind Sie sicher, dass Sie das Projekt <span id="delete-project-name" class="fw-bold"></span> löschen möchten? 
-                    Diese Aktion kann nicht rückgängig gemacht werden.
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
-                    <button type="button" class="btn btn-danger" id="confirm-delete">Löschen</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Projekt-Template -->
-    <template id="project-template">
-        <div class="col-md-6 col-lg-4 project-card">
-            <div class="card h-100">
-                <div class="project-thumbnail">
-                    <div class="project-actions">
-                        <button class="btn btn-sm btn-danger delete-btn" title="Projekt löschen">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <h5 class="card-title project-name">Projektname</h5>
-                    <p class="card-text">
-                        <small class="text-muted project-date">Erstellungsdatum</small><br>
-                        <span class="project-image-count">0 Bilder</span>
-                    </p>
-                </div>
-                <div class="card-footer d-grid">
-                    <a href="#" class="btn btn-primary view-btn">
-                        <i class="bi bi-eye"></i> 360° Ansicht öffnen
-                    </a>
-                </div>
-            </div>
-        </div>
-    </template>
-
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Modulare Skripte mit ES Modules -->
-    <script type="module" src="/static/js/projects.js"></script>
+                    if (projects.length === 0) {
+                        projectsList.innerHTML = '<p class="no-projects">Keine Projekte vorhanden. Erstellen Sie ein neues Projekt, um zu beginnen.</p>';
+                        return;
+                    }
+                    
+                    // Projekte anzeigen
+                    let projectsHTML = '';
+                    projects.forEach(project => {
+                        projectsHTML += `
+                            <div class="project-card">
+                                <h3>${project.name || 'Unbenanntes Projekt'}</h3>
+                                <p class="project-meta">
+                                    Erstellt: ${new Date(project.created * 1000).toLocaleDateString()}
+                                    <br>
+                                    Bilder: ${project.image_count || 0}
+                                </p>
+                                <div class="project-actions">
+                                    <a href="/projects/${project.id}" class="btn btn-secondary">Ansehen</a>
+                                    <a href="/?project_id=${project.id}" class="btn btn-primary">Bilder aufnehmen</a>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    projectsList.innerHTML = projectsHTML;
+                })
+                .catch(error => {
+                    loadingElement.style.display = 'none';
+                    console.error('Fehler beim Laden der Projekte:', error);
+                    projectsList.innerHTML = '<p class="error">Fehler beim Laden der Projekte. Bitte versuchen Sie es später erneut.</p>';
+                });
+        });
+    </script>
 </body>
 </html>

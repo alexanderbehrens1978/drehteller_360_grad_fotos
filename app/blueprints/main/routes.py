@@ -30,21 +30,56 @@ def view_360():
 @main_bp.route('/rotate', methods=['POST'])
 def rotate():
     """Dreht den Teller und nimmt ein Foto auf"""
-    degrees = int(request.form['degrees'])
-    interval = float(request.form.get('interval', 5))  # Default 5 Sekunden, falls nicht angegeben
-    
-    # Drehteller rotieren
-    rotate_teller(degrees)
-    
-    # Foto mit Zeitstempel aufnehmen
-    filename = f'photo_{int(time.time())}_{degrees}.jpg'
-    photo_path = take_photo(filename)
-    
-    # Foto-Pfad relativ zu /static zurückgeben
-    if photo_path:
-        return f'/static/photos/{os.path.basename(photo_path)}'
-    else:
-        return 'Error capturing photo', 500
+    try:
+        # Parameter aus der Anfrage holen
+        degrees = int(request.form['degrees'])
+        project_id = request.form.get('project_id')
+        
+        # Validiere Projekt-ID
+        if not project_id:
+            return jsonify({"error": "Keine Projekt-ID angegeben"}), 400
+            
+        from app.utils.secure_path import validate_project_id
+        if not validate_project_id(project_id):
+            return jsonify({"error": "Ungültige Projekt-ID"}), 400
+        
+        # Drehteller rotieren
+        rotate_teller(degrees)
+        
+        # Foto mit Zeitstempel aufnehmen und im Projektordner speichern
+        timestamp = int(time.time())
+        filename = f'photo_{timestamp}_{degrees}.jpg'
+        photo_path = take_photo(project_id, filename)
+        
+        if not photo_path or not os.path.exists(photo_path):
+            return jsonify({"error": "Fehler beim Aufnehmen des Fotos"}), 500
+            
+        # Relativen Pfad zum Foto zurückgeben
+        rel_path = os.path.relpath(photo_path, os.path.join(current_app.root_path, '..'))
+        rel_path = '/' + rel_path.replace('\\', '/')
+        
+        logger.info(f"Foto erfolgreich aufgenommen: {rel_path}")
+        
+        return jsonify({
+            "status": "success", 
+            "photo": rel_path,
+            "angle": degrees
+        })
+    except Exception as e:
+        logger.error(f"Fehler bei der Rotation oder Fotoaufnahme: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+
+
+
+
+
+
+
+
+
+
 
 @main_bp.route('/static/photos/<filename>')
 def serve_photo(filename):

@@ -12,6 +12,7 @@ import subprocess
 import cv2
 from app.utils.config_manager import config_manager
 from app import arduino_controller, camera_controller
+from app.utils.secure_path import secure_filename, secure_join
 
 # Logger einrichten
 logger = logging.getLogger(__name__)
@@ -44,11 +45,12 @@ def rotate_teller(degrees):
     
     logger.info(f"Drehteller um {degrees} Grad gedreht.")
 
-def take_photo(filename=None):
+def take_photo(project_id, filename=None):
     """
-    Nimmt ein Foto auf
+    Nimmt ein Foto auf und speichert es im Projektordner
     
     Args:
+        project_id: ID des Projekts, in dem das Foto gespeichert werden soll
         filename: Optionaler Dateiname
         
     Returns:
@@ -57,80 +59,48 @@ def take_photo(filename=None):
     # Prüfen, ob Simulator aktiviert ist
     USE_SIMULATOR = config_manager.get('simulator.enabled', True)
     
-    if USE_SIMULATOR:
-        # Webcam-Simulator verwenden
-        from app.utils.webcam_simulator import webcam_simulator
-        
+    try:
         # Stelle sicher, dass nur der Dateiname verwendet wird
         if filename:
             filename = os.path.basename(filename)
+        else:
+            # Generiere einen Dateinamen, wenn keiner angegeben wurde
+            timestamp = int(time.time())
+            filename = f'photo_{timestamp}.jpg'
             
-        return webcam_simulator.capture_photo(filename)
-    
-    try:
-        # Kameraeinstellungen aus der Konfiguration holen
-        camera_device = config_manager.get('camera.device_path', '/dev/video0')
-        camera_type = config_manager.get('camera.type', 'webcam')
+        # Projektverzeichnis ermitteln
+        from app.utils.path_manager import PathManager
+        path_manager = PathManager()
         
-        # Kamera-Auflösung holen
-        camera_width = config_manager.get('camera.resolution.width')
-        camera_height = config_manager.get('camera.resolution.height')
+        # Pfad zum Projektverzeichnis erstellen
+        project_path = path_manager.get_project_path(project_id)
         
-        # Kamera-Controller verwenden, falls verfügbar
+        # Stelle sicher, dass das Bilder-Verzeichnis im Projekt existiert
+        images_dir = os.path.join(project_path, 'images')
+        os.makedirs(images_dir, exist_ok=True)
+        
+        # Vollständiger Pfad zum Foto
+        full_path = os.path.join(images_dir, filename)
+        
+        if USE_SIMULATOR:
+            # Webcam-Simulator verwenden
+            from app.utils.webcam_simulator import webcam_simulator
+            photo_path = webcam_simulator.capture_photo(full_path)
+            logger.info(f"Simuliertes Foto aufgenommen und als {photo_path} gespeichert.")
+            return photo_path
+        
+        # Reale Kamera verwenden
         if camera_controller:
-            if not filename:
-                filename = f'photo_{int(time.time())}.jpg'
-                
-            # Stelle sicher, dass nur der Dateiname verwendet wird
-            filename = os.path.basename(filename)
-            full_path = os.path.join('static/photos', filename)
-            
-            # Foto aufnehmen
             success = camera_controller.capture_photo(full_path)
-            
             if success:
                 logger.info(f"Foto aufgenommen und als {filename} gespeichert.")
-                return filename
+                return full_path
             else:
                 logger.error(f"Fehler beim Aufnehmen des Fotos mit dem Kamera-Controller.")
                 return None
-        
-        # Fallback: Direkte Kamerasteuerung
-        if not filename:
-            filename = f'photo_{int(time.time())}.jpg'
-        
-        # Stelle sicher, dass nur der Dateiname verwendet wird
-        filename = os.path.basename(filename)
-        full_path = os.path.join('static/photos', filename)
-        
-        # Stelle sicher, dass das Verzeichnis existiert
-        os.makedirs(os.path.dirname(full_path), exist_ok=True)
-        
-        # Wähle die Aufnahmemethode basierend auf dem Kameratyp
-        if camera_type == 'gphoto2':
-            # gphoto2 für DSLR-Kameras verwenden
-            subprocess.call(['gphoto2', '--capture-image-and-download', '--filename', full_path])
         else:
-            # OpenCV für Webcams verwenden
-            cap = cv2.VideoCapture(camera_device)
-            
-            # Auflösung einstellen, falls angegeben
-            if camera_width and camera_height:
-                cap.set(cv2.CAP_PROP_FRAME_WIDTH, camera_width)
-                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, camera_height)
-            
-            ret, frame = cap.read()
-            if ret:
-                cv2.imwrite(full_path, frame)
-                cap.release()
-            else:
-                # Fallback zu fswebcam, falls OpenCV fehlschlägt
-                subprocess.call(['fswebcam', '--no-banner', 
-                                '-d', camera_device, 
-                                full_path])
-        
-        logger.info(f"Foto aufgenommen und als {filename} gespeichert.")
-        return filename
+            logger.error("Kein Kamera-Controller verfügbar.")
+            return None
     except Exception as e:
         logger.error(f"Fehler beim Aufnehmen des Fotos: {e}")
         return None

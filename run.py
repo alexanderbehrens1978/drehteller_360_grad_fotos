@@ -8,7 +8,11 @@ Haupteinstiegspunkt für die Drehteller-360-Grad-Anwendung
 import os
 import sys
 import argparse
+import logging
 from app import create_app
+
+# Logger einrichten
+logger = logging.getLogger(__name__)
 
 def parse_arguments():
     """Parst Kommandozeilenargumente"""
@@ -35,9 +39,16 @@ if __name__ == '__main__':
     # App erstellen
     app = create_app(args.env)
     
-    # Debug-Modus überschreiben
-    if args.debug:
-        app.config['DEBUG'] = True
+    # Debug-Modus nur in Entwicklungsumgebung aktivieren
+    debug_mode = False
+    if args.debug and args.env == 'development':
+        logger.info("Debug-Modus aktiviert (nur in Entwicklungsumgebung erlaubt)")
+        debug_mode = True
+    else:
+        if args.debug and args.env != 'development':
+            logger.warning("Debug-Modus in Produktionsumgebung angefordert, aber nicht aktiviert")
+        debug_mode = False
     
     # Starte den Server
-    app.run(host=args.host, port=args.port, debug=app.config['DEBUG'])
+    logger.info(f"Starte Server auf {args.host}:{args.port} (Umgebung: {args.env}, Debug: {debug_mode})")
+    app.run(host=args.host, port=args.port, debug=debug_mode)

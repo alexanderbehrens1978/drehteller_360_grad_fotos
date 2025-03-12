@@ -165,3 +165,44 @@ class TurntableController:
         except Exception as e:
             self.logger.error(f"Fehler während der Fotosession: {str(e)}")
             return False
+
+# In der Datei app/controllers/turntable_controller.py
+
+def move_degrees(self, degrees):
+    """
+    Bewegt den Drehteller um einen bestimmten Winkel
+    
+    Args:
+        degrees: Winkel in Grad
+        
+    Returns:
+        True bei Erfolg, False bei Fehler
+    """
+    # Eingabevalidierung
+    try:
+        degrees = float(degrees)
+        if degrees <= 0 or degrees > 360:
+            self.logger.error(f"Ungültiger Drehwinkel: {degrees}°")
+            return False
+    except (TypeError, ValueError):
+        self.logger.error(f"Ungültiger Wert für Drehwinkel: {degrees}")
+        return False
+        
+    if not self.arduino or not self.arduino.is_connected():
+        self.logger.error("Arduino ist nicht verbunden")
+        return False
+
+    # Rotation Zeit berechnen
+    rotation_time_ms = self.calculate_rotation_time(degrees)
+
+    # Motor für die berechnete Zeit einschalten
+    success = self.arduino.rotate_for_duration(rotation_time_ms)
+
+    if success:
+        # Position aktualisieren
+        self.current_position = (self.current_position + degrees) % 360
+        self.logger.info(f"Drehteller um {degrees}° gedreht, neue Position: {self.current_position}°")
+    else:
+        self.logger.error(f"Fehler beim Drehen des Tellers um {degrees}°")
+
+    return success

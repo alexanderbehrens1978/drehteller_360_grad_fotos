@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projekte - 360° Drehteller Steuerung</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <header>
+        <h1>Projektverwaltung</h1>
+        <nav>
+            <a href="/">Startseite</a>
+            <a href="/projects">Projekte</a>
+            <a href="/settings">Einstellungen</a>
+        </nav>
+    </header>
+    
+    <main>
+        <section class="project-actions">
+            <div class="action-buttons">
+                <a href="{{ url_for('projects.create_project') }}" class="btn btn-primary">Neues Projekt erstellen</a>
+            </div>
+        </section>
+        
+        <section class="project-list">
+            <h2>Vorhandene Projekte</h2>
+            
+            <div class="projects-container">
+                <!-- Projekte werden per JavaScript geladen -->
+                <div id="projectsList"></div>
+            </div>
+        </section>
+        
+        <div class="loading" id="loadingProjects">
+            <p>Projekte werden geladen...</p>
+        </div>
+    </main>
+    
+    <footer>
+        <p>&copy; 2025 360° Drehteller Steuerung</p>
+    </footer>
+    
+    <script>
+        // JavaScript zum Laden der Projekte
+        document.addEventListener('DOMContentLoaded', function() {
+            const projectsList = document.getElementById('projectsList');
+            const loadingElement = document.getElementById('loadingProjects');
+            
+            // Projekte laden
+            fetch('/api/projects')
+                .then(response => response.json())
+                .then(projects => {
+                    loadingElement.style.display = 'none';
+                    
+                    if (projects.length === 0) {
+                        projectsList.innerHTML = '<p class="no-projects">Keine Projekte vorhanden. Erstellen Sie ein neues Projekt, um zu beginnen.</p>';
+                        return;
+                    }
+                    
+                    // Projekte anzeigen
+                    let projectsHTML = '';
+                    projects.forEach(project => {
+                        projectsHTML += `
+                            <div class="project-card">
+                                <h3>${project.name || 'Unbenanntes Projekt'}</h3>
+                                <p class="project-meta">
+                                    Erstellt: ${new Date(project.created * 1000).toLocaleDateString()}
+                                    <br>
+                                    Bilder: ${project.image_count || 0}
+                                </p>
+                                <div class="project-actions">
+                                    <a href="/projects/${project.id}" class="btn btn-secondary">Ansehen</a>
+                                    <a href="/?project_id=${project.id}" class="btn btn-primary">Bilder aufnehmen</a>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    projectsList.innerHTML = projectsHTML;
+                })
+                .catch(error => {
+                    loadingElement.style.display = 'none';
+                    console.error('Fehler beim Laden der Projekte:', error);
+                    projectsList.innerHTML = '<p class="error">Fehler beim Laden der Projekte. Bitte versuchen Sie es später erneut.</p>';
+                });
+        });
+    </script>
+</body>
+</html>

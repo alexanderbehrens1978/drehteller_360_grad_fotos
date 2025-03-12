@@ -7,6 +7,7 @@ Verwaltet Dateipfade und stellt sicher, dass erforderliche Verzeichnisse existie
 
 import os
 import logging
+from app.utils.secure_path import secure_filename, secure_join, validate_project_id
 
 class PathManager:
     """Klasse zur Verwaltung von Dateipfaden und Verzeichnissen"""
@@ -53,7 +54,7 @@ class PathManager:
             Vollständiger Pfad zum Foto oder zum Fotos-Verzeichnis
         """
         if filename:
-            return os.path.join(self.photos_dir, filename)
+            return secure_join(self.photos_dir, filename)
         return self.photos_dir
     
     def get_project_path(self, project_id=None):
@@ -67,7 +68,12 @@ class PathManager:
             Vollständiger Pfad zum Projekt oder zum Projekte-Verzeichnis
         """
         if project_id:
-            return os.path.join(self.projects_dir, project_id)
+            # Validiere Projekt-ID
+            if not validate_project_id(project_id):
+                self.logger.warning(f"Ungültige Projekt-ID: {project_id}")
+                return self.projects_dir
+                
+            return secure_join(self.projects_dir, project_id)
         return self.projects_dir
     
     def get_sample_image_path(self, filename=None):
@@ -81,7 +87,7 @@ class PathManager:
             Vollständiger Pfad zum Beispielbild oder zum Beispielbilder-Verzeichnis
         """
         if filename:
-            return os.path.join(self.sample_images_dir, filename)
+            return secure_join(self.sample_images_dir, filename)
         return self.sample_images_dir
     
     def get_project_photo_path(self, project_id, session_id, filename):
@@ -96,11 +102,38 @@ class PathManager:
         Returns:
             Vollständiger Pfad zum Projektfoto
         """
-        session_dir = os.path.join(self.get_project_path(project_id), 'sessions', session_id)
+        # Validiere Eingaben
+        if not validate_project_id(project_id) or not validate_project_id(session_id):
+            self.logger.warning(f"Ungültige Projekt-ID oder Session-ID: {project_id}/{session_id}")
+            return None
+            
+        # Sichere Pfadkonstruktion
+        project_path = self.get_project_path(project_id)
+        session_dir = secure_join(project_path, 'sessions', session_id)
         
         # Stelle sicher, dass das Session-Verzeichnis existiert
         if not os.path.exists(session_dir):
             os.makedirs(session_dir)
             self.logger.debug(f"Session-Verzeichnis erstellt: {session_dir}")
         
-        return os.path.join(session_dir, filename)
+        return secure_join(session_dir, filename)
+
+def sanitize_filename(filename):
+    """
+    Bereinigt den Dateinamen von potenziell gefährlichen Zeichen
+    
+    Args:
+        filename: Ursprünglicher Dateiname
+    
+    Returns:
+        Bereinigter Dateiname
+    """
+    import re
+    
+    # Entferne oder ersetze gefährliche Zeichen
+    filename = re.sub(r'[^\w\-_\.]', '_', filename)
+    
+    # Maximale Länge begrenzen
+    filename = filename[:255]
+    
+    return filename

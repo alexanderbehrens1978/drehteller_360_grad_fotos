@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>360° Drehteller Viewer</title>
+    <!-- Bootstrap CSS (falls du es bereits verwendest) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Erforderliche React-Bibliotheken -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <!-- Tailwind CSS (für das React-Widget) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+<div class="container">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h2 class="mb-0">360° Drehteller Viewer</h2>
+        </div>
+        <div class="card-body">
+            <!-- Hier wird der React-Viewer eingefügt -->
+            <div id="viewer360-app"></div>
+
+            <!-- Restlicher Inhalt deiner Seite -->
+            <div class="mt-4">
+                <h3>Produktbeschreibung</h3>
+                <p>
+                    Hier kannst du weitere Informationen zum abgebildeten Produkt einfügen.
+                    Der 360°-Viewer oben ermöglicht eine vollständige Rundumansicht.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- React-Komponente einbinden -->
+<script type="text/babel">
+    // Hier kommt der Code aus der React-Komponente hin
+    // (Kopiere den gesamten Code aus der Viewer360-Komponente hier ein)
+
+    const Viewer360 = () => {
+        const [isViewerOpen, setIsViewerOpen] = useState(false);
+        const [currentImageIndex, setCurrentImageIndex] = useState(0);
+        const [isDragging, setIsDragging] = useState(false);
+        const [startX, setStartX] = useState(0);
+        const [images, setImages] = useState([]);
+        const [isLoading, setIsLoading] = useState(true);
+        const viewerRef = useRef(null);
+
+        // Lade die Bilder aus deinem Projekt
+        useEffect(() => {
+            const loadImages = async () => {
+                setIsLoading(true);
+
+                try {
+                    // Hier kannst du einen API-Endpunkt in deinem Projekt verwenden
+                    // Beispiel: fetche Bilder aus einem bestimmten Projekt
+                    const projectId = 'dein-projekt-id'; // Ersetze dies mit deiner tatsächlichen Projekt-ID
+                    const response = await fetch(`/api/project/${projectId}`);
+
+                    if (response.ok) {
+                        const projectData = await response.json();
+                        // Annahme: Dein Projekt-API gibt ein images-Array zurück
+                        if (projectData.images && projectData.images.length > 0) {
+                            // Pfade zu den Bildern erstellen
+                            const imagePaths = projectData.images.map(img =>
+                                    `/static/projects/${projectId}/${img}`
+                            );
+                            setImages(imagePaths);
+                        } else {
+                            // Fallback auf Beispielbilder, falls keine im Projekt sind
+                            const demoImages = Array.from({length: 36}, (_, i) =>
+                                    `/static/sample_images/sample_image_${i % 10}.jpg`
+                            );
+                            setImages(demoImages);
+                        }
+                    } else {
+                        // Fallback auf Beispielbilder bei API-Fehler
+                        const demoImages = Array.from({length: 36}, (_, i) =>
+                                `/static/sample_images/sample_image_${i % 10}.jpg`
+                        );
+                        setImages(demoImages);
+                    }
+                } catch (error) {
+                    console.error("Fehler beim Laden der Bilder:", error);
+                    // Fallback auf Beispielbilder
+                    const demoImages = Array.from({length: 36}, (_, i) =>
+                            `/static/sample_images/sample_image_${i % 10}.jpg`
+                    );
+                    setImages(demoImages);
+                }
+
+                setIsLoading(false);
+            };
+
+            loadImages();
+        }, []);
+
+        // Öffne den Viewer
+        const openViewer = () => {
+            setIsViewerOpen(true);
+            document.body.style.overflow = 'hidden'; // Verhindere Scrollen im Hintergrund
+        };
+
+        // Schließe den Viewer
+        const closeViewer = () => {
+            setIsViewerOpen(false);
+            document.body.style.overflow = 'auto'; // Erlaube Scrollen wieder
+        };
+
+        // Mauszieh-Ereignisse für die Rotation
+        const handleMouseDown = (e) => {
+            setIsDragging(true);
+            setStartX(e.clientX);
+        };
+
+        const handleTouchStart = (e) => {
+            setIsDragging(true);
+            setStartX(e.touches[0].clientX);
+        };
+
+        const handleMouseMove = (e) => {
+            if (!isDragging) return;
+
+            const deltaX = e.clientX - startX;
+
+            if (Math.abs(deltaX) > 5) { // Kleine Bewegungen ignorieren
+                // Berechne den Index basierend auf der Bewegungsrichtung
+                const direction = deltaX > 0 ? -1 : 1; // Nach rechts ziehen = nach links rotieren
+
+                // Berechne neuen Index und stelle sicher, dass er im gültigen Bereich liegt
+                const newIndex = (currentImageIndex + direction + images.length) % images.length;
+
+                setCurrentImageIndex(newIndex);
+                setStartX(e.clientX);
+            }
+        };
+
+        const handleTouchMove = (e) => {
+            if (!isDragging) return;
+
+            const deltaX = e.touches[0].clientX - startX;
+
+            if (Math.abs(deltaX) > 5) {
+                const direction = deltaX > 0 ? -1 : 1;
+                const newIndex = (currentImageIndex + direction + images.length) % images.length;
+
+                setCurrentImageIndex(newIndex);
+                setStartX(e.touches[0].clientX);
+            }
+        };
+
+        const handleMouseUp = () => {
+            setIsDragging(false);
+        };
+
+        const handleTouchEnd = () => {
+            setIsDragging(false);
+        };
+
+        // Event-Listener für globale Maus- und Touch-Ereignisse hinzufügen/entfernen
+        useEffect(() => {
+            if (isViewerOpen) {
+                window.addEventListener('mouseup', handleMouseUp);
+                window.addEventListener('touchend', handleTouchEnd);
+
+                return () => {
+                    window.removeEventListener('mouseup', handleMouseUp);
+                    window.removeEventListener('touchend', handleTouchEnd);
+                };
+            }
+        }, [isViewerOpen, isDragging]);
+
+        return (
+                <div className="w-full">
+                    {!isViewerOpen ? (
+                            // Logo/Vorschau, die den Viewer öffnet
+                            <div
+                                    className="cursor-pointer mx-auto text-center"
+                                    onClick={openViewer}
+                            >
+                                <div className="bg-blue-600 text-white rounded-lg p-4 shadow-lg inline-block">
+                                    <div className="text-4xl mb-2">360°</div>
+                                    <div className="text-sm">Klicken für 360° Ansicht</div>
+                                </div>
+                            </div>
+                    ) : (
+                            // Vollbild-Viewer
+                            <div className="fixed inset-0 z-50 bg-black flex flex-col">
+                                {/* Schließen-Button */}
+                                <button
+                                        className="absolute top-4 right-4 z-10 text-white bg-red-600 rounded-full w-10 h-10 flex items-center justify-center"
+                                        onClick={closeViewer}
+                                >
+                                    ✕
+                                </button>
+
+                                {/* Viewer Container */}
+                                <div
+                                        ref={viewerRef}
+                                        className="flex-1 flex items-center justify-center cursor-grab active:cursor-grabbing"
+                                        onMouseDown={handleMouseDown}
+                                        onMouseMove={handleMouseMove}
+                                        onTouchStart={handleTouchStart}
+                                        onTouchMove={handleTouchMove}
+                                >
+                                    {isLoading ? (
+                                            <div className="text-white text-xl">Lade Bilder...</div>
+                                    ) : (
+                                            <img
+                                                    src={images[currentImageIndex]}
+                                                    alt={`360-Grad Ansicht ${currentImageIndex}`}
+                                                    className="max-h-full max-w-full object-contain select-none"
+                                                    draggable="false"
+                                            />
+                                    )}
+                                </div>
+
+                                {/* Hinweistext */}
+                                <div className="text-white text-center p-2 bg-black bg-opacity-50">
+                                    Mit der Maus klicken und ziehen, um zu drehen
+                                </div>
+                            </div>
+                    )}
+                </div>
+        );
+    };
+
+    // Komponente in die Seite rendern
+    const {useState, useEffect, useRef} = React;
+    ReactDOM.render(<Viewer360/>, document.getElementById('viewer360-app'));
+</script>
+</body>
+</html>

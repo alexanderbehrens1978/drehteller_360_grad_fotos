@@ -18,7 +18,6 @@ from app.utils.webcam_detection_helper import find_working_webcam
 # Logger konfigurieren
 logger = logging.getLogger(__name__)
 
-
 class DeviceDetector:
     """Erkennt und verfolgt verfügbare Kameras und Arduino-Geräte"""
 
@@ -39,8 +38,12 @@ class DeviceDetector:
         }
         self.running = False
         self.lock = threading.Lock()
+        self.scan_thread = None
         
         logger.debug(f"DeviceDetector initialisiert mit Scan-Intervall von {scan_interval} Sekunden")
+        
+        # Sofortiger Scan beim Start
+        self.scan_devices()
 
     def detect_webcams(self):
         """
@@ -86,18 +89,22 @@ class DeviceDetector:
 
             if result.returncode == 0:
                 # Kameras auflisten
-                result = subprocess.run(['gphoto2', '--auto-detect'],
+                try:
+                    result = subprocess.run(['gphoto2', '--auto-detect'],
                                         stdout=subprocess.PIPE,
                                         stderr=subprocess.PIPE,
-                                        text=True)
+                                        text=True,
+                                        timeout=5)  # Timeout hinzugefügt
 
-                if result.returncode == 0:
-                    lines = result.stdout.strip().split('\n')
-                    for line in lines[2:]:  # Überschriften überspringen
-                        if line.strip():
-                            gphoto2_cameras.append(line.strip())
-                            
-                logger.debug(f"gphoto2-Kamera-Erkennung: {len(gphoto2_cameras)} Geräte gefunden")
+                    if result.returncode == 0:
+                        lines = result.stdout.strip().split('\n')
+                        for line in lines[2:]:  # Überschriften überspringen
+                            if line.strip():
+                                gphoto2_cameras.append(line.strip())
+                                
+                    logger.debug(f"gphoto2-Kamera-Erkennung: {len(gphoto2_cameras)} Geräte gefunden")
+                except subprocess.TimeoutExpired:
+                    logger.warning("Timeout bei der gphoto2-Kamera-Erkennung")
             else:
                 logger.debug("gphoto2 ist nicht installiert")
         except Exception as e:
@@ -149,50 +156,85 @@ class DeviceDetector:
             Dictionary mit erkannten Geräten
         """
         with self.lock:
-            return self.devices.copy()
+            devices_copy = {
+                'cameras': {
+                    'webcams': self.devices['cameras']['webcams'].copy(),
+                    'gphoto2': self.devices['cameras']['gphoto2'].copy()
+                },
+                'arduinos': self.devices['arduinos'].copy()
+            }
+            return devices_copy
+
+    def _run_detection_loop(self):
+        """Ausführungsschleife für den Erkennungsprozess"""
+        logger.info("Geräte-Erkennungsschleife gestartet")
+        while self.running:
+            try:
+                self.scan_devices()
+                time.sleep(self.scan_interval)
+            except Exception as e:
+                logger.error(f"Fehler in der Erkennungsschleife: {e}")
+                time.sleep(self.scan_interval)  # Trotzdem weiterlaufen
 
     def start_detection(self):
         """Startet den Erkennungsprozess in einer Schleife"""
+        if self.running:
+            logger.warning("Erkennungsprozess läuft bereits")
+            return
+            
         self.running = True
+        self.scan_thread = threading.Thread(target=self._run_detection_loop)
+        self.scan_thread.daemon = True  # Thread beendet sich, wenn Hauptprogramm beendet
+        self.scan_thread.start()
         
         logger.info("Geräte-Erkennung gestartet")
-        
-        while self.running:
-            self.scan_devices()
-            time.sleep(self.scan_interval)
 
     def stop_detection(self):
         """Stoppt den Erkennungsprozess"""
         self.running = False
+        if self.scan_thread and self.scan_thread.is_alive():
+            self.scan_thread.join(timeout=2.0)  # Warte maximal 2 Sekunden
         logger.info("Geräte-Erkennung gestoppt")
 
 
 # Globale Instanz für die Anwendung
 device_detector = DeviceDetector()
 
+# Erkennung automatisch starten
+device_detector.start_detection()
+
 # Standalone-Verwendungsbeispiel
 if __name__ == '__main__':
     # Logger konfigurieren
     logging.basicConfig(level=logging.DEBUG)
     
-    # DeviceDetector erstellen
+    # DeviceDetector erstellen und starten
     detector = DeviceDetector(scan_interval=5)
+    detector.start_detection()
     
-    # Einmaligen Scan durchführen
-    detector.scan_devices()
+    # Warte kurz, damit der erste Scan abgeschlossen werden kann
+    time.sleep(2)
     
-    # Erkannte Geräte ausgeben
-    devices = detector.get_devices()
-    print("\nErkannte Geräte:")
-    
-    print("\nWebcams:")
-    for webcam in devices['cameras']['webcams']:
-        print(f"- {webcam}")
-        
-    print("\ngphoto2-Kameras:")
-    for camera in devices['cameras']['gphoto2']:
-        print(f"- {camera}")
-        
-    print("\nArduino-Geräte:")
-    for arduino in devices['arduinos']:
-        print(f"- {arduino['port']} ({arduino['description']})")
+    try:
+        while True:
+            # Erkannte Geräte ausgeben
+            devices = detector.get_devices()
+            print("\nErkannte Geräte:")
+            
+            print("\nWebcams:")
+            for webcam in devices['cameras']['webcams']:
+                print(f"- {webcam}")
+                
+            print("\ngphoto2-Kameras:")
+            for camera in devices['cameras']['gphoto2']:
+                print(f"- {camera}")
+                
+            print("\nArduino-Geräte:")
+            for arduino in devices['arduinos']:
+                print(f"- {arduino['port']} ({arduino['description']})")
+                
+            # Alle 5 Sekunden aktualisieren
+            time.sleep(5)
+    except KeyboardInterrupt:
+        print("\nBeende Programm...")
+        detector.stop_detection()

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neues Projekt erstellen - 360° Drehteller Steuerung</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <header>
+        <h1>Neues Projekt erstellen</h1>
+        <nav>
+            <a href="/">Startseite</a>
+            <a href="/projects">Projekte</a>
+            <a href="/settings">Einstellungen</a>
+        </nav>
+    </header>
+    
+    <main>
+        <section class="project-form">
+            {% if error %}
+            <div class="error-message">
+                {{ error }}
+            </div>
+            {% endif %}
+            
+            <form method="POST" action="{{ url_for('projects.create_project') }}">
+                <div class="form-group">
+                    <label for="name">Projektname:</label>
+                    <input type="text" id="name" name="name" required value="{{ request.form.get('name', '') }}">
+                </div>
+                
+                <div class="form-group">
+                    <label for="description">Beschreibung:</label>
+                    <textarea id="description" name="description" rows="4">{{ request.form.get('description', '') }}</textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="angle_step">Winkelschritt (Grad):</label>
+                    <input type="number" id="angle_step" name="angle_step" min="1" max="90" value="{{ request.form.get('angle_step', 15) }}">
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Projekt erstellen</button>
+                    <a href="{{ url_for('projects.projects_page') }}" class="btn btn-secondary">Abbrechen</a>
+                </div>
+            </form>
+        </section>
+    </main>
+    
+    <footer>
+        <p>&copy; 2025 360° Drehteller Steuerung</p>
+    </footer>
+</body>
+</html>

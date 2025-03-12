@@ -8,13 +8,14 @@ Enthält die API-Endpunkte der Anwendung
 import os
 import json
 import logging
-from flask import request, jsonify, current_app
+from flask import request, jsonify, current_app, abort
 from app.blueprints.api import api_bp
 from app.utils.config_manager import config_manager
 from app import arduino_controller, camera_controller, turntable_controller
 from app.utils.device_detector import device_detector
 from app.utils.webcam_detection_helper import get_camera_capabilities
 from app.utils.viewer_generator import viewer_generator
+from app.utils.secure_path import secure_filename, secure_join, validate_project_id
 
 # Logger einrichten
 logger = logging.getLogger(__name__)
@@ -28,8 +29,16 @@ def get_project(project_id):
         project_id: ID des Projekts
     """
     try:
-        project_dir = os.path.join('static/projects', project_id)
-        metadata_path = os.path.join(project_dir, 'metadata.json')
+        # Projekt-ID validieren
+        if not validate_project_id(project_id):
+            logger.warning(f"Versuch, auf ungültige Projekt-ID zuzugreifen: {project_id}")
+            return jsonify({"error": "Ungültige Projekt-ID"}), 400
+            
+        # Sicheren Pfad erstellen
+        static_dir = os.path.abspath(os.path.join(current_app.root_path, '..', 'static'))
+        projects_dir = os.path.join(static_dir, 'projects')
+        project_dir = secure_join(projects_dir, project_id)
+        metadata_path = secure_join(project_dir, 'metadata.json')
         
         if not os.path.exists(metadata_path):
             return jsonify({"error": "Projekt nicht gefunden"}), 404
@@ -46,16 +55,17 @@ def get_project(project_id):
 def get_projects():
     """Liefert eine Liste aller verfügbaren Projekte"""
     try:
-        projects_dir = 'static/projects'
+        static_dir = os.path.abspath(os.path.join(current_app.root_path, '..', 'static'))
+        projects_dir = os.path.join(static_dir, 'projects')
         projects = []
         
         # Verzeichnisse durchsuchen
         for project_id in os.listdir(projects_dir):
-            project_path = os.path.join(projects_dir, project_id)
+            project_path = secure_join(projects_dir, project_id)
             
             # Nur Verzeichnisse berücksichtigen
             if os.path.isdir(project_path):
-                metadata_path = os.path.join(project_path, 'metadata.json')
+                metadata_path = secure_join(project_path, 'metadata.json')
                 
                 # Prüfen, ob Metadaten existieren
                 if os.path.exists(metadata_path):
@@ -91,13 +101,61 @@ def delete_project(project_id):
         project_id: ID des Projekts
     """
     try:
-        project_dir = os.path.join('static/projects', project_id)
+        # Projekt-ID validieren
+        if not validate_project_id(project_id):
+            logger.warning(f"Versuch, ungültige Projekt-ID zu löschen: {project_id}")
+            return jsonify({"error": "Ungültige Projekt-ID"}), 400
+            
+        # Sicheren Pfad erstellen
+        static_dir = os.path.abspath(os.path.join(current_app.root_path, '..', 'static'))
+        projects_dir = os.path.join(static_dir, 'projects')
+        project_dir = secure_join(projects_dir, project_id)
         
         if not os.path.exists(project_dir):
             return jsonify({"error": "Projekt nicht gefunden"}), 404
         
+        # Metadaten lesen, um Bildinformationen zu erhalten
+        metadata_path = secure_join(project_dir, 'metadata.json')
+        images_to_delete = []
+        
+        if os.path.exists(metadata_path):
+            try:
+                with open(metadata_path, 'r') as f:
+                    metadata = json.load(f)
+                
+                # Unterverzeichnisse wie sessions/sessions_id/images prüfen
+                if 'sessions' in metadata:
+                    for session in metadata.get('sessions', []):
+                        session_photos = session.get('photos', {})
+                        for photo_path in session_photos.values():
+                            if isinstance(photo_path, str) and os.path.exists(photo_path) and os.path.isfile(photo_path):
+                                # Sicherstellen, dass der Pfad innerhalb des Projektverzeichnisses liegt
+                                abs_photo_path = os.path.abspath(photo_path)
+                                if abs_photo_path.startswith(project_dir):
+                                    images_to_delete.append(abs_photo_path)
+            except Exception as metadata_error:
+                logger.warning(f"Warnung: Konnte Metadaten nicht lesen: {metadata_error}")
+        
+        # Verzeichnisstruktur des Projekts durchsuchen
+        for root, dirs, files in os.walk(project_dir):
+            for file in files:
+                if file.lower().endswith(('.jpg', '.jpeg', '.png', '.gif')):
+                    file_path = os.path.join(root, file)
+                    images_to_delete.append(file_path)
+        
+        # Zuerst die einzelnen Bilddateien löschen
+        for image_path in images_to_delete:
+            try:
+                if os.path.exists(image_path) and os.path.isfile(image_path):
+                    os.remove(image_path)
+                    logger.debug(f"Gelöschtes Bild: {image_path}")
+            except Exception as image_error:
+                logger.warning(f"Warnung: Konnte Bild nicht löschen: {image_error}")
+        
+        # Dann das gesamte Projektverzeichnis löschen
         import shutil
         shutil.rmtree(project_dir)
+        logger.info(f"Projekt {project_id} und alle zugehörigen Dateien wurden gelöscht")
         
         return jsonify({"status": "success"})
     except Exception as e:
@@ -106,34 +164,14 @@ def delete_project(project_id):
 
 @api_bp.route('/devices')
 def get_devices():
-    """Liefert eine Liste aller erkannten Geräte"""
-    return jsonify(device_detector.get_devices())
-
-@api_bp.route('/generate_360', methods=['POST'])
-def generate_360():
-    """Generiert einen 360°-Viewer aus den aufgenommenen Bildern"""
+    """Liefert eine Liste aller erkannten Geräte."""
     try:
-        # Liste der Fotos nach Zeitstempel sortieren
-        photo_dir = 'static/photos'
-        photos = sorted([f for f in os.listdir(photo_dir) 
-                        if f.lower().endswith(('.jpg', '.jpeg', '.png'))])
-        
-        if not photos:
-            return jsonify({"error": "Keine Fotos gefunden"}), 400
-        
-        # Optionale Metadaten aus der Anfrage
-        metadata = request.get_json() if request.is_json else {}
-        
-        # 360°-Viewer generieren
-        viewer_url = viewer_generator.generate_viewer(photos, metadata)
-        
-        if viewer_url:
-            return jsonify({"status": "success", "url": viewer_url})
-        else:
-            return jsonify({"error": "Fehler beim Generieren des Viewers"}), 500
+        devices = device_detector.get_devices()
+        logger.debug(f"Erkannte Geräte: {devices}")
+        return jsonify(devices)
     except Exception as e:
-        logger.error(f"Fehler beim Generieren des 360°-Viewers: {e}")
-        return jsonify({"error": str(e)}), 500
+        logger.error(f"Fehler beim Abrufen der Geräte: {e}")
+        return jsonify({"error": "Fehler beim Abrufen der Geräte", "message": str(e)}), 500
 
 @api_bp.route('/camera_capabilities', methods=['GET'])
 def camera_capabilities():
@@ -186,9 +224,11 @@ def api_camera_status():
     
     if camera_controller:
         try:
-            test_image_path = os.path.join('static/temp', 'camera_test.jpg')
-            os.makedirs(os.path.dirname(test_image_path), exist_ok=True)
+            static_dir = os.path.abspath(os.path.join(current_app.root_path, '..', 'static'))
+            temp_dir = os.path.join(static_dir, 'temp')
+            os.makedirs(temp_dir, exist_ok=True)
             
+            test_image_path = os.path.join(temp_dir, 'camera_test.jpg')
             available = camera_controller.capture_photo(test_image_path)
         except Exception as e:
             logger.error(f"Fehler beim Testen der Kamera: {e}")

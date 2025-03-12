@@ -135,24 +135,38 @@ class ArduinoController:
             self.logger.debug("Motor ausgeschaltet")
         return success
 
-    def rotate_for_duration(self, duration_ms):
-        """
-        Dreht den Motor für eine bestimmte Zeit
+
+def rotate_for_duration(self, duration_ms):
+    """
+    Dreht den Motor für eine bestimmte Zeit
+    
+    Args:
+        duration_ms: Dauer in Millisekunden
         
-        Args:
-            duration_ms: Dauer in Millisekunden
-            
-        Returns:
-            True bei Erfolg, False bei Fehler
-        """
-        if not self.turn_motor_on():
+    Returns:
+        True bei Erfolg, False bei Fehler
+    """
+    # Validierung der Eingabe
+    try:
+        duration_ms = float(duration_ms)
+        if duration_ms <= 0 or duration_ms > 60000:  # Maximal 1 Minute
+            self.logger.error(f"Ungültige Drehzeit: {duration_ms} ms")
             return False
+    except (TypeError, ValueError):
+        self.logger.error(f"Ungültiger Wert für Drehzeit: {duration_ms}")
+        return False
+    
+    if not self.turn_motor_on():
+        return False
 
-        # Warten für die angegebene Dauer
-        time.sleep(duration_ms / 1000.0)
+    # Warten für die angegebene Dauer
+    time.sleep(duration_ms / 1000.0)
 
-        # Motor ausschalten
-        success = self.turn_motor_off()
-        if success:
-            self.logger.debug(f"Motor für {duration_ms} ms gedreht")
-        return success
+    # Motor ausschalten
+    success = self.turn_motor_off()
+    if success:
+        self.logger.debug(f"Motor für {duration_ms} ms gedreht")
+    return success
+
+
+

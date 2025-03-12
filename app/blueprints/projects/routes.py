@@ -1,16 +1,14 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-app/blueprints/projects/routes.py
-Enthält die Routen für die Projektverwaltung
-"""
-
+# Datei: app/blueprints/projects/routes.py
 import os
 import json
 import time
 import logging
 import uuid
-from flask import render_template, request, jsonify, redirect, url_for, send_from_directory
+import re
+from flask import (
+    render_template, request, jsonify, 
+    redirect, url_for, send_from_directory, abort
+)
 from app.blueprints.projects import projects_bp
 from app.models.project import Project, ProjectManager
 from app.models.photo_session import PhotoSession
@@ -26,36 +24,68 @@ path_manager = PathManager()
 # Projekt-Manager erstellen
 project_manager = ProjectManager(path_manager.projects_dir)
 
+def sanitize_project_image_path(image_path):
+    """
+    Bereinigt und normalisiert den Bildpfad
+    
+    Args:
+        image_path: Ursprünglicher Bildpfad
+    
+    Returns:
+        Bereinigter Bildpfad
+    """
+    # Entferne mehrfache aufeinanderfolgende statische Verzeichnisse
+    image_path = re.sub(r'^(static/)*', '', image_path)
+    
+    # Entferne Dopplungen von Projektpfaden
+    image_path = re.sub(r'^(projects/)+', '', image_path)
+    
+    # Entferne führende Projekt-ID-Dopplungen
+    parts = image_path.split('/')
+    if len(parts) > 2 and parts[0] == parts[1]:
+        image_path = '/'.join(parts[1:])
+    
+    return image_path
+
 @projects_bp.route('/')
 def projects_page():
     """Zeigt die Projektverwaltungsseite an"""
-    return render_template('projects.html')
+    try:
+        # Alle Projekte laden
+        projects = project_manager.get_all_projects()
+        return render_template('projects/index.html', projects=projects)
+    except Exception as e:
+        logger.error(f"Fehler bei der Projektliste: {e}")
+        return render_template('error.html', message=f"Fehler beim Laden der Projekte: {str(e)}"), 500
 
 @projects_bp.route('/create', methods=['GET', 'POST'])
 def create_project():
     """Erstellt ein neues Projekt"""
     if request.method == 'POST':
-        # Projektdaten aus dem Formular holen
-        name = request.form.get('name', f"Projekt {time.strftime('%Y-%m-%d %H:%M:%S')}")
-        description = request.form.get('description', '')
-        angle_step = int(request.form.get('angle_step', 15))
-        
-        # Neues Projekt erstellen
-        project = Project(
-            id=str(uuid.uuid4()),
-            name=name,
-            description=description,
-            angle_step=angle_step
-        )
-        
-        # Projekt speichern
-        project_manager.save_project(project)
-        
-        # Zur Projektseite weiterleiten
-        return redirect(url_for('projects.view_project', project_id=project.id))
+        try:
+            # Projektdaten aus dem Formular holen
+            name = request.form.get('name', f"Projekt {time.strftime('%Y-%m-%d %H:%M:%S')}")
+            description = request.form.get('description', '')
+            angle_step = int(request.form.get('angle_step', 15))
+            
+            # Neues Projekt erstellen
+            project = Project(
+                name=name,
+                description=description,
+                angle_step=angle_step
+            )
+            
+            # Projekt speichern
+            project_manager.save_project(project)
+            
+            # Zur Projektseite weiterleiten
+            return redirect(url_for('projects.view_project', project_id=project.id))
+        except Exception as e:
+            logger.error(f"Fehler bei der Projekterstellung: {e}")
+            return render_template('error.html', message=f"Fehler bei der Projekterstellung: {str(e)}"), 500
     
     # Formular zum Erstellen eines Projekts anzeigen
-    return render_template('project_create.html')
+    return render_template('projects/create.html')
 
 @projects_bp.route('/<project_id>')
 def view_project(project_id):
@@ -65,110 +95,99 @@ def view_project(project_id):
     Args:
         project_id: ID des Projekts
     """
-    # Projekt laden
-    project = project_manager.get_project(project_id)
-    
-    if not project:
-        # Wenn das Projekt nicht gefunden wurde, zur Projektliste weiterleiten
-        return redirect(url_for('projects.projects_page'))
-    
-    # Projekt anzeigen
-    return render_template('project_view.html', project=project)
+    try:
+        # Projekt laden
+        project = project_manager.get_project(project_id)
+        
+        if not project:
+            # Wenn das Projekt nicht gefunden wurde, zur Projektliste weiterleiten
+            logger.warning(f"Projekt nicht gefunden: {project_id}")
+            return redirect(url_for('projects.projects_page'))
+        
+        # Alle Bilder für das Projekt sammeln
+        project_images = []
+        for session in project.sessions:
+            for angle, photo_path in session.photos.items():
+                # Stelle sicher, dass der Pfad relativ ist
+                try:
+                    # Versuche, einen relativen Pfad zu erstellen
+                    relative_path = os.path.relpath(
+                        photo_path, 
+                        start=os.path.join(path_manager.base_dir, 'static')
+                    )
+                    
+                    # Korrigiere Pfad-Separator
+                    relative_path = relative_path.replace(os.sep, '/')
+                    
+                    project_images.append({
+                        'angle': angle,
+                        'path': relative_path
+                    })
+                except Exception as path_error:
+                    logger.warning(f"Fehler bei Bildpfadverarbeitung: {path_error}")
+        
+        # Projekt anzeigen
+        return render_template('projects/view.html', 
+                               project=project, 
+                               images=project_images)
+    except Exception as e:
+        logger.error(f"Fehler beim Anzeigen des Projekts {project_id}: {e}")
+        return render_template('error.html', 
+                               message=f"Fehler beim Anzeigen des Projekts: {str(e)}"), 500
 
-@projects_bp.route('/<project_id>/edit', methods=['GET', 'POST'])
-def edit_project(project_id):
+@projects_bp.route('/image/<path:image_path>')
+def serve_project_image(image_path):
     """
-    Bearbeitet ein Projekt
+    Liefert ein Projektbild aus
     
     Args:
-        project_id: ID des Projekts
+        image_path: Relativer Pfad zum Bild
     """
-    # Projekt laden
-    project = project_manager.get_project(project_id)
-    
-    if not project:
-        # Wenn das Projekt nicht gefunden wurde, zur Projektliste weiterleiten
-        return redirect(url_for('projects.projects_page'))
-    
-    if request.method == 'POST':
-        # Projektdaten aus dem Formular holen
-        project.name = request.form.get('name', project.name)
-        project.description = request.form.get('description', project.description)
-        project.angle_step = int(request.form.get('angle_step', project.angle_step))
+    try:
+        # Bereinige den Bildpfad
+        clean_image_path = sanitize_project_image_path(image_path)
         
-        # Projekt speichern
-        project_manager.save_project(project)
+        # Basis-Verzeichnis für statische Dateien
+        static_dir = os.path.join(path_manager.base_dir, 'static')
         
-        # Zur Projektseite weiterleiten
-        return redirect(url_for('projects.view_project', project_id=project.id))
-    
-    # Formular zum Bearbeiten des Projekts anzeigen
-    return render_template('project_edit.html', project=project)
-
-@projects_bp.route('/<project_id>/capture', methods=['GET', 'POST'])
-def capture_session(project_id):
-    """
-    Startet eine Aufnahmesession für ein Projekt
-    
-    Args:
-        project_id: ID des Projekts
-    """
-    # Projekt laden
-    project = project_manager.get_project(project_id)
-    
-    if not project:
-        # Wenn das Projekt nicht gefunden wurde, zur Projektliste weiterleiten
-        return redirect(url_for('projects.projects_page'))
-    
-    if request.method == 'POST':
-        # Prüfen, ob die Controller initialisiert sind
-        if not arduino_controller or not arduino_controller.is_connected():
-            return render_template('capture.html', project=project, 
-                                 error="Arduino ist nicht verbunden.")
+        # Vollständiger Pfad zur Bilddatei
+        full_path = os.path.normpath(os.path.join(static_dir, clean_image_path))
         
-        if not camera_controller:
-            return render_template('capture.html', project=project, 
-                                 error="Kamera-Controller ist nicht initialisiert.")
+        # Sicherheitsüberprüfung: Stelle sicher, dass der Pfad innerhalb des statischen Verzeichnisses liegt
+        if not full_path.startswith(static_dir):
+            logger.warning(f"Ungültiger Bildpfad angefordert: {full_path}")
+            abort(403)  # Verboten
         
-        if not turntable_controller:
-            return render_template('capture.html', project=project, 
-                                 error="Drehteller-Controller ist nicht initialisiert.")
-        
-        try:
-            # Neue Session erstellen
-            session_id = str(uuid.uuid4())
-            session_name = request.form.get('session_name', f"Session {time.strftime('%Y-%m-%d %H:%M')}")
+        # Sicherstellen, dass die Datei existiert
+        if not os.path.exists(full_path):
+            logger.warning(f"Bild nicht gefunden: {full_path}")
             
-            session = PhotoSession(
-                id=session_id,
-                name=session_name,
-                timestamp=time.time(),
-                angle_step=project.angle_step
-            )
+            # Versuche alternative Pfade
+            alternative_paths = [
+                os.path.join(path_manager.base_dir, 'static', 'projects', clean_image_path),
+                os.path.join(path_manager.base_dir, 'static', clean_image_path)
+            ]
             
-            # Session zum Projekt hinzufügen
-            project.add_session(session)
-            
-            # Session starten
-            if turntable_controller.start_session(project, camera_controller):
-                # Projekt speichern
-                project_manager.save_project(project)
-                
-                # Zur Projektseite weiterleiten
-                return redirect(url_for('projects.view_project', project_id=project.id))
+            for alt_path in alternative_paths:
+                if os.path.exists(alt_path):
+                    full_path = alt_path
+                    break
             else:
-                return render_template('capture.html', project=project, 
-                                     error="Fehler beim Starten der Aufnahmesession.")
-                
-        except Exception as e:
-            logger.error(f"Fehler bei der Aufnahmesession: {e}")
-            return render_template('capture.html', project=project, 
-                                 error=f"Fehler: {str(e)}")
-    
-    # Formular zum Starten einer Aufnahmesession anzeigen
-    return render_template('capture.html', project=project)
+                logger.error(f"Kein alternatives Bild gefunden für: {clean_image_path}")
+                abort(404)
+        
+        # Verzeichnis und Dateiname extrahieren
+        directory = os.path.dirname(full_path)
+        filename = os.path.basename(full_path)
+        
+        # Bild senden
+        return send_from_directory(directory, filename)
+    except Exception as e:
+        logger.error(f"Fehler beim Bereitstellen des Bildes: {e}")
+        return render_template('error.html', 
+                               message=f"Fehler beim Laden des Bildes: {str(e)}"), 500
 
-@projects_bp.route('/<project_id>/delete')
+@projects_bp.route('/<project_id>/delete', methods=['GET', 'POST'])
 def delete_project(project_id):
     """
     Löscht ein Projekt
@@ -176,90 +195,20 @@ def delete_project(project_id):
     Args:
         project_id: ID des Projekts
     """
-    # Projekt löschen
-    project_manager.delete_project(project_id)
-    
-    # Zur Projektliste weiterleiten
-    return redirect(url_for('projects.projects_page'))
-
-@projects_bp.route('/image/<project_id>/<path:image_path>')
-def get_project_image(project_id, image_path):
-    """
-    Liefert ein Projektbild
-    
-    Args:
-        project_id: ID des Projekts
-        image_path: Pfad zum Bild innerhalb des Projekts
-    """
-    project_dir = os.path.join(path_manager.projects_dir, project_id)
-    directory = os.path.dirname(os.path.join(project_dir, image_path))
-    filename = os.path.basename(image_path)
-    
-    return send_from_directory(directory, filename)
-
-@projects_bp.route('/<project_id>/add_rotation', methods=['POST'])
-def add_rotation_to_project(project_id):
-    """
-    Fügt eine Rotation zum Projekt hinzu
-    
-    Args:
-        project_id: ID des Projekts
-    """
-    # Projekt laden
-    project = project_manager.get_project(project_id)
-    
-    if not project:
-        return jsonify({"error": "Projekt nicht gefunden"}), 404
-    
     try:
-        # Drehwinkel aus der Anfrage holen
-        degrees = int(request.form.get('degrees', 15))
+        # Projekt löschen
+        success = project_manager.delete_project(project_id)
         
-        # Drehteller rotieren
-        if arduino_controller and arduino_controller.is_connected():
-            arduino_controller.rotate_for_duration(degrees / 0.8 * 1000)  # 0,8 Grad pro Sekunde
+        if success:
+            logger.info(f"Projekt erfolgreich gelöscht: {project_id}")
+            return redirect(url_for('projects.projects_page'))
         else:
-            # Simulierte Rotation
-            logger.info(f"Simulierte Rotation: {degrees} Grad")
-            
-        # Foto aufnehmen
-        timestamp = int(time.time())
-        filename = f"angle_{degrees:03d}_{timestamp}.jpg"
-        photo_path = None
-        
-        if camera_controller:
-            # Speicherpfad für das Foto
-            photo_path = os.path.join(path_manager.get_project_path(project_id), "images", filename)
-            
-            # Stelle sicher, dass das Verzeichnis existiert
-            os.makedirs(os.path.dirname(photo_path), exist_ok=True)
-            
-            # Foto aufnehmen
-            success = camera_controller.capture_photo(photo_path)
-            
-            if not success:
-                return jsonify({"error": "Fehler beim Aufnehmen des Fotos"}), 500
-        else:
-            # Simuliertes Foto
-            from app.utils.webcam_simulator import webcam_simulator
-            photo_path = webcam_simulator.capture_photo(filename)
-            
-            # Kopiere das Foto in das Projektverzeichnis
-            import shutil
-            target_path = os.path.join(path_manager.get_project_path(project_id), "images", filename)
-            os.makedirs(os.path.dirname(target_path), exist_ok=True)
-            shutil.copy(photo_path, target_path)
-            photo_path = target_path
-        
-        # Relativen Pfad zum Foto zurückgeben
-        rel_path = os.path.relpath(photo_path, path_manager.base_dir)
-        
-        return jsonify({
-            "status": "success",
-            "photo_path": f"/{rel_path.replace(os.sep, '/')}",
-            "degrees": degrees
-        })
-        
+            logger.warning(f"Projekt konnte nicht gelöscht werden: {project_id}")
+            return render_template('error.html', 
+                                   message=f"Projekt {project_id} konnte nicht gelöscht werden."), 500
     except Exception as e:
-        logger.error(f"Fehler beim Hinzufügen einer Rotation: {e}")
-        return jsonify({"error": str(e)}), 500
+        logger.error(f"Fehler beim Löschen des Projekts {project_id}: {e}")
+        return render_template('error.html', 
+                               message=f"Fehler beim Löschen des Projekts: {str(e)}"), 500
+
+# Zusätzliche Routen können hier hinzugefügt werden
