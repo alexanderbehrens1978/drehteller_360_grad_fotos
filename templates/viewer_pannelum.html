@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>360° Viewer (Pannellum) - 360° Drehteller Steuerung</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="https://cdn.pannellum.org/2.5/pannellum.css">
+    <style>
+        #panorama {
+            width: 100%;
+            height: 500px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="d-flex align-items-center">
+                <h1><a href="{{ url_for('main.index') }}">360° Drehteller Steuerung</a></h1>
+                <nav>
+                    <a href="{{ url_for('main.index') }}">Startseite</a>
+                    <a href="{{ url_for('projects.projects_page') }}">Projekte</a>
+                    <a href="{{ url_for('settings.settings') }}">Einstellungen</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="card">
+            <h2>360° Viewer - Pannellum</h2>
+            
+            <div class="form-group mb-4">
+                <label for="project-selector">Projekt auswählen:</label>
+                <select id="project-selector" class="form-control">
+                    <option value="">Bitte wählen...</option>
+                    {% for project in projects %}
+                    <option value="{{ project.id }}">{{ project.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div id="panorama"></div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 360° Drehteller Steuerung | Alexander Behrens | <a href="https://www.alexanderbehrens.com" target="_blank">www.alexanderbehrens.com</a></p>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/jquery-3.6.0.min.js') }}"></script>
+    <script src="https://cdn.pannellum.org/2.5/pannellum.js"></script>
+    <script src="{{ url_for('static', filename='js/viewer_pannellum.js') }}"></script>
+</body>
+</html>

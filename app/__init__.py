@@ -41,6 +41,8 @@ def create_app(config_name=None):
     app.config.from_object('app.config.DevelopmentConfig')
     if config_name == 'production':
         app.config.from_object('app.config.ProductionConfig')
+        # Debug-Modus in Produktion deaktivieren
+        app.config['DEBUG'] = False
     elif config_name == 'testing':
         app.config.from_object('app.config.TestingConfig')
     
@@ -56,39 +58,18 @@ def create_app(config_name=None):
     # Blueprints registrieren
     register_blueprints(app)
     
-    # Jinja-Filter für die Formatierung von Zeitstempeln
-    @app.template_filter('datetime')
-    def format_datetime(timestamp):
-        """Formatiert einen Zeitstempel als lesbares Datum"""
-        from datetime import datetime
-        date = datetime.fromtimestamp(timestamp)
-        return date.strftime('%d.%m.%Y %H:%M')
-    
-    # Sicherheits-Header hinzufügen
-    @app.after_request
-    def add_security_headers(response):
-        """Fügt Sicherheits-Header zu allen Antworten hinzu"""
-        # Schutz vor Clickjacking
-        response.headers['X-Frame-Options'] = 'SAMEORIGIN'
-        # Aktivieren der XSS-Filterung im Browser
-        response.headers['X-XSS-Protection'] = '1; mode=block'
-        # Verhindern von MIME-Typ-Sniffing
-        response.headers['X-Content-Type-Options'] = 'nosniff'
-        # Content-Security-Policy - weniger restriktiv für Entwicklung
-        response.headers['Content-Security-Policy'] = (
-            "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
-            "style-src 'self' 'unsafe-inline'; "
-            "img-src 'self' data:; "
-            "connect-src 'self'"
-        )
-        return response
+    # Globale Routen direkt auf Anwendungsebene registrieren
+    register_global_routes(app)
     
     return app
 
 def create_directories():
     """Stellt sicher, dass alle erforderlichen Verzeichnisse existieren"""
     path_manager.ensure_directories()
+    
+    # Dokumentationsverzeichnis erstellen
+    doc_dir = os.path.join(path_manager.base_dir, 'doc')
+    os.makedirs(doc_dir, exist_ok=True)
 
 def initialize_controllers():
     """Initialisiert die gemeinsam genutzten Controller"""
@@ -154,3 +135,105 @@ def register_blueprints(app):
     # Blueprint für Projektverwaltung
     from app.blueprints.projects import projects_bp
     app.register_blueprint(projects_bp, url_prefix='/projects')
+
+def register_global_routes(app):
+    """Registriert globale Routen direkt auf Anwendungsebene"""
+    from app.utils.config_manager import config_manager
+    from app.utils.viewer_generator import viewer_generator
+    from flask import request, jsonify
+    import os
+    
+    @app.route('/get_config')
+    def get_config():
+        """Gibt die aktuelle Konfiguration zurück"""
+        return jsonify(config_manager.config)
+    
+    @app.route('/save_config', methods=['POST'])
+    def save_config():
+        """Speichert die Konfiguration"""
+        try:
+            # Prüfen, ob JSON-Daten empfangen wurden
+            if not request.is_json:
+                return jsonify({
+                    "status": "error",
+                    "message": "Keine JSON-Daten empfangen. Content-Type muss application/json sein."
+                }), 400
+
+            # JSON-Daten abrufen
+            new_config = request.json
+
+            if not new_config:
+                return jsonify({
+                    "status": "error",
+                    "message": "Leere Konfigurationsdaten empfangen"
+                }), 400
+
+            # Konfigurationsdaten ausgeben für Debugging
+            app.logger.debug(f"Empfangene Konfiguration: {new_config}")
+
+            # Versuchen, die Konfiguration zu speichern
+            try:
+                # Konfiguration mit bestehender Konfiguration zusammenführen
+                merged_config = {}
+
+                # Erst die bestehende Konfiguration kopieren
+                for key, value in config_manager.config.items():
+                    merged_config[key] = value
+
+                # Dann die neue Konfiguration einarbeiten (rekursiv)
+                def recursive_update(target, source):
+                    for key, value in source.items():
+                        if isinstance(value, dict) and key in target and isinstance(target[key], dict):
+                            recursive_update(target[key], value)
+                        else:
+                            target[key] = value
+
+                recursive_update(merged_config, new_config)
+
+                # Aktualisierte Konfiguration speichern
+                config_manager.config = merged_config
+
+                # In Datei speichern
+                config_manager.save_config(merged_config)
+
+                app.logger.debug(f"Konfiguration gespeichert in: {config_manager.config_path}")
+                return jsonify({"status": "success"})
+            except Exception as config_error:
+                app.logger.error(f"Fehler beim Speichern der Konfiguration: {config_error}")
+                return jsonify({
+                    "status": "error",
+                    "message": f"Fehler beim Speichern: {str(config_error)}"
+                }), 500
+
+        except Exception as e:
+            app.logger.error(f"Allgemeiner Fehler beim Speichern der Konfiguration: {e}")
+            return jsonify({
+                "status": "error",
+                "message": f"Allgemeiner Fehler: {str(e)}"
+            }), 500
+            
+    @app.route('/generate_360', methods=['POST'])
+    def generate_360():
+        """Generiert einen 360°-Viewer aus den aufgenommenen Bildern."""
+        try:
+            # Liste der Fotos nach Zeitstempel sortieren
+            photo_dir = os.path.join(app.static_folder, 'photos')
+            photos = sorted([f for f in os.listdir(photo_dir)
+                            if f.lower().endswith(('.jpg', '.jpeg', '.png'))])
+
+            if not photos:
+                return jsonify({"error": "Keine Fotos gefunden"}), 400
+
+            # Optionale Metadaten aus der Anfrage
+            metadata = request.get_json() if request.is_json else {}
+
+            # 360°-Viewer generieren
+            viewer_url = viewer_generator.generate_viewer(photos, metadata)
+
+            if viewer_url:
+                return jsonify({"status": "success", "url": viewer_url})
+            else:
+                return jsonify({"error": "Fehler beim Generieren des Viewers"}), 500
+        except Exception as e:
+            app.logger.error(f"Fehler beim Generieren des 360°-Viewers: {e}")
+            return jsonify({"error": str(e)}), 500

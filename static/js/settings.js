@@ -1,133 +1,94 @@
-/**
- * settings.js
- * JavaScript für die Einstellungsseite
- */
+// Dateipfad: static/js/settings.js
+// Funktionen für die Einstellungsseite
 
 document.addEventListener('DOMContentLoaded', function() {
-    const settingsForm = document.getElementById('settingsForm');
-    const statusMessage = document.getElementById('statusMessage');
-    
-    // Aktuelle Konfiguration laden
-    loadConfig();
-    
-    // Formular absenden
-    if (settingsForm) {
-        settingsForm.addEventListener('submit', saveConfig);
+    // Überprüfen, ob jQuery verfügbar ist
+    if (typeof jQuery === 'undefined') {
+        console.error('jQuery ist nicht geladen. Bitte fügen Sie jQuery-Bibliothek hinzu.');
+        return;
     }
-});
 
-// Konfiguration laden
-function loadConfig() {
-    fetch('/get_config')
-        .then(response => response.json())
-        .then(config => {
-            setFormValues(config);
-        })
-        .catch(error => {
-            console.error('Fehler beim Laden der Konfiguration:', error);
-            showStatus('Fehler beim Laden der Konfiguration. Bitte versuchen Sie es später erneut.', 'error');
-        });
-}
+    // Einstellungen laden
+    $.getJSON('/settings/get_config', function(config) {
+        console.log('Konfiguration geladen:', config);
+        
+        // Kamera-Einstellungen
+        $('#camera-type').val(config.camera.type);
+        $('#camera-device').val(config.camera.device_path);
+        $('#camera-width').val(config.camera.resolution.width);
+        $('#camera-height').val(config.camera.resolution.height);
 
-// Formularwerte setzen
-function setFormValues(config) {
-    // Kamera-Einstellungen
-    setInputValue('cameraType', config?.camera?.type);
-    setInputValue('cameraPath', config?.camera?.device_path);
-    setInputValue('resolutionWidth', config?.camera?.resolution?.width);
-    setInputValue('resolutionHeight', config?.camera?.resolution?.height);
-    
-    // Arduino-Einstellungen
-    setInputValue('arduinoPort', config?.arduino?.port);
-    setInputValue('arduinoBaudrate', config?.arduino?.baudrate);
-    
-    // Drehteller-Einstellungen
-    setInputValue('defaultDegrees', config?.rotation?.default_degrees);
-    setInputValue('defaultInterval', config?.rotation?.default_interval);
-    
-    // Simulator-Einstellungen
-    setInputValue('simulatorEnabled', config?.simulator?.enabled);
-}
+        // Arduino-Einstellungen
+        $('#arduino-port').val(config.arduino.port);
+        $('#arduino-baudrate').val(config.arduino.baudrate);
 
-// Inputwert setzen (mit Fallback für Checkboxen)
-function setInputValue(id, value) {
-    const element = document.getElementById(id);
-    if (!element) return;
-    
-    if (element.type === 'checkbox') {
-        element.checked = Boolean(value);
-    } else {
-        element.value = value !== undefined ? value : '';
-    }
-}
-
-// Konfiguration speichern
-function saveConfig(event) {
-    event.preventDefault();
-    
-    // Formulardaten sammeln
-    const formData = new FormData(event.target);
-    const configData = {};
-    
-    // FormData in verschachtelte Objekte umwandeln
-    formData.forEach((value, key) => {
-        // Checkbox-Werte in boolesche Werte umwandeln
-        if (key === 'simulator.enabled') {
-            value = document.getElementById('simulatorEnabled').checked;
+        // Drehteller-Einstellungen
+        $('#default-angle').val(config.rotation.default_degrees);
+        $('#default-interval').val(config.rotation.default_interval);
+        
+        // Prüfen, ob default_duration existiert
+        if (config.rotation.default_duration !== undefined) {
+            $('#default-duration').val(config.rotation.default_duration);
         }
         
-        // Zahlen in numerische Werte umwandeln
-        if (key.includes('resolution') || key.includes('degrees') || key.includes('interval') || key.includes('baudrate')) {
-            value = Number(value);
-        }
-        
-        // Punkt-Notation in verschachtelte Objekte umwandeln
-        const keys = key.split('.');
-        let current = configData;
-        
-        for (let i = 0; i < keys.length - 1; i++) {
-            if (!current[keys[i]]) {
-                current[keys[i]] = {};
-            }
-            current = current[keys[i]];
-        }
-        
-        current[keys[keys.length - 1]] = value;
-    });
-    
-    // Konfiguration speichern
-    fetch('/save_config', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(configData)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            showStatus('Einstellungen erfolgreich gespeichert!', 'success');
+        // Rotationsmodus einstellen, wenn verfügbar
+        if (config.rotation.mode === 'time') {
+            $('#time-mode').prop('checked', true);
         } else {
-            showStatus('Fehler beim Speichern der Einstellungen: ' + (data.message || 'Unbekannter Fehler'), 'error');
+            $('#angle-mode').prop('checked', true);
         }
-    })
-    .catch(error => {
-        console.error('Fehler beim Speichern der Konfiguration:', error);
-        showStatus('Fehler beim Speichern der Konfiguration. Bitte versuchen Sie es später erneut.', 'error');
+    }).fail(function(jqXHR, textStatus, errorThrown) {
+        console.error('Fehler beim Laden der Einstellungen:', textStatus, errorThrown);
+        alert('Fehler beim Laden der Einstellungen: ' + textStatus);
     });
-}
 
-// Statusmeldung anzeigen
-function showStatus(message, type) {
-    const statusMessage = document.getElementById('statusMessage');
-    if (!statusMessage) return;
-    
-    statusMessage.textContent = message;
-    statusMessage.className = 'status-message status-' + type;
-    statusMessage.style.display = 'block';
-    
-    // Nach 5 Sekunden ausblenden
-    setTimeout(() => {
-        statusMessage.style.display = 'none';
-    }, 5000);
-}
+    // Einstellungen speichern
+    $('#settings-form').on('submit', function(e) {
+        e.preventDefault();
+        console.log('Formular wird übermittelt');
+
+        // Neue Konfiguration erstellen
+        const newConfig = {
+            camera: {
+                type: $('#camera-type').val(),
+                device_path: $('#camera-device').val(),
+                resolution: {
+                    width: parseInt($('#camera-width').val()) || 1920,
+                    height: parseInt($('#camera-height').val()) || 1080
+                }
+            },
+            arduino: {
+                port: $('#arduino-port').val(),
+                baudrate: parseInt($('#arduino-baudrate').val()) || 9600
+            },
+            rotation: {
+                mode: $('input[name="rotation-mode"]:checked').val() || 'angle',
+                default_degrees: parseInt($('#default-angle').val()) || 15,
+                default_interval: parseInt($('#default-interval').val()) || 5,
+                default_duration: parseInt($('#default-duration').val()) || 2
+            }
+        };
+
+        console.log('Neue Konfiguration zum Speichern:', newConfig);
+
+        // Konfiguration an den Server senden
+        $.ajax({
+            url: '/settings/save_config',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(newConfig),
+            success: function(response) {
+                console.log('Server-Antwort:', response);
+                if (response.status === 'success') {
+                    alert('Einstellungen wurden erfolgreich gespeichert.');
+                } else {
+                    alert('Fehler beim Speichern der Einstellungen: ' + response.message);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX-Fehler:', xhr.responseText, status, error);
+                alert('Fehler beim Speichern der Einstellungen: ' + error);
+            }
+        });
+    });
+});

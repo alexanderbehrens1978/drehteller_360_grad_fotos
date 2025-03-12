@@ -1,98 +1,37 @@
-/* Stile für die Einstellungsseite */
-.settings-container {
-    background: var(--card-color);
-    padding: 1.5rem;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    max-width: 800px;
-    margin: 0 auto;
+/* Spezifische Stilregeln für die Einstellungsseite */
+.form-group {
+    margin-bottom: 15px;
 }
 
-.settings-group {
-    margin-bottom: 2rem;
-    padding-bottom: 1.5rem;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.settings-group:last-child {
-    border-bottom: none;
-    padding-bottom: 0;
-}
-
-.settings-group h2 {
-    margin-top: 0;
-    margin-bottom: 1rem;
-    font-size: 1.5rem;
-}
-
-.setting-row {
-    display: flex;
-    margin-bottom: 1rem;
-    align-items: center;
-}
-
-.setting-label {
-    flex: 1;
+.form-group label {
+    display: block;
     font-weight: bold;
+    margin-bottom: 5px;
 }
 
-.setting-control {
-    flex: 2;
+.form-group .form-text {
+    font-size: 0.85em;
+    color: #6c757d;
+    margin-top: 5px;
 }
 
-.setting-description {
-    font-size: 0.9rem;
-    color: var(--light-text);
-    margin-top: 0.3rem;
-}
-
-.save-btn {
-    background-color: var(--success-color);
-    color: white;
-    padding: 0.7rem 1.5rem;
-    border: none;
+input[type="text"],
+input[type="number"],
+select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ced4da;
     border-radius: 4px;
-    cursor: pointer;
-    font-size: 1rem;
-    margin-top: 1rem;
-    transition: background-color 0.3s;
 }
 
-.save-btn:hover {
-    background-color: #219653;
+/* Radio Button Styling */
+input[type="radio"] {
+    margin-right: 5px;
 }
 
-.status-message {
-    padding: 1rem;
-    margin: 1rem 0;
-    border-radius: 4px;
-    display: none;
-}
-
-.status-success {
-    background-color: #d4edda;
-    color: #155724;
-    border: 1px solid #c3e6cb;
-}
-
-.status-error {
-    background-color: #f8d7da;
-    color: #721c24;
-    border: 1px solid #f5c6cb;
-}
-
-/* Responsive Design */
+/* Responsive Anpassungen */
 @media (max-width: 768px) {
-    .setting-row {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    
-    .setting-label, .setting-control {
+    .col-md-6 {
         width: 100%;
-    }
-    
-    .setting-label {
-        margin-bottom: 0.5rem;
     }
 }

@@ -26,8 +26,10 @@ class ConfigManager:
             'baudrate': 9600
         },
         'rotation': {
+            'mode': 'angle',
             'default_degrees': 15,
-            'default_interval': 5
+            'default_interval': 5,
+            'default_duration': 2
         },
         'simulator': {
             'enabled': True
@@ -173,6 +175,4 @@ class ConfigManager:
             self.logger.error(f"Fehler beim Abrufen des Konfigurationswerts: {str(e)}")
             return default
 
-
-# Globale Instanz des ConfigManager erstellen
 config_manager = ConfigManager()

@@ -3,209 +3,371 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Projektverwaltung - 360° Drehteller Steuerung</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 0;
-            color: #333;
-        }
-        
-        header {
-            background-color: #2c3e50;
-            color: white;
-            padding: 1rem 2rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        
-        h1 {
-            margin: 0;
-        }
-        
-        nav {
-            margin-top: 1rem;
-        }
-        
-        nav a {
-            color: white;
-            margin-right: 1rem;
-            text-decoration: none;
-        }
-        
-        nav a:hover {
-            text-decoration: underline;
-        }
-        
-        main {
-            max-width: 1200px;
-            margin: 2rem auto;
-            padding: 0 1rem;
-        }
-        
-        .module-info {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            margin-bottom: 2rem;
-        }
-        
-        .method {
-            background: #f8f9fa;
-            padding: 1.5rem;
-            border-radius: 8px;
-            margin-bottom: 1.5rem;
-            border-left: 4px solid #3498db;
-        }
-        
-        .method h3 {
-            margin-top: 0;
-            color: #2c3e50;
-        }
-        
-        .method-signature {
-            font-family: monospace;
-            background: #eee;
-            padding: 0.5rem;
-            border-radius: 4px;
-            margin-bottom: 1rem;
-        }
-        
-        .method-description {
-            margin-bottom: 1rem;
-        }
-        
-        .parameter, .return-value {
-            margin-bottom: 0.5rem;
-        }
-        
-        .parameter-name, .return-label {
-            font-weight: bold;
-        }
-        
-        footer {
-            text-align: center;
-            padding: 1rem;
-            background-color: #2c3e50;
-            color: white;
-            margin-top: 2rem;
-        }
-    </style>
+    <title>Dokumentation: Projektmodul</title>
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/documentation.css">
 </head>
 <body>
-    <header>
-        <h1>Projektverwaltung</h1>
-        <nav>
-            <a href="index.html">Zurück zur Übersicht</a>
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="index.html">Dokumentation</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Projektmodul</li>
+            </ol>
         </nav>
-    </header>
-    
-    <main>
-        <div class="module-info">
-            <h2>ProjectsBlueprint</h2>
-            <p>Routen für die Projektverwaltung</p>
-            <p><strong>Datei:</strong> /app/blueprints/projects/routes.py</p>
-        </div>
+
+        <h1>Projektmodul (app/blueprints/projects)</h1>
         
-        <h2>Routen</h2>
+        <section id="overview">
+            <h2>Übersicht</h2>
+            <p>
+                Das Projektmodul verwaltet die 360°-Fotoprojekte der Anwendung. Es ermöglicht die Erstellung, 
+                Bearbeitung, Anzeige und Löschung von Projekten sowie die Durchführung von Aufnahmesessions und
+                den Export der Projekte in verschiedenen Formaten.
+            </p>
+            <p>
+                Das Modul ist als Flask-Blueprint implementiert und besteht aus mehreren Komponenten:
+            </p>
+            <ul>
+                <li>Routen für die Projektverwaltung (app/blueprints/projects/routes.py)</li>
+                <li>Projektmodell (app/models/project.py)</li>
+                <li>Fotosession-Modell (app/models/photo_session.py)</li>
+                <li>HTML-Templates (templates/project_*.html)</li>
+                <li>JavaScript und CSS für die Benutzeroberfläche</li>
+            </ul>
+        </section>
+
+        <section id="routes">
+            <h2>Routen und Funktionen</h2>
+            
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">projects_page()</h3>
+                    <code class="route">Route: /projects/</code>
+                </div>
+                <div class="card-body">
+                    <p>Zeigt die Projektverwaltungsseite an.</p>
+                    <h4>Parameter:</h4>
+                    <p>Keine</p>
+                    <h4>Rückgabewert:</h4>
+                    <p>Gerenderte HTML-Seite (projects.html)</p>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">create_project()</h3>
+                    <code class="route">Route: /projects/create</code>
+                </div>
+                <div class="card-body">
+                    <p>Erstellt ein neues Projekt oder zeigt das Formular zum Erstellen an.</p>
+                    <h4>Parameter:</h4>
+                    <p>Keine</p>
+                    <h4>Formularfelder (POST):</h4>
+                    <ul>
+                        <li><code>name</code>: Name des Projekts</li>
+                        <li><code>description</code>: Beschreibung des Projekts</li>
+                        <li><code>angle_step</code>: Winkelschritt in Grad</li>
+                    </ul>
+                    <h4>Rückgabewert:</h4>
+                    <p>Bei GET: Gerenderte HTML-Seite (project_create.html)</p>
+                    <p>Bei erfolgreichem POST: Weiterleitung zur Projektansicht</p>
+                    <p>Bei Fehler: Gerenderte HTML-Seite mit Fehlermeldung</p>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">view_project(project_id)</h3>
+                    <code class="route">Route: /projects/&lt;project_id&gt;</code>
+                </div>
+                <div class="card-body">
+                    <p>Zeigt ein Projekt an.</p>
+                    <h4>Parameter:</h4>
+                    <ul>
+                        <li><code>project_id</code>: ID des Projekts</li>
+                    </ul>
+                    <h4>Rückgabewert:</h4>
+                    <p>Gerenderte HTML-Seite (project_view.html) oder Weiterleitung zur Projektliste, wenn das Projekt nicht gefunden wird</p>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">view_project_360(project_id)</h3>
+                    <code class="route">Route: /projects/&lt;project_id&gt;/viewer</code>
+                </div>
+                <div class="card-body">
+                    <p>Zeigt die 360°-Ansicht eines Projekts an.</p>
+                    <h4>Parameter:</h4>
+                    <ul>
+                        <li><code>project_id</code>: ID des Projekts</li>
+                    </ul>
+                    <h4>Rückgabewert:</h4>
+                    <p>Gerenderte HTML-Seite (project_viewer.html) mit JavaScript-Daten für den Viewer</p>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">edit_project(project_id)</h3>
+                    <code class="route">Route: /projects/&lt;project_id&gt;/edit</code>
+                </div>
+                <div class="card-body">
+                    <p>Bearbeitet ein Projekt oder zeigt das Formular zum Bearbeiten an.</p>
+                    <h4>Parameter:</h4>
+                    <ul>
+                        <li><code>project_id</code>: ID des Projekts</li>
+                    </ul>
+                    <h4>Formularfelder (POST):</h4>
+                    <ul>
+                        <li><code>name</code>: Name des Projekts</li>
+                        <li><code>description</code>: Beschreibung des Projekts</li>
+                        <li><code>angle_step</code>: Winkelschritt in Grad</li>
+                    </ul>
+                    <h4>Rückgabewert:</h4>
+                    <p>Bei GET: Gerenderte HTML-Seite (project_edit.html)</p>
+                    <p>Bei erfolgreichem POST: Weiterleitung zur Projektansicht</p>
+                    <p>Bei Fehler: Gerenderte HTML-Seite mit Fehlermeldung</p>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">capture_session(project_id)</h3>
+                    <code class="route">Route: /projects/&lt;project_id&gt;/capture</code>
+                </div>
+                <div class="card-body">
+                    <p>Startet eine Aufnahmesession für ein Projekt oder zeigt das Formular zum Starten an.</p>
+                    <h4>Parameter:</h4>
+                    <ul>
+                        <li><code>project_id</code>: ID des Projekts</li>
+                    </ul>
+                    <h4>Formularfelder (POST):</h4>
+                    <ul>
+                        <li><code>session_name</code>: Name der Session</li>
+                    </ul>
+                    <h4>Rückgabewert:</h4>
+                    <p>Bei GET: Gerenderte HTML-Seite (capture.html)</p>
+                    <p>Bei erfolgreichem POST: Weiterleitung zur Projektansicht</p>
+                    <p>Bei Fehler: Gerenderte HTML-Seite mit Fehlermeldung</p>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">delete_project(project_id)</h3>
+                    <code class="route">Route: /projects/&lt;project_id&gt;/delete</code>
+                </div>
+                <div class="card-body">
+                    <p>Löscht ein Projekt.</p>
+                    <h4>Parameter:</h4>
+                    <ul>
+                        <li><code>project_id</code>: ID des Projekts</li>
+                    </ul>
+                    <h4>Rückgabewert:</h4>
+                    <p>Weiterleitung zur Projektliste</p>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">get_project_image(project_id, image_path)</h3>
+                    <code class="route">Route: /projects/image/&lt;project_id&gt;/&lt;path:image_path&gt;</code>
+                </div>
+                <div class="card-body">
+                    <p>Liefert ein Projektbild.</p>
+                    <h4>Parameter:</h4>
+                    <ul>
+                        <li><code>project_id</code>: ID des Projekts</li>
+                        <li><code>image_path</code>: Pfad zum Bild innerhalb des Projekts</li>
+                    </ul>
+                    <h4>Rückgabewert:</h4>
+                    <p>Bilddatei</p>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">add_rotation_to_project(project_id)</h3>
+                    <code class="route">Route: /projects/&lt;project_id&gt;/add_rotation</code>
+                </div>
+                <div class="card-body">
+                    <p>Fügt eine Rotation zum Projekt hinzu (dreht und fotografiert).</p>
+                    <h4>Parameter:</h4>
+                    <ul>
+                        <li><code>project_id</code>: ID des Projekts</li>
+                    </ul>
+                    <h4>Formularfelder (POST):</h4>
+                    <ul>
+                        <li><code>degrees</code>: Drehwinkel in Grad</li>
+                    </ul>
+                    <h4>Rückgabewert:</h4>
+                    <p>JSON-Daten mit Status, Fotopfad und Winkel</p>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">export_project(project_id)</h3>
+                    <code class="route">Route: /projects/&lt;project_id&gt;/export</code>
+                </div>
+                <div class="card-body">
+                    <p>Exportiert ein Projekt für externe Verwendung.</p>
+                    <h4>Parameter:</h4>
+                    <ul>
+                        <li><code>project_id</code>: ID des Projekts</li>
+                    </ul>
+                    <h4>JSON-Daten (POST):</h4>
+                    <ul>
+                        <li><code>format</code>: Export-Format (html, wordpress, shopify, prestashop)</li>
+                        <li><code>sessionId</code>: ID der zu exportierenden Session (optional)</li>
+                    </ul>
+                    <h4>Rückgabewert:</h4>
+                    <p>JSON-Daten mit Status und Download-URL</p>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">download_export(filename)</h3>
+                    <code class="route">Route: /projects/download/&lt;filename&gt;</code>
+                </div>
+                <div class="card-body">
+                    <p>Lädt eine exportierte Datei herunter.</p>
+                    <h4>Parameter:</h4>
+                    <ul>
+                        <li><code>filename</code>: Name der zu ladenden Datei</li>
+                    </ul>
+                    <h4>Rückgabewert:</h4>
+                    <p>Datei zum Herunterladen oder 404-Fehler, wenn die Datei nicht gefunden wird</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="helper-functions">
+            <h2>Hilfsfunktionen</h2>
+            
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">generate_standalone_html(project, image_files)</h3>
+                </div>
+                <div class="card-body">
+                    <p>Generiert eine eigenständige HTML-Datei für den 360°-Viewer.</p>
+                    <h4>Parameter:</h4>
+                    <ul>
+                        <li><code>project</code>: Projekt-Instanz</li>
+                        <li><code>image_files</code>: Liste der Bilddateien</li>
+                    </ul>
+                    <h4>Rückgabewert:</h4>
+                    <p>HTML-Inhalt als String</p>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">generate_viewer_css()</h3>
+                </div>
+                <div class="card-body">
+                    <p>Generiert das CSS für den eigenständigen Viewer.</p>
+                    <h4>Rückgabewert:</h4>
+                    <p>CSS-Inhalt als String</p>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">generate_viewer_js()</h3>
+                </div>
+                <div class="card-body">
+                    <p>Generiert das JavaScript für den eigenständigen Viewer.</p>
+                    <h4>Rückgabewert:</h4>
+                    <p>JavaScript-Inhalt als String</p>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">generate_wordpress_shortcode(project, image_files)</h3>
+                </div>
+                <div class="card-body">
+                    <p>Generiert einen WordPress-Shortcode für den 360°-Viewer.</p>
+                    <h4>Parameter:</h4>
+                    <ul>
+                        <li><code>project</code>: Projekt-Instanz</li>
+                        <li><code>image_files</code>: Liste der Bilddateien</li>
+                    </ul>
+                    <h4>Rückgabewert:</h4>
+                    <p>Shortcode als String</p>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">generate_ecommerce_snippet(project, image_files, platform)</h3>
+                </div>
+                <div class="card-body">
+                    <p>Generiert ein HTML-Snippet für E-Commerce-Plattformen.</p>
+                    <h4>Parameter:</h4>
+                    <ul>
+                        <li><code>project</code>: Projekt-Instanz</li>
+                        <li><code>image_files</code>: Liste der Bilddateien</li>
+                        <li><code>platform</code>: Plattform (shopify oder prestashop)</li>
+                    </ul>
+                    <h4>Rückgabewert:</h4>
+                    <p>HTML-Snippet als String</p>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">generate_integration_instructions(platform)</h3>
+                </div>
+                <div class="card-body">
+                    <p>Generiert Installations- und Integrationsanweisungen für die jeweilige Plattform.</p>
+                    <h4>Parameter:</h4>
+                    <ul>
+                        <li><code>platform</code>: Plattform (shopify oder prestashop)</li>
+                    </ul>
+                    <h4>Rückgabewert:</h4>
+                    <p>Anweisungstext als String</p>
+                </div>
+            </div>
+        </section>
         
-        <div class="method">
-            <h3>projects_page</h3>
-            <div class="method-signature">@projects_bp.route('/')</div>
-            <div class="method-description">
-                <p>Zeigt die Projektverwaltungsseite an</p>
-            </div>
-            <div class="return-value">
-                <h4>Rückgabewert:</h4>
-                <div class="return-description">
-                    <p>HTML-Template mit der Liste aller Projekte</p>
-                </div>
-            </div>
-        </div>
-        
-        <div class="method">
-            <h3>create_project</h3>
-            <div class="method-signature">@projects_bp.route('/create', methods=['GET', 'POST'])</div>
-            <div class="method-description">
-                <p>Erstellt ein neues Projekt</p>
-            </div>
-            <div class="return-value">
-                <h4>Rückgabewert:</h4>
-                <div class="return-description">
-                    <p>Bei GET: HTML-Template mit dem Projektformular</p>
-                    <p>Bei POST: Weiterleitung zur Projektansicht oder Fehlerseite</p>
-                </div>
-            </div>
-        </div>
-        
-        <div class="method">
-            <h3>view_project</h3>
-            <div class="method-signature">@projects_bp.route('/<project_id>')</div>
-            <div class="method-description">
-                <p>Zeigt ein Projekt an</p>
-            </div>
-            <div class="parameters">
-                <h4>Parameter:</h4>
-                <div class="parameter">
-                    <span class="parameter-name">project_id:</span> ID des Projekts
-                </div>
-            </div>
-            <div class="return-value">
-                <h4>Rückgabewert:</h4>
-                <div class="return-description">
-                    <p>HTML-Template mit den Projektdetails oder Weiterleitung zur Projektliste</p>
-                </div>
-            </div>
-        </div>
-        
-        <div class="method">
-            <h3>delete_project</h3>
-            <div class="method-signature">@projects_bp.route('/delete/<project_id>', methods=['POST'])</div>
-            <div class="method-description">
-                <p>Löscht ein Projekt</p>
-            </div>
-            <div class="parameters">
-                <h4>Parameter:</h4>
-                <div class="parameter">
-                    <span class="parameter-name">project_id:</span> ID des zu löschenden Projekts
-                </div>
-            </div>
-            <div class="return-value">
-                <h4>Rückgabewert:</h4>
-                <div class="return-description">
-                    <p>Weiterleitung zur Projektliste oder Fehlerseite</p>
-                </div>
-            </div>
-        </div>
-        
-        <div class="method">
-            <h3>get_project_image</h3>
-            <div class="method-signature">@projects_bp.route('/image/<project_id>/<path:image_path>')</div>
-            <div class="method-description">
-                <p>Liefert ein Projektbild</p>
-            </div>
-            <div class="parameters">
-                <h4>Parameter:</h4>
-                <div class="parameter">
-                    <span class="parameter-name">project_id:</span> ID des Projekts
-                </div>
-                <div class="parameter">
-                    <span class="parameter-name">image_path:</span> Pfad zum Bild innerhalb des Projekts
-                </div>
-            </div>
-            <div class="return-value">
-                <h4>Rückgabewert:</h4>
-                <div class="return-description">
-                    <p>Das angeforderte Bild oder eine 404-Fehlerseite</p>
-                </div>
-            </div>
-        </div>
-    </main>
-    
-    <footer>
-        <p>&copy; 2025 360° Drehteller Steuerung</p>
-    </footer>
+        <section id="example">
+            <h2>Beispiel</h2>
+            <p>Beispiel für den Export eines Projekts im HTML-Format:</p>
+            
+            <pre class="code-example">
+# 1. Exportanfrage senden
+response = requests.post(
+    f'http://localhost:5000/projects/{project_id}/export',
+    json={
+        'format': 'html',
+        'sessionId': session_id
+    }
+)
+
+# 2. Download-URL aus der Antwort extrahieren
+data = response.json()
+download_url = data['downloadUrl']
+
+# 3. Export herunterladen
+export_file = requests.get(f'http://localhost:5000{download_url}')
+
+# 4. Export speichern
+with open('360_viewer.zip', 'wb') as f:
+    f.write(export_file.content)
+            </pre>
+        </section>
+
+        <hr>
+        <footer>
+            <p>&copy; 2025 Drehteller 360 Grad Steuerung</p>
+        </footer>
+    </div>
+
+    <script src="js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

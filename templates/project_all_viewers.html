@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ project.name }} - 360° Ansicht mit allen Viewern</title>
+    <link rel="stylesheet" href="/static/css/bootstrap.min.css">
+    
+    <!-- Pannellum CSS -->
+    <link rel="stylesheet" href="https://cdn.pannellum.org/2.5/pannellum.css">
+    
+    <!-- Photo Sphere Viewer CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photo-sphere-viewer@4/dist/photo-sphere-viewer.min.css">
+    
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        
+        .container-fluid {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        h1, h2 {
+            color: #2c3e50;
+        }
+        
+        h1 {
+            margin-bottom: 20px;
+        }
+        
+        h2 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .nav-tabs {
+            margin-bottom: 20px;
+        }
+        
+        .tab-content {
+            padding: 20px;
+            background-color: #fff;
+            border: 1px solid #dee2e6;
+            border-top: none;
+            border-radius: 0 0 5px 5px;
+        }
+        
+        .viewer-container {
+            height: 500px;
+            margin-bottom: 20px;
+        }
+        
+        .controls {
+            margin: 15px 0;
+        }
+        
+        .btn {
+            margin-right: 5px;
+        }
+        
+        footer {
+            margin-top: 30px;
+            text-align: center;
+            color: #666;
+            font-size: 0.9rem;
+            padding: 15px;
+            border-top: 1px solid #eee;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row mb-4">
+            <div class="col">
+                <a href="/projects/{{ project.id }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Zurück zum Projekt
+                </a>
+                <h1>{{ project.name }} - 360° Ansicht mit verschiedenen Viewern</h1>
+                <p>{{ project.description }}</p>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-12">
+                <ul class="nav nav-tabs" id="viewerTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="standard-tab" data-bs-toggle="tab" data-bs-target="#standard" type="button" role="tab" aria-controls="standard" aria-selected="true">Standard Viewer</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="pannellum-tab" data-bs-toggle="tab" data-bs-target="#pannellum" type="button" role="tab" aria-controls="pannellum" aria-selected="false">Pannellum</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="photosphere-tab" data-bs-toggle="tab" data-bs-target="#photosphere" type="button" role="tab" aria-controls="photosphere" aria-selected="false">Photo Sphere Viewer</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="marzipano-tab" data-bs-toggle="tab" data-bs-target="#marzipano" type="button" role="tab" aria-controls="marzipano" aria-selected="false">Marzipano</button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content" id="viewerTabsContent">
+                    <!-- Standard Viewer -->
+                    <div class="tab-pane fade show active" id="standard" role="tabpanel" aria-labelledby="standard-tab">
+                        <h2>Standard Viewer</h2>
+                        <p>Ein einfacher Viewer mit grundlegenden Steuerungsmöglichkeiten.</p>
+                        
+                        <div class="viewer-container">
+                            <div id="standard-viewer" class="position-relative overflow-hidden h-100">
+                                <img id="standard-image" src="" alt="360° Ansicht" class="img-fluid">
+                            </div>
+                        </div>
+                        
+                        <div class="controls">
+                            <button id="standard-prev" class="btn btn-primary">Vorheriges Bild</button>
+                            <button id="standard-next" class="btn btn-primary">Nächstes Bild</button>
+                            <button id="standard-play" class="btn btn-success">Play</button>
+                            <button id="standard-stop" class="btn btn-danger" disabled>Stop</button>
+                            <button id="standard-zoom-in" class="btn btn-secondary">+</button>
+                            <button id="standard-zoom-out" class="btn btn-secondary">-</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Pannellum Viewer -->
+                    <div class="tab-pane fade" id="pannellum" role="tabpanel" aria-labelledby="pannellum-tab">
+                        <h2>Pannellum Viewer</h2>
+                        <p>Ein leichtgewichtiger Open-Source-Panorama-Viewer für das Web.</p>
+                        
+                        <div id="pannellum-viewer" class="viewer-container"></div>
+                        
+                        <div class="controls">
+                            <button id="pannellum-prev" class="btn btn-primary">Vorheriges Bild</button>
+                            <button id="pannellum-next" class="btn btn-primary">Nächstes Bild</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Photo Sphere Viewer -->
+                    <div class="tab-pane fade" id="photosphere" role="tabpanel" aria-labelledby="photosphere-tab">
+                        <h2>Photo Sphere Viewer</h2>
+                        <p>Ein leistungsstarker und anpassbarer 360°-Viewer.</p>
+                        
+                        <div id="photosphere-viewer" class="viewer-container"></div>
+                        
+                        <div class="controls">
+                            <button id="photosphere-prev" class="btn btn-primary">Vorheriges Bild</button>
+                            <button id="photosphere-next" class="btn btn-primary">Nächstes Bild</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Marzipano Viewer -->
+                    <div class="tab-pane fade" id="marzipano" role="tabpanel" aria-labelledby="marzipano-tab">
+                        <h2>Marzipano Viewer</h2>
+                        <p>Ein leistungsfähiger und flexibler 360°-Viewer für moderne Anwendungen.</p>
+                        
+                        <div id="marzipano-viewer" class="viewer-container"></div>
+                        
+                        <div class="controls">
+                            <button id="marzipano-prev" class="btn btn-primary">Vorheriges Bild</button>
+                            <button id="marzipano-next" class="btn btn-primary">Nächstes Bild</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Export mit ausgewählten Viewern</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="export-form">
+                            <div class="mb-3">
+                                <label class="form-label">Viewer-Auswahl:</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="default-viewer" checked>
+                                    <label class="form-check-label" for="default-viewer">Standard Viewer</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="pannellum-viewer">
+                                    <label class="form-check-label" for="pannellum-viewer">Pannellum</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="photosphere-viewer">
+                                    <label class="form-check-label" for="photosphere-viewer">Photo Sphere Viewer</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="marzipano-viewer">
+                                    <label class="form-check-label" for="marzipano-viewer">Marzipano</label>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Export-Format:</label>
+                                <select class="form-select" id="export-format">
+                                    <option value="html">Eigenständiges HTML</option>
+                                    <option value="wordpress">WordPress</option>
+                                    <option value="shopify">Shopify</option>
+                                    <option value="prestashop">PrestaShop</option>
+                                </select>
+                            </div>
+                            
+                            <div class="d-grid">
+                                <button type="button" id="export-button" class="btn btn-success">
+                                    <i class="bi bi-download"></i> Exportieren
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Viewer-Informationen</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="accordion" id="viewerInfoAccordion">
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingStandard">
+                                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseStandard" aria-expanded="true" aria-controls="collapseStandard">
+                                        Standard Viewer
+                                    </button>
+                                </h2>
+                                <div id="collapseStandard" class="accordion-collapse collapse show" aria-labelledby="headingStandard" data-bs-parent="#viewerInfoAccordion">
+                                    <div class="accordion-body">
+                                        <p>Einfacher Viewer mit grundlegenden Funktionen:</p>
+                                        <ul>
+                                            <li>Einfache Navigation</li>
+                                            <li>Zoom-Funktion</li>
+                                            <li>Automatische Wiedergabe</li>
+                                            <li>Wisch-Gesten für mobile Geräte</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingPannellum">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePannellum" aria-expanded="false" aria-controls="collapsePannellum">
+                                        Pannellum
+                                    </button>
+                                </h2>
+                                <div id="collapsePannellum" class="accordion-collapse collapse" aria-labelledby="headingPannellum" data-bs-parent="#viewerInfoAccordion">
+                                    <div class="accordion-body">
+                                        <p>Ein leichtgewichtiger Open-Source-Panorama-Viewer:</p>
+                                        <ul>
+                                            <li>HTML5/CSS3/JS basiert (keine Plugins)</li>
+                                            <li>Mobil-freundlich</li>
+                                            <li>Unterstützt verschiedene Projektionen</li>
+                                            <li>Zoom und Rotation</li>
+                                        </ul>
+                                        <p><a href="https://pannellum.org/" target="_blank">https://pannellum.org/</a></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingPhotoSphere">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePhotoSphere" aria-expanded="false" aria-controls="collapsePhotoSphere">
+                                        Photo Sphere Viewer
+                                    </button>
+                                </h2>
+                                <div id="collapsePhotoSphere" class="accordion-collapse collapse" aria-labelledby="headingPhotoSphere" data-bs-parent="#viewerInfoAccordion">
+                                    <div class="accordion-body">
+                                        <p>Ein leistungsstarker anpassbarer Viewer:</p>
+                                        <ul>
+                                            <li>Basiert auf Three.js</li>
+                                            <li>Unterstützt Cubemaps und equirectangulare Panoramen</li>
+                                            <li>Plugin-System für Erweiterungen</li>
+                                            <li>Ausgezeichnete Leistung auf mobilen Geräten</li>
+                                        </ul>
+                                        <p><a href="https://photo-sphere-viewer.js.org/" target="_blank">https://photo-sphere-viewer.js.org/</a></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingMarzipano">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMarzipano" aria-expanded="false" aria-controls="collapseMarzipano">
+                                        Marzipano
+                                    </button>
+                                </h2>
+                                <div id="collapseMarzipano" class="accordion-collapse collapse" aria-labelledby="headingMarzipano" data-bs-parent="#viewerInfoAccordion">
+                                    <div class="accordion-body">
+                                        <p>Ein leistungsfähiger, moderner Viewer:</p>
+                                        <ul>
+                                            <li>Hohe Leistung und Qualität</li>
+                                            <li>Unterstützt mehrere Auflösungsstufen</li>
+                                            <li>Verschiedene Projektionen und Geometrien</li>
+                                            <li>Geeignet für komplexe Anwendungen</li>
+                                        </ul>
+                                        <p><a href="https://www.marzipano.net/" target="_blank">https://www.marzipano.net/</a></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <footer>
+        <p>Version 1.0 | &copy; 2025 Alexander Behrens | <a href="https://www.alexanderbehrens.com" target="_blank">www.alexanderbehrens.com</a></p>
+    </footer>
+
+    <!-- JavaScript Libraries -->
+    <script src="/static/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.pannellum.org/2.5/pannellum.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/photo-sphere-viewer@4/dist/photo-sphere-viewer.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marzipano@0.10.2/dist/marzipano.min.js"></script>
+    
+    <script>
+        // Projektdaten
+        const projectData = {{ project_json|safe }};
+        const imagePaths = {{ image_paths|tojson }};
+        
+        // Globale Variablen für Viewer
+        let standardCurrentIndex = 0;
+        let standardZoomLevel = 1;
+        let standardIsPlaying = false;
+        let standardPlaybackInterval = null;
+        
+        let pannellumViewer = null;
+        let pannellumCurrentIndex = 0;
+        
+        let photoSphereViewer = null;
+        let photoSphereCurrentIndex = 0;
+        
+        let marzipanoViewer = null;
+        let marzipanoScene = null;
+        let marzipanoCurrentIndex = 0;
+        
+        // Standard Viewer initialisieren
+        function initStandardViewer() {
+            const standardImage = document.getElementById('standard-image');
+            const playButton = document.getElementById('standard-play');
+            const stopButton = document.getElementById('standard-stop');
+            const prevButton = document.getElementById('standard-prev');
+            const nextButton = document.getElementById('standard-next');
+            const zoomInButton = document.getElementById('standard-zoom-in');
+            const zoomOutButton = document.getElementById('standard-zoom-out');
+            const standardViewer = document.getElementById('standard-viewer');
+            
+            // Bild laden
+            function loadImage(index) {
+                if (index < 0 || index >= imagePaths.length) return;
+                
+                standardImage.src = imagePaths[index];
+                standardCurrentIndex = index;
+                
+                // Zoom-Level anwenden
+                applyZoom();
+            }
+            
+            // Zoom anwenden
+            function applyZoom() {
+                standardImage.style.transform = `scale(${standardZoomLevel})`;
+            }
+            
+            // Wiedergabe starten
+            function startPlayback() {
+                if (standardIsPlaying) return;
+                
+                standardIsPlaying = true;
+                playButton.disabled = true;
+                stopButton.disabled = false;
+                
+                // Bilder in regelmäßigen Abständen durchschalten
+                standardPlaybackInterval = setInterval(() => {
+                    standardCurrentIndex = (standardCurrentIndex + 1) % imagePaths.length;
+                    loadImage(standardCurrentIndex);
+                    
+                    // Wenn wir wieder beim ersten Bild sind, Wiedergabe stoppen
+                    if (standardCurrentIndex === 0) {
+                        stopPlayback();
+                    }
+                }, 500); // 0.5 Sekunden Intervall
+            }
+            
+            // Wiedergabe stoppen
+            function stopPlayback() {
+                if (!standardIsPlaying) return;
+                
+                clearInterval(standardPlaybackInterval);
+                standardIsPlaying = false;
+                playButton.disabled = false;
+                stopButton.disabled = true;
+            }
+            
+            // Zoom-Funktionen
+            function zoomIn() {
+                if (standardZoomLevel < 3) {
+                    standardZoomLevel += 0.2;
+                    applyZoom();
+                }
+            }
+            
+            function zoomOut() {
+                if (standardZoomLevel > 0.5) {
+                    standardZoomLevel -= 0.2;
+                    applyZoom();
+                }
+            }
+            
+            // Event-Listener
+            playButton.addEventListener('click', startPlayback);
+            stopButton.addEventListener('click', stopPlayback);
+            zoomInButton.addEventListener('click', zoomIn);
+            zoomOutButton.addEventListener('click', zoomOut);
+            prevButton.addEventListener('click', () => {
+                standardCurrentIndex = (standardCurrentIndex - 1 + imagePaths.length) % imagePaths.length;
+                loadImage(standardCurrentIndex);
+            });
+            nextButton.addEventListener('click', () => {
+                standardCurrentIndex = (standardCurrentIndex + 1) % imagePaths.length;
+                loadImage(standardCurrentIndex);
+            });
+            
+            // Erstes Bild laden
+            loadImage(0);
+        }
+        
+        // Pannellum Viewer initialisieren
+        function initPannellumViewer() {
+            const prevButton = document.getElementById('pannellum-prev');
+            const nextButton = document.getElementById('pannellum-next');
+            
+            function loadPannellumImage(index) {
+                if (pannellumViewer) {
+                    pannellumViewer.destroy();
+                }
+                
+                pannellumViewer = pannellum.viewer('pannellum-viewer', {
+                    "type": "equirectangular",
+                    "panorama": imagePaths[index],
+                    "autoLoad": true,
+                    "showZoomCtrl": true,
+                    "showFullscreenCtrl": true,
+                    "compass": false
+                });
+                
+                pannellumCurrentIndex = index;
+            }
+            
+            prevButton.addEventListener('click', () => {
+                pannellumCurrentIndex = (pannellumCurrentIndex - 1 + imagePaths.length) % imagePaths.length;
+                loadPannellumImage(pannellumCurrentIndex);
+            });
+            
+            nextButton.addEventListener('click', () => {
+                pannellumCurrentIndex = (pannellumCurrentIndex + 1) % imagePaths.length;
+                loadPannellumImage(pannellumCurrentIndex);
+            });
+            
+            // Pannellum Viewer initialisieren, wenn Tab aktiviert wird
+            document.getElementById('pannellum-tab').addEventListener('shown.bs.tab', () => {
+                if (!pannellumViewer && imagePaths.length > 0) {
+                    loadPannellumImage(0);
+                }
+            });
+        }
+        
+        // Photo Sphere Viewer initialisieren
+        function initPhotoSphereViewer() {
+            const prevButton = document.getElementById('photosphere-prev');
+            const nextButton = document.getElementById('photosphere-next');
+            
+            function loadPhotoSphereImage(index) {
+                if (photoSphereViewer) {
+                    photoSphereViewer.destroy();
+                }
+                
+                photoSphereViewer = new PhotoSphereViewer.Viewer({
+                    container: document.getElementById('photosphere-viewer'),
+                    panorama: imagePaths[index],
+                    navbar: ['autorotate', 'zoom', 'fullscreen'],
+                    keyboard: {
+                        'ArrowLeft': 'rotateLatitudinal',
+                        'ArrowRight': 'rotateLatitudinal',
+                        'ArrowUp': 'rotatePolar',
+                        'ArrowDown': 'rotatePolar'
+                    }
+                });
+                
+                photoSphereCurrentIndex = index;
+            }
+            
+            prevButton.addEventListener('click', () => {
+                photoSphereCurrentIndex = (photoSphereCurrentIndex - 1 + imagePaths.length) % imagePaths.length;
+                loadPhotoSphereImage(photoSphereCurrentIndex);
+            });
+            
+            nextButton.addEventListener('click', () => {
+                photoSphereCurrentIndex = (photoSphereCurrentIndex + 1) % imagePaths.length;
+                loadPhotoSphereImage(photoSphereCurrentIndex);
+            });
+            
+            // Photo Sphere Viewer initialisieren, wenn Tab aktiviert wird
+            document.getElementById('photosphere-tab').addEventListener('shown.bs.tab', () => {
+                if (!photoSphereViewer && imagePaths.length > 0) {
+                    loadPhotoSphereImage(0);
+                }
+            });
+        }
+        
+        // Marzipano Viewer initialisieren
+        function initMarzipanoViewer() {
+            const prevButton = document.getElementById('marzipano-prev');
+            const nextButton = document.getElementById('marzipano-next');
+            
+            function loadMarzipanoImage(index) {
+                // Viewer erstellen, wenn noch nicht vorhanden
+                if (!marzipanoViewer) {
+                    const viewerOpts = {
+                        controls: {
+                            mouseViewMode: 'drag'
+                        }
+                    };
+                    marzipanoViewer = new Marzipano.Viewer(document.getElementById('marzipano-viewer'), viewerOpts);
+                }
+                
+                // Bild laden
+                const asset = new Marzipano.ImageUrlSource.fromUrl(imagePaths[index]);
+                const geometry = new Marzipano.EquirectGeometry([{ width: 4000 }]);
+                const limiter = Marzipano.RectilinearView.limit.traditional(1024, 100*Math.PI/180);
+                const view = new Marzipano.RectilinearView(null, limiter);
+                
+                // Alte Scene entfernen, falls vorhanden
+                if (marzipanoScene) {
+                    marzipanoScene.destroy();
+                }
+                
+                // Neue Scene erstellen
+                marzipanoScene = marzipanoViewer.createScene({
+                    source: asset,
+                    geometry: geometry,
+                    view: view,
+                    pinFirstLevel: true
+                });
+                
+                // Scene anzeigen
+                marzipanoScene.switchTo();
+                
+                marzipanoCurrentIndex = index;
+            }
+            
+            prevButton.addEventListener('click', () => {
+                marzipanoCurrentIndex = (marzipanoCurrentIndex - 1 + imagePaths.length) % imagePaths.length;
+                loadMarzipanoImage(marzipanoCurrentIndex);
+            });
+            
+            nextButton.addEventListener('click', () => {
+                marzipanoCurrentIndex = (marzipanoCurrentIndex + 1) % imagePaths.length;
+                loadMarzipanoImage(marzipanoCurrentIndex);
+            });
+            
+            // Marzipano Viewer initialisieren, wenn Tab aktiviert wird
+            document.getElementById('marzipano-tab').addEventListener('shown.bs.tab', () => {
+                if (!marzipanoViewer && imagePaths.length > 0) {
+                    loadMarzipanoImage(0);
+                }
+            });
+        }
+        
+        // Export-Funktion
+        function initExport() {
+            const exportButton = document.getElementById('export-button');
+            
+            exportButton.addEventListener('click', () => {
+                // Ausgewählte Viewer ermitteln
+                const viewers = [];
+                if (document.getElementById('default-viewer').checked) viewers.push('default');
+                if (document.getElementById('pannellum-viewer').checked) viewers.push('pannellum');
+                if (document.getElementById('photosphere-viewer').checked) viewers.push('photosphere');
+                if (document.getElementById('marzipano-viewer').checked) viewers.push('marzipano');
+                
+                // Format ermitteln
+                const format = document.getElementById('export-format').value;
+                
+                // Warnung, wenn kein Viewer ausgewählt ist
+                if (viewers.length === 0) {
+                    alert('Bitte wählen Sie mindestens einen Viewer aus.');
+                    return;
+                }
+                
+                // Export-Anfrage senden
+                fetch(`/projects/${projectData.id}/export`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        format: format,
+                        viewers: viewers
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        // Download-Link erstellen und klicken
+                        const downloadLink = document.createElement('a');
+                        downloadLink.href = data.downloadUrl;
+                        downloadLink.download = `${projectData.name.replace(/\s+/g, '_')}_360_viewer.zip`;
+                        document.body.appendChild(downloadLink);
+                        downloadLink.click();
+                        document.body.removeChild(downloadLink);
+                    } else {
+                        alert('Fehler beim Exportieren: ' + (data.error || 'Unbekannter Fehler'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Fehler beim Exportieren:', error);
+                    alert('Fehler beim Exportieren: ' + error.message);
+                });
+            });
+        }
+        
+        // Initialisierung
+        document.addEventListener('DOMContentLoaded', () => {
+            // Standard Viewer immer initialisieren
+            initStandardViewer();
+            
+            // Andere Viewer vorbereiten
+            initPannellumViewer();
+            initPhotoSphereViewer();
+            initMarzipanoViewer();
+            
+            // Export-Funktion initialisieren
+            initExport();
+        });
+    </script>
+</body>
+</html>

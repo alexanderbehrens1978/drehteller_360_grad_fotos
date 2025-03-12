@@ -1,0 +1,181 @@
+/**
+ * documentation.css
+ * Stile für die Dokumentationsseiten
+ */
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background-color: #f8f9fa;
+    padding-bottom: 30px;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background-color: #fff;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    border-radius: 5px;
+}
+
+h1, h2, h3 {
+    color: #2c3e50;
+    margin-top: 1.5em;
+}
+
+h1 {
+    font-size: 2rem;
+    border-bottom: 2px solid #3498db;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+h2 {
+    font-size: 1.5rem;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 8px;
+    margin-bottom: 15px;
+}
+
+h3 {
+    font-size: 1.2rem;
+    margin-bottom: 10px;
+}
+
+a {
+    color: #3498db;
+    text-decoration: none;
+}
+
+a:hover {
+    color: #2980b9;
+    text-decoration: underline;
+}
+
+.card {
+    margin-bottom: 20px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.card-header {
+    background-color: #f5f5f5;
+    padding: 10px 15px;
+    border-bottom: 1px solid #ddd;
+}
+
+.card-title {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.card-body {
+    padding: 15px;
+}
+
+code {
+    font-family: 'Courier New', Courier, monospace;
+    padding: 2px 4px;
+    background-color: #f5f5f5;
+    border-radius: 3px;
+    font-size: 0.9rem;
+    color: #c7254e;
+}
+
+/* Stile für die Routen-Anzeige */
+.route {
+    font-family: 'Courier New', Courier, monospace;
+    display: block;
+    font-size: 0.9rem;
+    color: #6c757d;
+    margin-top: 5px;
+}
+
+/* Stile für Code-Beispiele */
+.code-example {
+    font-family: 'Courier New', Courier, monospace;
+    background-color: #f5f5f5;
+    padding: 15px;
+    border-radius: 5px;
+    border: 1px solid #ddd;
+    overflow-x: auto;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    margin: 15px 0;
+    white-space: pre;
+}
+
+/* Navigation */
+.breadcrumb {
+    background-color: #f5f5f5;
+    padding: 10px 15px;
+    margin-bottom: 20px;
+    border-radius: 5px;
+}
+
+.breadcrumb-item a {
+    color: #3498db;
+}
+
+.jumbotron {
+    padding: 30px;
+    margin-bottom: 30px;
+    background-color: #ecf0f1;
+    border-radius: 5px;
+}
+
+.jumbotron h1 {
+    font-size: 2.5rem;
+    margin-top: 0;
+    padding-bottom: 15px;
+}
+
+.jumbotron .lead {
+    font-size: 1.2rem;
+}
+
+/* Anpassungen für Mobil */
+@media (max-width: 768px) {
+    .container {
+        padding: 15px;
+    }
+    
+    h1 {
+        font-size: 1.8rem;
+    }
+    
+    h2 {
+        font-size: 1.4rem;
+    }
+    
+    h3 {
+        font-size: 1.1rem;
+    }
+    
+    .jumbotron {
+        padding: 20px;
+    }
+    
+    .jumbotron h1 {
+        font-size: 2rem;
+    }
+    
+    .code-example {
+        font-size: 0.8rem;
+    }
+}
+
+/* Stile für Abschnitte */
+section {
+    margin-bottom: 30px;
+}
+
+footer {
+    margin-top: 30px;
+    text-align: center;
+    font-size: 0.9rem;
+    color: #6c757d;
+}

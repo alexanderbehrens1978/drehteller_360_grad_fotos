@@ -3,244 +3,294 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arduino-Controller - 360° Drehteller Steuerung</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 0;
-            color: #333;
-        }
-        
-        header {
-            background-color: #2c3e50;
-            color: white;
-            padding: 1rem 2rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        
-        h1 {
-            margin: 0;
-        }
-        
-        nav {
-            margin-top: 1rem;
-        }
-        
-        nav a {
-            color: white;
-            margin-right: 1rem;
-            text-decoration: none;
-        }
-        
-        nav a:hover {
-            text-decoration: underline;
-        }
-        
-        main {
-            max-width: 1200px;
-            margin: 2rem auto;
-            padding: 0 1rem;
-        }
-        
-        .module-info {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            margin-bottom: 2rem;
-        }
-        
-        .method {
-            background: #f8f9fa;
-            padding: 1.5rem;
-            border-radius: 8px;
-            margin-bottom: 1.5rem;
-            border-left: 4px solid #3498db;
-        }
-        
-        .method h3 {
-            margin-top: 0;
-            color: #2c3e50;
-        }
-        
-        .method-signature {
-            font-family: monospace;
-            background: #eee;
-            padding: 0.5rem;
-            border-radius: 4px;
-            margin-bottom: 1rem;
-        }
-        
-        .method-description {
-            margin-bottom: 1rem;
-        }
-        
-        .parameter, .return-value {
-            margin-bottom: 0.5rem;
-        }
-        
-        .parameter-name, .return-label {
-            font-weight: bold;
-        }
-        
-        footer {
-            text-align: center;
-            padding: 1rem;
-            background-color: #2c3e50;
-            color: white;
-            margin-top: 2rem;
-        }
-    </style>
+    <title>Dokumentation: Arduino-Controller</title>
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/documentation.css">
 </head>
 <body>
-    <header>
-        <h1>Arduino-Controller</h1>
-        <nav>
-            <a href="index.html">Zurück zur Übersicht</a>
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="index.html">Dokumentation</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Arduino-Controller</li>
+            </ol>
         </nav>
-    </header>
+
+        <h1>Arduino-Controller (app/controllers/arduino_controller.py)</h1>
+        
+        <section id="overview">
+            <h2>Übersicht</h2>
+            <p>
+                Der Arduino-Controller ist verantwortlich für die Kommunikation mit dem Arduino-Mikrocontroller, 
+                der den Drehteller steuert. Er bietet eine einfache Schnittstelle zum Ein- und Ausschalten des 
+                Motors sowie zur Steuerung der Rotationsdauer.
+            </p>
+            <p>
+                Der Controller nutzt die serielle Kommunikation, um mit dem Arduino zu kommunizieren. 
+                Er sendet einfache Befehle, um das Relais zu steuern, das den Motor ein- und ausschaltet.
+            </p>
+        </section>
+
+        <section id="class">
+            <h2>Klasse ArduinoController</h2>
+            
+            <h3>Initialisierung</h3>
+            <div class="card mb-4">
+                <div class="card-header">
+                    <code>__init__(self, port=None, baudrate=9600)</code>
+                </div>
+                <div class="card-body">
+                    <p>Initialisiert die Arduino-Verbindung.</p>
+                    <h4>Parameter:</h4>
+                    <ul>
+                        <li><code>port</code>: Serieller Port (optional)</li>
+                        <li><code>baudrate</code>: Baudrate (optional, Standard: 9600)</li>
+                    </ul>
+                    <p>
+                        Der Controller versucht, eine Verbindung zum Arduino herzustellen, wenn ein Port 
+                        angegeben wird. Andernfalls muss die Verbindung später mit <code>connect()</code> 
+                        hergestellt werden.
+                    </p>
+                </div>
+            </div>
+
+            <h3>Methoden</h3>
+            <div class="card mb-4">
+                <div class="card-header">
+                    <code>connect(self)</code>
+                </div>
+                <div class="card-body">
+                    <p>Stellt eine Verbindung zum Arduino her.</p>
+                    <h4>Rückgabewert:</h4>
+                    <p><code>True</code> bei Erfolg, <code>False</code> bei Fehler</p>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <code>disconnect(self)</code>
+                </div>
+                <div class="card-body">
+                    <p>Trennt die Verbindung zum Arduino.</p>
+                    <h4>Rückgabewert:</h4>
+                    <p><code>True</code> bei Erfolg, <code>False</code> bei Fehler</p>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <code>is_connected(self)</code>
+                </div>
+                <div class="card-body">
+                    <p>Prüft, ob die Verbindung zum Arduino hergestellt ist.</p>
+                    <h4>Rückgabewert:</h4>
+                    <p><code>True</code> wenn verbunden, sonst <code>False</code></p>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <code>send_command(self, command)</code>
+                </div>
+                <div class="card-body">
+                    <p>Sendet einen Befehl an den Arduino.</p>
+                    <h4>Parameter:</h4>
+                    <ul>
+                        <li><code>command</code>: Zu sendender Befehl</li>
+                    </ul>
+                    <h4>Rückgabewert:</h4>
+                    <p><code>True</code> bei Erfolg, <code>False</code> bei Fehler</p>
+                    <p>
+                        Die Methode wartet auf eine Antwort vom Arduino und gibt <code>True</code> zurück, 
+                        wenn die Antwort "OK" ist. Bei Fehlern oder Timeout gibt sie <code>False</code> zurück.
+                    </p>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <code>turn_motor_on(self)</code>
+                </div>
+                <div class="card-body">
+                    <p>Schaltet den Motor ein (Relais schließen).</p>
+                    <h4>Rückgabewert:</h4>
+                    <p><code>True</code> bei Erfolg, <code>False</code> bei Fehler</p>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <code>turn_motor_off(self)</code>
+                </div>
+                <div class="card-body">
+                    <p>Schaltet den Motor aus (Relais öffnen).</p>
+                    <h4>Rückgabewert:</h4>
+                    <p><code>True</code> bei Erfolg, <code>False</code> bei Fehler</p>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <code>rotate_for_duration(self, duration_ms)</code>
+                </div>
+                <div class="card-body">
+                    <p>Dreht den Motor für eine bestimmte Zeit.</p>
+                    <h4>Parameter:</h4>
+                    <ul>
+                        <li><code>duration_ms</code>: Dauer in Millisekunden</li>
+                    </ul>
+                    <h4>Rückgabewert:</h4>
+                    <p><code>True</code> bei Erfolg, <code>False</code> bei Fehler</p>
+                    <p>
+                        Die Methode schaltet den Motor ein, wartet für die angegebene Dauer und schaltet 
+                        ihn dann wieder aus. Sie gibt <code>True</code> zurück, wenn der gesamte Vorgang 
+                        erfolgreich war.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <section id="example">
+            <h2>Beispiel</h2>
+            <p>Beispiel für die Verwendung des Arduino-Controllers:</p>
+            
+            <pre class="code-example">
+# Arduino-Controller erstellen und verbinden
+arduino = ArduinoController(port='/dev/ttyACM0', baudrate=9600)
+
+# Prüfen, ob die Verbindung erfolgreich war
+if arduino.is_connected():
+    # Motor für 5 Sekunden (5000 ms) einschalten
+    arduino.rotate_for_duration(5000)
     
-    <main>
-        <div class="module-info">
-            <h2>ArduinoController</h2>
-            <p>Controller für die Kommunikation mit dem Arduino, der den Drehteller steuert</p>
-            <p><strong>Datei:</strong> /app/controllers/arduino_controller.py</p>
-        </div>
-        
-        <h2>Methoden</h2>
-        
-        <div class="method">
-            <h3>__init__</h3>
-            <div class="method-signature">def __init__(self, port=None, baudrate=9600)</div>
-            <div class="method-description">
-                <p>Initialisiert die Arduino-Verbindung</p>
-            </div>
-            <div class="parameters">
-                <h4>Parameter:</h4>
-                <div class="parameter">
-                    <span class="parameter-name">port:</span> Serieller Port (optional)
-                </div>
-                <div class="parameter">
-                    <span class="parameter-name">baudrate:</span> Baudrate (optional)
-                </div>
-            </div>
-        </div>
-        
-        <div class="method">
-            <h3>connect</h3>
-            <div class="method-signature">def connect(self)</div>
-            <div class="method-description">
-                <p>Stellt eine Verbindung zum Arduino her</p>
-            </div>
-            <div class="return-value">
-                <h4>Rückgabewert:</h4>
-                <div class="return-description">
-                    <p>True bei Erfolg, False bei Fehler</p>
-                </div>
-            </div>
-        </div>
-        
-        <div class="method">
-            <h3>disconnect</h3>
-            <div class="method-signature">def disconnect(self)</div>
-            <div class="method-description">
-                <p>Trennt die Verbindung zum Arduino</p>
-            </div>
-            <div class="return-value">
-                <h4>Rückgabewert:</h4>
-                <div class="return-description">
-                    <p>True bei Erfolg, False bei Fehler</p>
-                </div>
-            </div>
-        </div>
-        
-        <div class="method">
-            <h3>is_connected</h3>
-            <div class="method-signature">def is_connected(self)</div>
-            <div class="method-description">
-                <p>Prüft, ob die Verbindung zum Arduino hergestellt ist</p>
-            </div>
-            <div class="return-value">
-                <h4>Rückgabewert:</h4>
-                <div class="return-description">
-                    <p>True wenn verbunden, sonst False</p>
-                </div>
-            </div>
-        </div>
-        
-        <div class="method">
-            <h3>send_command</h3>
-            <div class="method-signature">def send_command(self, command)</div>
-            <div class="method-description">
-                <p>Sendet einen Befehl an den Arduino</p>
-            </div>
-            <div class="parameters">
-                <h4>Parameter:</h4>
-                <div class="parameter">
-                    <span class="parameter-name">command:</span> Zu sendender Befehl
-                </div>
-            </div>
-            <div class="return-value">
-                <h4>Rückgabewert:</h4>
-                <div class="return-description">
-                    <p>True bei Erfolg, False bei Fehler</p>
-                </div>
-            </div>
-        </div>
-        
-        <div class="method">
-            <h3>turn_motor_on</h3>
-            <div class="method-signature">def turn_motor_on(self)</div>
-            <div class="method-description">
-                <p>Schaltet den Motor ein (Relais schließen)</p>
-            </div>
-            <div class="return-value">
-                <h4>Rückgabewert:</h4>
-                <div class="return-description">
-                    <p>True bei Erfolg, False bei Fehler</p>
-                </div>
-            </div>
-        </div>
-        
-        <div class="method">
-            <h3>turn_motor_off</h3>
-            <div class="method-signature">def turn_motor_off(self)</div>
-            <div class="method-description">
-                <p>Schaltet den Motor aus (Relais öffnen)</p>
-            </div>
-            <div class="return-value">
-                <h4>Rückgabewert:</h4>
-                <div class="return-description">
-                    <p>True bei Erfolg, False bei Fehler</p>
-                </div>
-            </div>
-        </div>
-        
-        <div class="method">
-            <h3>rotate_for_duration</h3>
-            <div class="method-signature">def rotate_for_duration(self, duration_ms)</div>
-            <div class="method-description">
-                <p>Dreht den Motor für eine bestimmte Zeit</p>
-            </div>
-            <div class="parameters">
-                <h4>Parameter:</h4>
-                <div class="parameter">
-                    <span class="parameter-name">duration_ms:</span> Dauer in Millisekunden
-                </div>
-            </div>
-            <div class="return-value">
-                <h4>Rückgabewert:</h4>
-                <div class="return-description">
-                    <p>True bei Erfolg, False bei Fehler</p>
-                </div>
-            </div>
-        </div>
-    </main>
+    # Verbindung trennen
+    arduino.disconnect()
+else:
+    print("Konnte keine Verbindung zum Arduino herstellen")
+            </pre>
+        </section>
+
+        <section id="arduino-sketch">
+            <h2>Arduino-Sketch</h2>
+            <p>
+                Der Arduino-Controller setzt voraus, dass der Arduino mit dem folgenden Sketch programmiert ist:
+            </p>
+            
+            <pre class="code-example">
+/*
+ * Drehteller-Steuerung
+ * 
+ * Ein einfacher Sketch, um ein Relais zu steuern,
+ * das den Motor des Drehtellers ein- und ausschaltet.
+ */
+
+const int relayPin = 8;  // Pin des Relais
+
+void setup() {
+  // Serielle Verbindung initialisieren
+  Serial.begin(9600);
+  
+  // Relais-Pin als Ausgang konfigurieren
+  pinMode(relayPin, OUTPUT);
+  
+  // Relais ausschalten (LOW oder HIGH, je nach Relais-Typ)
+  digitalWrite(relayPin, LOW);
+  
+  Serial.println("Drehteller-Steuerung bereit");
+}
+
+void loop() {
+  // Auf Befehle von der seriellen Schnittstelle warten
+  if (Serial.available() > 0) {
+    char command = Serial.read();
     
-    <footer>
-        <p>&copy; 2025 360° Drehteller Steuerung</p>
-    </footer>
+    switch (command) {
+      case '1':
+        // Relais einschalten
+        digitalWrite(relayPin, HIGH);
+        Serial.println("OK");
+        break;
+        
+      case '0':
+        // Relais ausschalten
+        digitalWrite(relayPin, LOW);
+        Serial.println("OK");
+        break;
+        
+      default:
+        // Unbekannter Befehl
+        Serial.println("FEHLER: Unbekannter Befehl");
+        break;
+    }
+  }
+}
+            </pre>
+        </section>
+
+        <section id="troubleshooting">
+            <h2>Fehlerbehandlung</h2>
+            <p>Häufige Probleme und deren Lösung:</p>
+            
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">Verbindungsprobleme</h3>
+                </div>
+                <div class="card-body">
+                    <p>
+                        Wenn keine Verbindung zum Arduino hergestellt werden kann, prüfen Sie folgendes:
+                    </p>
+                    <ul>
+                        <li>
+                            Ist der Arduino angeschlossen und wird er vom System erkannt?
+                            <code>ls -l /dev/ttyACM*</code> oder <code>ls -l /dev/ttyUSB*</code>
+                        </li>
+                        <li>
+                            Sind die Rechte für den seriellen Port korrekt gesetzt?
+                            <code>sudo chmod 666 /dev/ttyACM0</code>
+                        </li>
+                        <li>
+                            Ist der richtige Port in den Einstellungen konfiguriert?
+                        </li>
+                        <li>
+                            Stimmt die Baudrate mit der im Arduino-Sketch überein?
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">Kommunikationsprobleme</h3>
+                </div>
+                <div class="card-body">
+                    <p>
+                        Wenn die Verbindung besteht, aber Befehle nicht ausgeführt werden:
+                    </p>
+                    <ul>
+                        <li>
+                            Prüfen Sie, ob der Arduino-Sketch korrekt hochgeladen wurde und 
+                            die Befehle '0' und '1' versteht.
+                        </li>
+                        <li>
+                            Überprüfen Sie das Relais und dessen Verbindung mit dem Arduino.
+                        </li>
+                        <li>
+                            Prüfen Sie, ob der Arduino genügend Strom erhält.
+                        </li>
+                        <li>
+                            Überprüfen Sie, ob das Relais für die Last (Motor) geeignet ist.
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <hr>
+        <footer>
+            <p>&copy; 2025 Drehteller 360 Grad Steuerung</p>
+        </footer>
+    </div>
+
+    <script src="js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

@@ -4,221 +4,136 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Einstellungen - 360° Drehteller Steuerung</title>
-    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
 </head>
 <body>
     <header>
-        <h1>360° Drehteller Steuerung</h1>
-        <nav>
-            <a href="/">Startseite</a>
-            <a href="/projects">Projekte</a>
-            <a href="/settings" class="active">Einstellungen</a>
-        </nav>
+        <div class="container">
+            <div class="d-flex align-items-center">
+                <h1><a href="{{ url_for('main.index') }}">360° Drehteller Steuerung</a></h1>
+                <nav>
+                    <a href="{{ url_for('main.index') }}">Startseite</a>
+                    <a href="{{ url_for('projects.projects_page') }}">Projekte</a>
+                    <a href="{{ url_for('settings.settings') }}" class="active">Einstellungen</a>
+                </nav>
+            </div>
+        </div>
     </header>
-    
-    <main>
-        <div class="settings-container">
-            <h1>Einstellungen</h1>
+
+    <div class="container">
+        <div class="card">
+            <h2>Einstellungen</h2>
             
-            <div id="statusMessage" class="status-message"></div>
-            
-            <form id="settingsForm">
-                <div class="settings-group">
-                    <h2>Kamera-Einstellungen</h2>
+            <form id="settings-form">
+                <!-- Kamera-Einstellungen -->
+                <div class="mb-4">
+                    <h3>Kamera-Einstellungen</h3>
                     
-                    <div class="setting-row">
-                        <div class="setting-label">Kamera-Typ</div>
-                        <div class="setting-control">
-                            <select id="cameraType" name="camera.type">
-                                <option value="webcam">Webcam</option>
-                                <option value="gphoto2">DSLR (gphoto2)</option>
-                            </select>
-                            <div class="setting-description">Art der verwendeten Kamera</div>
+                    <div class="form-group">
+                        <label for="camera-type">Kamera-Typ</label>
+                        <select id="camera-type">
+                            <option value="webcam">Webcam</option>
+                            <option value="gphoto2">DSLR (gphoto2)</option>
+                        </select>
+                        <div class="form-text">Art der verwendeten Kamera</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="camera-device">Geräte-Pfad</label>
+                        <input type="text" id="camera-device" placeholder="/dev/video0">
+                        <div class="form-text">Pfad zum Kameragerät (z.B. /dev/video0)</div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="camera-width">Breite</label>
+                                <input type="number" id="camera-width" placeholder="1920">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="camera-height">Höhe</label>
+                                <input type="number" id="camera-height" placeholder="1080">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-text">Bildauflösung in Pixeln</div>
+                </div>
+
+                <!-- Arduino-Einstellungen -->
+                <div class="mb-4">
+                    <h3>Arduino-Einstellungen</h3>
+                    
+                    <div class="form-group">
+                        <label for="arduino-port">Serial-Port</label>
+                        <input type="text" id="arduino-port" placeholder="/dev/ttyACM0">
+                        <div class="form-text">Pfad zum Arduino-Serial-Port (z.B. /dev/ttyACM0)</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="arduino-baudrate">Baudrate</label>
+                        <select id="arduino-baudrate">
+                            <option value="9600">9600</option>
+                            <option value="19200">19200</option>
+                            <option value="38400">38400</option>
+                            <option value="57600">57600</option>
+                            <option value="115200">115200</option>
+                        </select>
+                        <div class="form-text">Baudrate für die Arduino-Kommunikation</div>
+                    </div>
+                </div>
+
+                <!-- Drehteller-Einstellungen -->
+                <div class="mb-4">
+                    <h3>Drehteller-Einstellungen</h3>
+                    
+                    <div class="form-group">
+                        <input type="radio" name="rotation-mode" id="angle-mode" value="angle" checked>
+                        <label for="angle-mode" style="display: inline;">Winkelschritt-Modus</label>
+                        <div class="form-text">Drehung nach Winkelschritten berechnen</div>
+                        
+                        <div class="mt-2 mb-3">
+                            <label for="default-angle">Standard-Winkelschritt</label>
+                            <input type="number" id="default-angle" placeholder="15">
+                            <div class="form-text">Standardmäßiger Rotationswinkel in Grad</div>
                         </div>
                     </div>
                     
-                    <div class="setting-row">
-                        <div class="setting-label">Geräte-Pfad</div>
-                        <div class="setting-control">
-                            <input type="text" id="cameraPath" name="camera.device_path" placeholder="/dev/video0">
-                            <div class="setting-description">Pfad zum Kameragerät (z.B. /dev/video0)</div>
+                    <div class="form-group">
+                        <input type="radio" name="rotation-mode" id="time-mode" value="time">
+                        <label for="time-mode" style="display: inline;">Zeit-Modus</label>
+                        <div class="form-text">Drehung nach Zeit berechnen</div>
+                        
+                        <div class="mt-2 mb-3">
+                            <label for="default-interval">Standard-Intervall</label>
+                            <input type="number" id="default-interval" placeholder="5">
+                            <div class="form-text">Standardmäßige Wartezeit zwischen Rotationen in Sekunden</div>
                         </div>
-                    </div>
-                    
-                    <div class="setting-row">
-                        <div class="setting-label">Auflösung</div>
-                        <div class="setting-control" style="display: flex; gap: 10px;">
-                            <input type="number" id="resolutionWidth" name="camera.resolution.width" placeholder="Breite" min="320" max="4096" style="width: 100px;">
-                            <span>×</span>
-                            <input type="number" id="resolutionHeight" name="camera.resolution.height" placeholder="Höhe" min="240" max="3072" style="width: 100px;">
-                            <div class="setting-description" style="width: 100%">Bildauflösung in Pixeln</div>
+
+                        <div class="mt-2 mb-3">
+                            <label for="default-duration">Standard-Drehzeit</label>
+                            <input type="number" id="default-duration" placeholder="2">
+                            <div class="form-text">Standardmäßige Dauer einer Rotation in Sekunden</div>
                         </div>
                     </div>
                 </div>
-                
-                <div class="settings-group">
-                    <h2>Arduino-Einstellungen</h2>
-                    
-                    <div class="setting-row">
-                        <div class="setting-label">Serial-Port</div>
-                        <div class="setting-control">
-                            <input type="text" id="arduinoPort" name="arduino.port" placeholder="/dev/ttyACM0">
-                            <div class="setting-description">Pfad zum Arduino-Serial-Port (z.B. /dev/ttyACM0)</div>
-                        </div>
-                    </div>
-                    
-                    <div class="setting-row">
-                        <div class="setting-label">Baudrate</div>
-                        <div class="setting-control">
-                            <select id="arduinoBaudrate" name="arduino.baudrate">
-                                <option value="9600">9600</option>
-                                <option value="19200">19200</option>
-                                <option value="38400">38400</option>
-                                <option value="57600">57600</option>
-                                <option value="115200">115200</option>
-                            </select>
-                            <div class="setting-description">Baudrate für die Arduino-Kommunikation</div>
-                        </div>
-                    </div>
+
+                <div class="form-group">
+                    <button type="submit" class="btn-primary">Einstellungen speichern</button>
                 </div>
-                
-                <div class="settings-group">
-                    <h2>Drehteller-Einstellungen</h2>
-                    
-                    <div class="setting-row">
-                        <div class="setting-label">Standard-Winkelschritt</div>
-                        <div class="setting-control">
-                            <input type="number" id="defaultDegrees" name="rotation.default_degrees" min="1" max="90">
-                            <div class="setting-description">Standardmäßiger Winkel pro Schritt in Grad</div>
-                        </div>
-                    </div>
-                    
-                    <div class="setting-row">
-                        <div class="setting-label">Standard-Intervall</div>
-                        <div class="setting-control">
-                            <input type="number" id="defaultInterval" name="rotation.default_interval" min="1" max="60">
-                            <div class="setting-description">Standardintervall zwischen Fotos in Sekunden</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="settings-group">
-                    <h2>Simulator-Einstellungen</h2>
-                    
-                    <div class="setting-row">
-                        <div class="setting-label">Simulator aktivieren</div>
-                        <div class="setting-control">
-                            <input type="checkbox" id="simulatorEnabled" name="simulator.enabled">
-                            <div class="setting-description">Aktiviert den Simulator, wenn keine echte Hardware verfügbar ist</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <button type="submit" class="save-btn">Einstellungen speichern</button>
             </form>
         </div>
-    </main>
-    
+    </div>
+
     <footer>
-        <p>&copy; 2025 360° Drehteller Steuerung</p>
+        <div class="container">
+            <p>&copy; 2025 360° Drehteller Steuerung | Alexander Behrens | <a href="https://www.alexanderbehrens.com" target="_blank">www.alexanderbehrens.com</a></p>
+        </div>
     </footer>
-    
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const settingsForm = document.getElementById('settingsForm');
-            const statusMessage = document.getElementById('statusMessage');
-            
-            // Aktuelle Konfiguration laden
-            fetch('/get_config')
-                .then(response => response.json())
-                .then(config => {
-                    // Formularfelder mit aktuellen Werten füllen
-                    document.getElementById('cameraType').value = config?.camera?.type || 'webcam';
-                    document.getElementById('cameraPath').value = config?.camera?.device_path || '/dev/video0';
-                    document.getElementById('resolutionWidth').value = config?.camera?.resolution?.width || 1280;
-                    document.getElementById('resolutionHeight').value = config?.camera?.resolution?.height || 720;
-                    
-                    document.getElementById('arduinoPort').value = config?.arduino?.port || '/dev/ttyACM0';
-                    document.getElementById('arduinoBaudrate').value = config?.arduino?.baudrate || 9600;
-                    
-                    document.getElementById('defaultDegrees').value = config?.rotation?.default_degrees || 15;
-                    document.getElementById('defaultInterval').value = config?.rotation?.default_interval || 5;
-                    
-                    document.getElementById('simulatorEnabled').checked = config?.simulator?.enabled || false;
-                })
-                .catch(error => {
-                    console.error('Fehler beim Laden der Konfiguration:', error);
-                    showStatus('Fehler beim Laden der Konfiguration. Bitte versuchen Sie es später erneut.', 'error');
-                });
-                
-            // Formular absenden
-            settingsForm.addEventListener('submit', function(event) {
-                event.preventDefault();
-                
-                // Formulardaten sammeln
-                const formData = new FormData(settingsForm);
-                const configData = {};
-                
-                // FormData in verschachtelte Objekte umwandeln
-                formData.forEach((value, key) => {
-                    // Checkbox-Werte in boolesche Werte umwandeln
-                    if (key === 'simulator.enabled') {
-                        value = document.getElementById('simulatorEnabled').checked;
-                    }
-                    
-                    // Zahlen in numerische Werte umwandeln
-                    if (key.includes('resolution') || key.includes('degrees') || key.includes('interval') || key.includes('baudrate')) {
-                        value = Number(value);
-                    }
-                    
-                    // Punkt-Notation in verschachtelte Objekte umwandeln
-                    const keys = key.split('.');
-                    let current = configData;
-                    
-                    for (let i = 0; i < keys.length - 1; i++) {
-                        if (!current[keys[i]]) {
-                            current[keys[i]] = {};
-                        }
-                        current = current[keys[i]];
-                    }
-                    
-                    current[keys[keys.length - 1]] = value;
-                });
-                
-                // Konfiguration speichern
-                fetch('/save_config', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(configData)
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        showStatus('Einstellungen erfolgreich gespeichert!', 'success');
-                    } else {
-                        showStatus('Fehler beim Speichern der Einstellungen: ' + (data.message || 'Unbekannter Fehler'), 'error');
-                    }
-                })
-                .catch(error => {
-                    console.error('Fehler beim Speichern der Konfiguration:', error);
-                    showStatus('Fehler beim Speichern der Konfiguration. Bitte versuchen Sie es später erneut.', 'error');
-                });
-            });
-            
-            // Hilfsfunktion zum Anzeigen von Statusmeldungen
-            function showStatus(message, type) {
-                statusMessage.textContent = message;
-                statusMessage.className = 'status-message status-' + type;
-                statusMessage.style.display = 'block';
-                
-                // Nach 5 Sekunden ausblenden
-                setTimeout(() => {
-                    statusMessage.style.display = 'none';
-                }, 5000);
-            }
-        });
-    </script>
+
+    <script src="{{ url_for('static', filename='js/jquery-3.6.0.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
 </body>
 </html>

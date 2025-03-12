@@ -3,241 +3,324 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kamera-Controller - 360° Drehteller Steuerung</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 0;
-            color: #333;
-        }
-        
-        header {
-            background-color: #2c3e50;
-            color: white;
-            padding: 1rem 2rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        
-        h1 {
-            margin: 0;
-        }
-        
-        nav {
-            margin-top: 1rem;
-        }
-        
-        nav a {
-            color: white;
-            margin-right: 1rem;
-            text-decoration: none;
-        }
-        
-        nav a:hover {
-            text-decoration: underline;
-        }
-        
-        main {
-            max-width: 1200px;
-            margin: 2rem auto;
-            padding: 0 1rem;
-        }
-        
-        .module-info {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            margin-bottom: 2rem;
-        }
-        
-        .method {
-            background: #f8f9fa;
-            padding: 1.5rem;
-            border-radius: 8px;
-            margin-bottom: 1.5rem;
-            border-left: 4px solid #3498db;
-        }
-        
-        .method h3 {
-            margin-top: 0;
-            color: #2c3e50;
-        }
-        
-        .method-signature {
-            font-family: monospace;
-            background: #eee;
-            padding: 0.5rem;
-            border-radius: 4px;
-            margin-bottom: 1rem;
-        }
-        
-        .method-description {
-            margin-bottom: 1rem;
-        }
-        
-        .parameter, .return-value {
-            margin-bottom: 0.5rem;
-        }
-        
-        .parameter-name, .return-label {
-            font-weight: bold;
-        }
-        
-        footer {
-            text-align: center;
-            padding: 1rem;
-            background-color: #2c3e50;
-            color: white;
-            margin-top: 2rem;
-        }
-    </style>
+    <title>Dokumentation: Kamera-Controller</title>
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/documentation.css">
 </head>
 <body>
-    <header>
-        <h1>Kamera-Controller</h1>
-        <nav>
-            <a href="index.html">Zurück zur Übersicht</a>
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="index.html">Dokumentation</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Kamera-Controller</li>
+            </ol>
         </nav>
-    </header>
-    
-    <main>
-        <div class="module-info">
-            <h2>CameraController</h2>
-            <p>Controller für die Kamerasteuerung (Webcam und gphoto2-Kameras)</p>
-            <p><strong>Datei:</strong> /app/controllers/camera_controller.py</p>
-        </div>
+
+        <h1>Kamera-Controller (app/controllers/camera_controller.py)</h1>
         
-        <h2>Methoden</h2>
-        
-        <div class="method">
-            <h3>__init__</h3>
-            <div class="method-signature">def __init__(self, camera_type='webcam', device='/dev/video0', resolution=None)</div>
-            <div class="method-description">
-                <p>Initialisiert den Kamera-Controller</p>
-            </div>
-            <div class="parameters">
-                <h4>Parameter:</h4>
-                <div class="parameter">
-                    <span class="parameter-name">camera_type:</span> Kameratyp ('webcam' oder 'gphoto2') (optional)
+        <section id="overview">
+            <h2>Übersicht</h2>
+            <p>
+                Der Kamera-Controller ist verantwortlich für die Steuerung von Kameras zur Aufnahme von Fotos.
+                Er unterstützt sowohl Webcams (über OpenCV) als auch DSLR-Kameras (über gphoto2) und bietet
+                eine einheitliche Schnittstelle für beide Kameratypen.
+            </p>
+            <p>
+                Der Controller ermöglicht die Konfiguration der Kamera (Auflösung, Gerätepfad) und das 
+                Aufnehmen von Fotos mit einem einzigen Methodenaufruf.
+            </p>
+        </section>
+
+        <section id="class">
+            <h2>Klasse CameraController</h2>
+            
+            <h3>Initialisierung</h3>
+            <div class="card mb-4">
+                <div class="card-header">
+                    <code>__init__(self, camera_type='webcam', device='/dev/video0', resolution=None)</code>
                 </div>
-                <div class="parameter">
-                    <span class="parameter-name">device:</span> Gerätepfad (optional)
-                </div>
-                <div class="parameter">
-                    <span class="parameter-name">resolution:</span> Auflösung als Tupel (Breite, Höhe) oder String 'BreitexHöhe' (optional)
-                </div>
-            </div>
-        </div>
-        
-        <div class="method">
-            <h3>_check_gphoto2</h3>
-            <div class="method-signature">def _check_gphoto2(self)</div>
-            <div class="method-description">
-                <p>Prüft, ob gphoto2 installiert ist</p>
-            </div>
-            <div class="return-value">
-                <h4>Rückgabewert:</h4>
-                <div class="return-description">
-                    <p>True wenn gphoto2 verfügbar ist, sonst False</p>
-                </div>
-            </div>
-        </div>
-        
-        <div class="method">
-            <h3>_setup_webcam</h3>
-            <div class="method-signature">def _setup_webcam(self)</div>
-            <div class="method-description">
-                <p>Initialisiert die Webcam</p>
-            </div>
-            <div class="return-value">
-                <h4>Rückgabewert:</h4>
-                <div class="return-description">
-                    <p>True bei Erfolg, False bei Fehler</p>
+                <div class="card-body">
+                    <p>Initialisiert den Kamera-Controller.</p>
+                    <h4>Parameter:</h4>
+                    <ul>
+                        <li><code>camera_type</code>: Kameratyp ('webcam' oder 'gphoto2') (optional, Standard: 'webcam')</li>
+                        <li><code>device</code>: Gerätepfad (optional, Standard: '/dev/video0')</li>
+                        <li><code>resolution</code>: Auflösung als Tupel (Breite, Höhe) oder String 'BreitexHöhe' oder Dictionary mit 'width' und 'height' (optional)</li>
+                    </ul>
+                    <p>
+                        Der Kamera-Controller unterstützt verschiedene Formate für die Auflösung:
+                    </p>
+                    <ul>
+                        <li>Tupel: <code>(1920, 1080)</code></li>
+                        <li>String: <code>'1920x1080'</code></li>
+                        <li>Dictionary: <code>{'width': 1920, 'height': 1080}</code></li>
+                    </ul>
+                    <p>
+                        Wenn keine Auflösung angegeben wird, wird die Standardauflösung 1920x1080 verwendet.
+                    </p>
                 </div>
             </div>
-        </div>
-        
-        <div class="method">
-            <h3>_close_webcam</h3>
-            <div class="method-signature">def _close_webcam(self)</div>
-            <div class="method-description">
-                <p>Schließt die Webcam</p>
-            </div>
-        </div>
-        
-        <div class="method">
-            <h3>capture_webcam_photo</h3>
-            <div class="method-signature">def capture_webcam_photo(self, output_path)</div>
-            <div class="method-description">
-                <p>Nimmt ein Foto mit der Webcam auf</p>
-            </div>
-            <div class="parameters">
-                <h4>Parameter:</h4>
-                <div class="parameter">
-                    <span class="parameter-name">output_path:</span> Pfad für das aufgenommene Foto
+
+            <h3>Private Methoden</h3>
+            <div class="card mb-4">
+                <div class="card-header">
+                    <code>_check_gphoto2(self)</code>
+                </div>
+                <div class="card-body">
+                    <p>Prüft, ob gphoto2 installiert ist.</p>
+                    <h4>Rückgabewert:</h4>
+                    <p><code>True</code> wenn gphoto2 verfügbar ist, sonst <code>False</code></p>
                 </div>
             </div>
-            <div class="return-value">
-                <h4>Rückgabewert:</h4>
-                <div class="return-description">
-                    <p>True bei Erfolg, False bei Fehler</p>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <code>_setup_webcam(self)</code>
+                </div>
+                <div class="card-body">
+                    <p>Initialisiert die Webcam.</p>
+                    <h4>Rückgabewert:</h4>
+                    <p><code>True</code> bei Erfolg, <code>False</code> bei Fehler</p>
+                    <p>
+                        Diese Methode initialisiert den OpenCV-Videocapture und stellt die konfigurierte 
+                        Auflösung ein.
+                    </p>
                 </div>
             </div>
-        </div>
-        
-        <div class="method">
-            <h3>capture_gphoto2_photo</h3>
-            <div class="method-signature">def capture_gphoto2_photo(self, output_path)</div>
-            <div class="method-description">
-                <p>Nimmt ein Foto mit einer gphoto2-kompatiblen Kamera auf</p>
-            </div>
-            <div class="parameters">
-                <h4>Parameter:</h4>
-                <div class="parameter">
-                    <span class="parameter-name">output_path:</span> Pfad für das aufgenommene Foto
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <code>_close_webcam(self)</code>
+                </div>
+                <div class="card-body">
+                    <p>Schließt die Webcam.</p>
+                    <p>
+                        Diese Methode gibt die Webcam-Ressourcen frei, indem sie den OpenCV-Videocapture 
+                        schließt.
+                    </p>
                 </div>
             </div>
-            <div class="return-value">
-                <h4>Rückgabewert:</h4>
-                <div class="return-description">
-                    <p>True bei Erfolg, False bei Fehler</p>
+
+            <h3>Öffentliche Methoden</h3>
+            <div class="card mb-4">
+                <div class="card-header">
+                    <code>capture_webcam_photo(self, output_path)</code>
+                </div>
+                <div class="card-body">
+                    <p>Nimmt ein Foto mit der Webcam auf.</p>
+                    <h4>Parameter:</h4>
+                    <ul>
+                        <li><code>output_path</code>: Pfad für das aufgenommene Foto</li>
+                    </ul>
+                    <h4>Rückgabewert:</h4>
+                    <p><code>True</code> bei Erfolg, <code>False</code> bei Fehler</p>
+                    <p>
+                        Diese Methode initialisiert die Webcam, nimmt mehrere Frames auf (um der Kamera 
+                        Zeit zur Anpassung zu geben) und speichert den letzten Frame als Bild.
+                    </p>
                 </div>
             </div>
-        </div>
-        
-        <div class="method">
-            <h3>capture_photo</h3>
-            <div class="method-signature">def capture_photo(self, output_path)</div>
-            <div class="method-description">
-                <p>Nimmt ein Foto auf (je nach Kameratyp)</p>
-            </div>
-            <div class="parameters">
-                <h4>Parameter:</h4>
-                <div class="parameter">
-                    <span class="parameter-name">output_path:</span> Pfad für das aufgenommene Foto
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <code>capture_gphoto2_photo(self, output_path)</code>
+                </div>
+                <div class="card-body">
+                    <p>Nimmt ein Foto mit einer gphoto2-kompatiblen Kamera auf.</p>
+                    <h4>Parameter:</h4>
+                    <ul>
+                        <li><code>output_path</code>: Pfad für das aufgenommene Foto</li>
+                    </ul>
+                    <h4>Rückgabewert:</h4>
+                    <p><code>True</code> bei Erfolg, <code>False</code> bei Fehler</p>
+                    <p>
+                        Diese Methode nutzt das gphoto2-Kommandozeilenprogramm, um ein Foto mit einer
+                        angeschlossenen DSLR-Kamera aufzunehmen und es direkt als Datei zu speichern.
+                    </p>
                 </div>
             </div>
-            <div class="return-value">
-                <h4>Rückgabewert:</h4>
-                <div class="return-description">
-                    <p>True bei Erfolg, False bei Fehler</p>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <code>capture_photo(self, output_path)</code>
+                </div>
+                <div class="card-body">
+                    <p>Nimmt ein Foto auf (je nach Kameratyp).</p>
+                    <h4>Parameter:</h4>
+                    <ul>
+                        <li><code>output_path</code>: Pfad für das aufgenommene Foto</li>
+                    </ul>
+                    <h4>Rückgabewert:</h4>
+                    <p><code>True</code> bei Erfolg, <code>False</code> bei Fehler</p>
+                    <p>
+                        Diese Methode ist die Hauptschnittstelle des Controllers und ruft abhängig vom
+                        konfigurierten Kameratyp entweder <code>capture_webcam_photo</code> oder
+                        <code>capture_gphoto2_photo</code> auf.
+                    </p>
                 </div>
             </div>
-        </div>
-        
-        <div class="method">
-            <h3>cleanup</h3>
-            <div class="method-signature">def cleanup(self)</div>
-            <div class="method-description">
-                <p>Ressourcen freigeben, wenn die Kamera nicht mehr benötigt wird</p>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <code>cleanup(self)</code>
+                </div>
+                <div class="card-body">
+                    <p>Ressourcen freigeben, wenn die Kamera nicht mehr benötigt wird.</p>
+                    <p>
+                        Diese Methode stellt sicher, dass alle Kameraressourcen ordnungsgemäß freigegeben
+                        werden, wenn der Controller nicht mehr benötigt wird.
+                    </p>
+                </div>
             </div>
-        </div>
-    </main>
-    
-    <footer>
-        <p>&copy; 2025 360° Drehteller Steuerung</p>
-    </footer>
+        </section>
+
+        <section id="example">
+            <h2>Beispiele</h2>
+            
+            <h3>Beispiel für die Verwendung mit einer Webcam:</h3>
+            <pre class="code-example">
+# Kamera-Controller für Webcam erstellen
+camera = CameraController(
+    camera_type='webcam',
+    device='/dev/video0',
+    resolution=(1280, 720)
+)
+
+# Foto aufnehmen
+success = camera.capture_photo('output/test_photo.jpg')
+
+if success:
+    print('Foto erfolgreich aufgenommen')
+else:
+    print('Fehler beim Aufnehmen des Fotos')
+
+# Ressourcen freigeben
+camera.cleanup()
+            </pre>
+
+            <h3>Beispiel für die Verwendung mit einer DSLR-Kamera:</h3>
+            <pre class="code-example">
+# Kamera-Controller für DSLR-Kamera erstellen
+camera = CameraController(
+    camera_type='gphoto2',
+    device='auto'  # Automatische Erkennung der Kamera
+)
+
+# Foto aufnehmen
+success = camera.capture_photo('output/dslr_photo.jpg')
+
+if success:
+    print('Foto erfolgreich aufgenommen')
+else:
+    print('Fehler beim Aufnehmen des Fotos')
+
+# Ressourcen freigeben
+camera.cleanup()
+            </pre>
+        </section>
+
+        <section id="dependencies">
+            <h2>Abhängigkeiten</h2>
+            <p>Der Kamera-Controller hat folgende Abhängigkeiten:</p>
+            
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">Python-Bibliotheken</h3>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li>
+                            <strong>OpenCV (cv2)</strong>: Für die Steuerung von Webcams
+                            <pre>pip install opencv-python</pre>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">Externe Programme</h3>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li>
+                            <strong>gphoto2</strong>: Für die Steuerung von DSLR-Kameras
+                            <pre>sudo apt-get install gphoto2</pre>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section id="troubleshooting">
+            <h2>Fehlerbehandlung</h2>
+            <p>Häufige Probleme und deren Lösung:</p>
+            
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">Webcam-Probleme</h3>
+                </div>
+                <div class="card-body">
+                    <p>
+                        Wenn Probleme mit der Webcam auftreten:
+                    </p>
+                    <ul>
+                        <li>
+                            Prüfen Sie, ob die Webcam angeschlossen und vom System erkannt wird:
+                            <pre>ls -l /dev/video*</pre>
+                        </li>
+                        <li>
+                            Testen Sie die Webcam mit einem anderen Programm, z.B. VLC oder Cheese
+                        </li>
+                        <li>
+                            Stellen Sie sicher, dass die konfigurierte Auflösung von der Webcam unterstützt wird
+                        </li>
+                        <li>
+                            Prüfen Sie, ob die Rechte für den Gerätezugriff korrekt sind:
+                            <pre>sudo chmod 666 /dev/video0</pre>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">gphoto2-Probleme</h3>
+                </div>
+                <div class="card-body">
+                    <p>
+                        Wenn Probleme mit der DSLR-Kamera auftreten:
+                    </p>
+                    <ul>
+                        <li>
+                            Prüfen Sie, ob gphoto2 installiert ist:
+                            <pre>gphoto2 --version</pre>
+                        </li>
+                        <li>
+                            Prüfen Sie, ob die Kamera erkannt wird:
+                            <pre>gphoto2 --auto-detect</pre>
+                        </li>
+                        <li>
+                            Stellen Sie sicher, dass die Kamera im richtigen Modus ist (oft manueller Modus)
+                        </li>
+                        <li>
+                            Prüfen Sie, ob andere Programme auf die Kamera zugreifen
+                        </li>
+                        <li>
+                            Versuchen Sie, die Kamera manuell mit gphoto2 zu steuern:
+                            <pre>gphoto2 --capture-image-and-download</pre>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <hr>
+        <footer>
+            <p>&copy; 2025 Drehteller 360 Grad Steuerung</p>
+        </footer>
+    </div>
+
+    <script src="js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

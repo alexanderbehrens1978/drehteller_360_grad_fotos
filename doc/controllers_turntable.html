@@ -3,185 +3,359 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Drehteller-Controller - 360° Drehteller Steuerung</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 0;
-            color: #333;
-        }
-        
-        header {
-            background-color: #2c3e50;
-            color: white;
-            padding: 1rem 2rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        
-        h1 {
-            margin: 0;
-        }
-        
-        nav {
-            margin-top: 1rem;
-        }
-        
-        nav a {
-            color: white;
-            margin-right: 1rem;
-            text-decoration: none;
-        }
-        
-        nav a:hover {
-            text-decoration: underline;
-        }
-        
-        main {
-            max-width: 1200px;
-            margin: 2rem auto;
-            padding: 0 1rem;
-        }
-        
-        .module-info {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            margin-bottom: 2rem;
-        }
-        
-        .method {
-            background: #f8f9fa;
-            padding: 1.5rem;
-            border-radius: 8px;
-            margin-bottom: 1.5rem;
-            border-left: 4px solid #3498db;
-        }
-        
-        .method h3 {
-            margin-top: 0;
-            color: #2c3e50;
-        }
-        
-        .method-signature {
-            font-family: monospace;
-            background: #eee;
-            padding: 0.5rem;
-            border-radius: 4px;
-            margin-bottom: 1rem;
-        }
-        
-        .method-description {
-            margin-bottom: 1rem;
-        }
-        
-        .parameter, .return-value {
-            margin-bottom: 0.5rem;
-        }
-        
-        .parameter-name, .return-label {
-            font-weight: bold;
-        }
-        
-        footer {
-            text-align: center;
-            padding: 1rem;
-            background-color: #2c3e50;
-            color: white;
-            margin-top: 2rem;
-        }
-    </style>
+    <title>Dokumentation: Drehteller-Controller</title>
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/documentation.css">
 </head>
 <body>
-    <header>
-        <h1>Drehteller-Controller</h1>
-        <nav>
-            <a href="index.html">Zurück zur Übersicht</a>
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="index.html">Dokumentation</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Drehteller-Controller</li>
+            </ol>
         </nav>
-    </header>
-    
-    <main>
-        <div class="module-info">
-            <h2>TurntableController</h2>
-            <p>Controller für die Drehteller-Steuerung mit dem Arduino</p>
-            <p><strong>Datei:</strong> /app/controllers/turntable_controller.py</p>
-        </div>
+
+        <h1>Drehteller-Controller (app/controllers/turntable_controller.py)</h1>
         
-        <h2>Methoden</h2>
-        
-        <div class="method">
-            <h3>__init__</h3>
-            <div class="method-signature">def __init__(self, arduino_controller, default_angle_step=5)</div>
-            <div class="method-description">
-                <p>Initialisiert den Drehteller-Controller</p>
-            </div>
-            <div class="parameters">
-                <h4>Parameter:</h4>
-                <div class="parameter">
-                    <span class="parameter-name">arduino_controller:</span> ArduinoController-Instanz
+        <section id="overview">
+            <h2>Übersicht</h2>
+            <p>
+                Der Drehteller-Controller ist eine höhere Abstraktionsebene über dem Arduino-Controller und 
+                bietet Funktionen zur Steuerung des Drehtellers in Grad oder Zeit sowie zur Durchführung von
+                automatisierten Fotosessions.
+            </p>
+            <p>
+                Der Controller verwaltet die aktuelle Position des Drehtellers und berechnet die nötigen
+                Rotationszeiten basierend auf der Drehgeschwindigkeit des Motors. Er kann den Drehteller
+                um einen bestimmten Winkel drehen oder für eine bestimmte Zeit laufen lassen.
+            </p>
+        </section>
+
+        <section id="class">
+            <h2>Klasse TurntableController</h2>
+            
+            <h3>Konstanten</h3>
+            <div class="card mb-4">
+                <div class="card-header">
+                    <code>MOTOR_DEGREE_PER_SECOND = 0.8</code>
                 </div>
-                <div class="parameter">
-                    <span class="parameter-name">default_angle_step:</span> Standard-Winkelschritt in Grad (optional)
-                </div>
-            </div>
-        </div>
-        
-        <div class="method">
-            <h3>calculate_rotation_time</h3>
-            <div class="method-signature">def calculate_rotation_time(self, degrees)</div>
-            <div class="method-description">
-                <p>Berechnet die Zeit, die für eine Rotation um einen bestimmten Winkel benötigt wird</p>
-            </div>
-            <div class="parameters">
-                <h4>Parameter:</h4>
-                <div class="parameter">
-                    <span class="parameter-name">degrees:</span> Winkel in Grad
+                <div class="card-body">
+                    <p>
+                        Drehgeschwindigkeit des Motors in Grad pro Sekunde. Diese Konstante wird verwendet,
+                        um die Rotationszeit für einen gewünschten Winkel zu berechnen.
+                    </p>
                 </div>
             </div>
-            <div class="return-value">
-                <h4>Rückgabewert:</h4>
-                <div class="return-description">
+            
+            <h3>Initialisierung</h3>
+            <div class="card mb-4">
+                <div class="card-header">
+                    <code>__init__(self, arduino_controller, default_angle_step=5)</code>
+                </div>
+                <div class="card-body">
+                    <p>Initialisiert den Drehteller-Controller.</p>
+                    <h4>Parameter:</h4>
+                    <ul>
+                        <li><code>arduino_controller</code>: ArduinoController-Instanz</li>
+                        <li><code>default_angle_step</code>: Standard-Winkelschritt in Grad (optional, Standard: 5)</li>
+                    </ul>
+                    <p>
+                        Der Controller erfordert eine Instanz des Arduino-Controllers, um den Drehteller
+                        physisch zu steuern.
+                    </p>
+                </div>
+            </div>
+
+            <h3>Methoden</h3>
+            <div class="card mb-4">
+                <div class="card-header">
+                    <code>calculate_rotation_time(self, degrees)</code>
+                </div>
+                <div class="card-body">
+                    <p>Berechnet die Zeit, die für eine Rotation um einen bestimmten Winkel benötigt wird.</p>
+                    <h4>Parameter:</h4>
+                    <ul>
+                        <li><code>degrees</code>: Winkel in Grad</li>
+                    </ul>
+                    <h4>Rückgabewert:</h4>
                     <p>Zeit in Millisekunden</p>
+                    <p>
+                        Die Berechnung basiert auf der Konstante <code>MOTOR_DEGREE_PER_SECOND</code> und
+                        dem gewünschten Winkel.
+                    </p>
                 </div>
             </div>
-        </div>
-        
-        <div class="method">
-            <h3>move_degrees</h3>
-            <div class="method-signature">def move_degrees(self, degrees)</div>
-            <div class="method-description">
-                <p>Bewegt den Drehteller um einen bestimmten Winkel</p>
-            </div>
-            <div class="parameters">
-                <h4>Parameter:</h4>
-                <div class="parameter">
-                    <span class="parameter-name">degrees:</span> Winkel in Grad
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <code>move_degrees(self, degrees)</code>
+                </div>
+                <div class="card-body">
+                    <p>Bewegt den Drehteller um einen bestimmten Winkel.</p>
+                    <h4>Parameter:</h4>
+                    <ul>
+                        <li><code>degrees</code>: Winkel in Grad</li>
+                    </ul>
+                    <h4>Rückgabewert:</h4>
+                    <p><code>True</code> bei Erfolg, <code>False</code> bei Fehler</p>
+                    <p>
+                        Diese Methode berechnet die nötige Rotationszeit mit <code>calculate_rotation_time</code>,
+                        dreht den Teller für diese Zeit und aktualisiert die aktuelle Position.
+                    </p>
                 </div>
             </div>
-            <div class="return-value">
-                <h4>Rückgabewert:</h4>
-                <div class="return-description">
-                    <p>True bei Erfolg, False bei Fehler</p>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <code>move_for_time(self, time_ms)</code>
+                </div>
+                <div class="card-body">
+                    <p>Bewegt den Drehteller für eine bestimmte Zeit.</p>
+                    <h4>Parameter:</h4>
+                    <ul>
+                        <li><code>time_ms</code>: Zeit in Millisekunden</li>
+                    </ul>
+                    <h4>Rückgabewert:</h4>
+                    <p><code>True</code> bei Erfolg, <code>False</code> bei Fehler</p>
+                    <p>
+                        Diese Methode dreht den Teller für die angegebene Zeit und berechnet den ungefähren
+                        Winkel basierend auf der Drehgeschwindigkeit.
+                    </p>
                 </div>
             </div>
-        </div>
-        
-        <div class="method">
-            <h3>reset_position</h3>
-            <div class="method-signature">def reset_position(self)</div>
-            <div class="method-description">
-                <p>Setzt die aktuelle Position auf 0 Grad zurück (ohne Bewegung)</p>
-            </div>
-            <div class="return-value">
-                <h4>Rückgabewert:</h4>
-                <div class="return-description">
-                    <p>True</p>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <code>reset_position(self)</code>
+                </div>
+                <div class="card-body">
+                    <p>Setzt die aktuelle Position auf 0 Grad zurück (ohne Bewegung).</p>
+                    <h4>Rückgabewert:</h4>
+                    <p><code>True</code></p>
+                    <p>
+                        Diese Methode aktualisiert nur den internen Positionszähler, ohne den Drehteller
+                        physisch zu bewegen.
+                    </p>
                 </div>
             </div>
-        </div>
-        
-        <div class="method">
-            <h3>start_session</h3>
-            <div class="method-signature">
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <code>start_session(self, project, camera_controller)</code>
+                </div>
+                <div class="card-body">
+                    <p>Startet eine Fotosession für ein Projekt.</p>
+                    <h4>Parameter:</h4>
+                    <ul>
+                        <li><code>project</code>: Project-Instanz</li>
+                        <li><code>camera_controller</code>: CameraController-Instanz</li>
+                    </ul>
+                    <h4>Rückgabewert:</h4>
+                    <p><code>True</code> bei Erfolg, <code>False</code> bei Fehler</p>
+                    <p>
+                        Diese Methode führt eine komplette 360°-Fotosession durch, indem sie den Drehteller
+                        schrittweise dreht und nach jedem Schritt ein Foto aufnimmt. Sie unterstützt zwei Modi:
+                    </p>
+                    <ul>
+                        <li>
+                            <strong>Winkelschritt-Modus</strong>: Dreht den Teller um feste Winkelschritte
+                            (z.B. alle 15 Grad)
+                        </li>
+                        <li>
+                            <strong>Zeit-Modus</strong>: Dreht den Teller für eine feste Zeit 
+                            (z.B. alle 5 Sekunden)
+                        </li>
+                    </ul>
+                    <p>
+                        Der Modus wird aus der Konfiguration gelesen (<code>rotation.mode</code>).
+                    </p>
+                    <p>
+                        Die Methode erstellt eine neue Session im Projekt und speichert alle aufgenommenen Fotos
+                        mit ihren Winkelpositionen. Die Session wird automatisch fortgesetzt, auch wenn die
+                        Netzwerkverbindung unterbrochen wird.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <section id="rotation-modes">
+            <h2>Rotationsmodi</h2>
+            <p>
+                Der Drehteller-Controller unterstützt zwei Rotationsmodi, die über die Konfiguration
+                (<code>rotation.mode</code>) eingestellt werden können:
+            </p>
+            
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">Winkelschritt-Modus (<code>angle</code>)</h3>
+                </div>
+                <div class="card-body">
+                    <p>
+                        Im Winkelschritt-Modus wird der Drehteller um feste Winkel gedreht. Dies ist der
+                        Standardmodus und bietet die genaueste Kontrolle über die Winkelschritte.
+                    </p>
+                    <p>
+                        Konfiguration:
+                    </p>
+                    <ul>
+                        <li><code>rotation.mode = 'angle'</code></li>
+                        <li><code>rotation.default_degrees</code>: Winkelschritt in Grad (z.B. 15)</li>
+                    </ul>
+                    <p>
+                        Berechnungsformel für die Rotationszeit:
+                    </p>
+                    <pre>time_ms = (degrees / MOTOR_DEGREE_PER_SECOND) * 1000</pre>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">Zeit-Modus (<code>time</code>)</h3>
+                </div>
+                <div class="card-body">
+                    <p>
+                        Im Zeit-Modus wird der Drehteller für eine feste Zeit gedreht. Dies kann nützlich sein,
+                        wenn die genaue Winkelposition weniger wichtig ist oder wenn der Motor mit variabler
+                        Geschwindigkeit läuft.
+                    </p>
+                    <p>
+                        Konfiguration:
+                    </p>
+                    <ul>
+                        <li><code>rotation.mode = 'time'</code></li>
+                        <li><code>rotation.time_ms</code>: Drehzeit in Millisekunden (z.B. 5000 für 5 Sekunden)</li>
+                    </ul>
+                    <p>
+                        Berechnungsformel für den geschätzten Winkel:
+                    </p>
+                    <pre>estimated_degrees = (time_ms / 1000.0) * MOTOR_DEGREE_PER_SECOND</pre>
+                </div>
+            </div>
+        </section>
+
+        <section id="example">
+            <h2>Beispiele</h2>
+            
+            <h3>Beispiel für die manuelle Steuerung des Drehtellers:</h3>
+            <pre class="code-example">
+# Arduino-Controller erstellen
+arduino = ArduinoController(port='/dev/ttyACM0', baudrate=9600)
+
+# Drehteller-Controller erstellen
+turntable = TurntableController(arduino, default_angle_step=15)
+
+# Drehteller um 90 Grad drehen
+turntable.move_degrees(90)
+
+# Position zurücksetzen (ohne Bewegung)
+turntable.reset_position()
+
+# Drehteller für 5 Sekunden drehen
+turntable.move_for_time(5000)
+            </pre>
+
+            <h3>Beispiel für eine automatisierte Fotosession:</h3>
+            <pre class="code-example">
+# Controller erstellen
+arduino = ArduinoController(port='/dev/ttyACM0', baudrate=9600)
+camera = CameraController(camera_type='webcam', device='/dev/video0', resolution=(1920, 1080))
+turntable = TurntableController(arduino, default_angle_step=15)
+
+# Projekt erstellen
+project = Project(name="Testprojekt", description="Eine Testsession", angle_step=15)
+
+# Session starten
+turntable.start_session(project, camera)
+            </pre>
+        </section>
+
+        <section id="troubleshooting">
+            <h2>Fehlerbehandlung</h2>
+            <p>Häufige Probleme und deren Lösung:</p>
+            
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">Ungleichmäßige Drehung</h3>
+                </div>
+                <div class="card-body">
+                    <p>
+                        Wenn der Drehteller nicht gleichmäßig dreht oder zu weit dreht:
+                    </p>
+                    <ul>
+                        <li>
+                            Überprüfen Sie, ob die Konstante <code>MOTOR_DEGREE_PER_SECOND</code> korrekt ist.
+                            Sie kann je nach Motor und Getriebe variieren.
+                        </li>
+                        <li>
+                            Kalibrieren Sie die Konstante, indem Sie den Teller für eine bekannte Zeit drehen und
+                            den tatsächlichen Winkel messen.
+                        </li>
+                        <li>
+                            Wenn der Motor nicht konstant dreht, verwenden Sie den Zeit-Modus statt des
+                            Winkelschritt-Modus.
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">Probleme bei der Fotosession</h3>
+                </div>
+                <div class="card-body">
+                    <p>
+                        Wenn die Fotosession nicht richtig funktioniert:
+                    </p>
+                    <ul>
+                        <li>
+                            Prüfen Sie, ob der Arduino-Controller richtig angeschlossen und initialisiert ist.
+                        </li>
+                        <li>
+                            Stellen Sie sicher, dass der Kamera-Controller richtig konfiguriert ist und
+                            Fotos aufnehmen kann.
+                        </li>
+                        <li>
+                            Überprüfen Sie die Projektverzeichnisse und Berechtigungen.
+                        </li>
+                        <li>
+                            Erhöhen Sie die Wartezeit zwischen den Rotationen, um der Kamera mehr Zeit zur
+                            Anpassung zu geben.
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">Verbindungsprobleme</h3>
+                </div>
+                <div class="card-body">
+                    <p>
+                        Wenn die Verbindung während einer Session abbricht:
+                    </p>
+                    <ul>
+                        <li>
+                            Die <code>start_session</code>-Methode ist so konzipiert, dass sie auch bei
+                            Netzwerkunterbrechungen weiterläuft.
+                        </li>
+                        <li>
+                            Überprüfen Sie die Logdateien, um zu sehen, ob einzelne Schritte fehlgeschlagen sind.
+                        </li>
+                        <li>
+                            Stellen Sie sicher, dass die Stromversorgung stabil ist.
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <hr>
+        <footer>
+            <p>&copy; 2025 Drehteller 360 Grad Steuerung</p>
+        </footer>
+    </div>
+
+    <script src="js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

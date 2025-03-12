@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dokumentation: API-Modul</title>
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/documentation.css">
+</head>
+<body>
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="index.html">Dokumentation</a></li>
+                <li class="breadcrumb-item active" aria-current="page">API-Modul</li>
+            </ol>
+        </nav>
+
+        <h1>API-Modul (app/blueprints/api)</h1>
+        
+        <section id="overview">
+            <h2>Übersicht</h2>
+            <p>
+                Das API-Modul stellt HTTP-Endpunkte bereit, die von der Weboberfläche oder anderen 
+                Anwendungen genutzt werden können, um mit der Drehteller-Steuerung zu interagieren.
+                Es ermöglicht den Zugriff auf Projekte, Geräte und Einstellungen sowie die Steuerung
+                des Drehtellers und der Kamera.
+            </p>
+            <p>
+                Das Modul ist als Flask-Blueprint implementiert und liefert Daten im JSON-Format zurück.
+            </p>
+        </section>
+
+        <section id="routes">
+            <h2>Endpunkte</h2>
+            
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">Projekte</h3>
+                </div>
+                <div class="card-body">
+                    <div class="endpoint">
+                        <h4>Projekt abrufen</h4>
+                        <code class="route">GET /api/project/&lt;project_id&gt;</code>
+                        <p>Liefert Metadaten zu einem bestimmten Projekt.</p>
+                        <h5>Parameter:</h5>
+                        <ul>
+                            <li><code>project_id</code>: ID des Projekts</li>
+                        </ul>
+                        <h5>Antwort:</h5>
+                        <pre class="code-example">
+{
+    "name": "Beispielprojekt",
+    "created": 1741791500,
+    "image_count": 24,
+    "images": ["image_001.jpg", "image_002.jpg", ...],
+    "user_metadata": { ... }
+}
+                        </pre>
+                    </div>
+
+                    <div class="endpoint mt-4">
+                        <h4>Alle Projekte abrufen</h4>
+                        <code class="route">GET /api/projects</code>
+                        <p>Liefert eine Liste aller verfügbaren Projekte.</p>
+                        <h5>Antwort:</h5>
+                        <pre class="code-example">
+[
+    {
+        "id": "project_123456",
+        "name": "Beispielprojekt 1",
+        "created": 1741791500,
+        "image_count": 24
+    },
+    {
+        "id": "project_654321",
+        "name": "Beispielprojekt 2",
+        "created": 1741790000,
+        "image_count": 36
+    }
+]
+                        </pre>
+                    </div>
+
+                    <div class="endpoint mt-4">
+                        <h4>Projekt löschen</h4>
+                        <code class="route">DELETE /api/project/&lt;project_id&gt;</code>
+                        <p>Löscht ein Projekt und alle zugehörigen Dateien.</p>
+                        <h5>Parameter:</h5>
+                        <ul>
+                            <li><code>project_id</code>: ID des Projekts</li>
+                        </ul>
+                        <h5>Antwort:</h5>
+                        <pre class="code-example">
+{
+    "status": "success"
+}
+                        </pre>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">Geräte</h3>
+                </div>
+                <div class="card-body">
+                    <div class="endpoint">
+                        <h4>Verfügbare Geräte abrufen</h4>
+                        <code class="route">GET /api/devices</code>
+                        <p>Liefert eine Liste aller erkannten Geräte (Kameras, Arduino).</p>
+                        <h5>Antwort:</h5>
+                        <pre class="code-example">
+{
+    "cameras": {
+        "webcams": ["/dev/video0", "/dev/video1"],
+        "gphoto2": ["Canon EOS 700D"]
+    },
+    "arduinos": [
+        {
+            "port": "/dev/ttyACM0",
+            "description": "Arduino Uno"
+        }
+    ]
+}
+                        </pre>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">360°-Viewer</h3>
+                </div>
+                <div class="card-body">
+                    <div class="endpoint">
+                        <h4>360°-Viewer generieren</h4>
+                        <code class="route">POST /api/generate_360</code>
+                        <p>Generiert einen 360°-Viewer aus den aufgenommenen Bildern.</p>
+                        <h5>Anfrage (JSON):</h5>
+                        <pre class="code-example">
+{
+    "name": "Mein Projekt",
+    "description": "Beschreibung des Projekts"
+}
+                        </pre>
+                        <h5>Antwort:</h5>
+                        <pre class="code-example">
+{
+    "status": "success",
+    "url": "/viewer?project=project_123456"
+}
+                        </pre>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">Kamera</h3>
+                </div>
+                <div class="card-body">
+                    <div class="endpoint">
+                        <h4>Kamera-Fähigkeiten abrufen</h4>
+                        <code class="route">GET /api/camera_capabilities</code>
+                        <p>Gibt die Fähigkeiten der aktuell konfigurierten Kamera zurück.</p>
+                        <h5>Antwort:</h5>
+                        <pre class="code-example">
+{
+    "status": "success",
+    "capabilities": {
+        "supported_resolutions": [
+            [640, 480],
+            [1280, 720],
+            [1920, 1080]
+        ],
+        "max_width": 1920,
+        "max_height": 1080
+    }
+}
+                        </pre>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">Status</h3>
+                </div>
+                <div class="card-body">
+                    <div class="endpoint">
+                        <h4>Arduino-Status abrufen</h4>
+                        <code class="route">GET /api/status/arduino</code>
+                        <p>Gibt den aktuellen Status des Arduino zurück.</p>
+                        <h5>Antwort:</h5>
+                        <pre class="code-example">
+{
+    "connected": true,
+    "port": "/dev/ttyACM0",
+    "baudrate": 9600
+}
+                        </pre>
+                    </div>
+
+                    <div class="endpoint mt-4">
+                        <h4>Kamera-Status abrufen</h4>
+                        <code class="route">GET /api/status/camera</code>
+                        <p>Gibt den aktuellen Status der Kamera zurück.</p>
+                        <h5>Antwort:</h5>
+                        <pre class="code-example">
+{
+    "available": true,
+    "type": "webcam",
+    "device": "/dev/video0",
+    "resolution": {
+        "width": 1280,
+        "height": 720
+    }
+}
+                        </pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="error-handling">
+            <h2>Fehlerbehandlung</h2>
+            <p>
+                Die API gibt bei Fehlern einen entsprechenden HTTP-Statuscode und eine JSON-Antwort
+                mit einer Fehlermeldung zurück.
+            </p>
+            
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">Fehlerantwort</h3>
+                </div>
+                <div class="card-body">
+                    <pre class="code-example">
+{
+    "error": "Fehlermeldung"
+}
+                    </pre>
+                    <p>Mögliche HTTP-Statuscodes:</p>
+                    <ul>
+                        <li><code>400 Bad Request</code>: Ungültige Anfrageparameter</li>
+                        <li><code>404 Not Found</code>: Ressource nicht gefunden</li>
+                        <li><code>500 Internal Server Error</code>: Interner Serverfehler</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section id="example">
+            <h2>Beispiel</h2>
+            <p>
+                Hier ist ein Beispiel für die Verwendung der API mit JavaScript:
+            </p>
+            
+            <pre class="code-example">
+// Alle Projekte abrufen
+fetch('/api/projects')
+    .then(response => response.json())
+    .then(projects => {
+        console.log('Verfügbare Projekte:', projects);
+    })
+    .catch(error => {
+        console.error('Fehler beim Abrufen der Projekte:', error);
+    });
+
+// 360°-Viewer generieren
+fetch('/api/generate_360', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+        name: 'Mein neues Projekt',
+        description: 'Ein Testprojekt'
+    })
+})
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            window.location.href = data.url;
+        } else {
+            console.error('Fehler:', data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Fehler beim Generieren des Viewers:', error);
+    });
+            </pre>
+        </section>
+
+        <section id="security">
+            <h2>Sicherheit</h2>
+            <p>
+                Die API ist derzeit nicht authentifiziert und sollte nur in vertrauenswürdigen
+                Netzwerken eingesetzt werden. Für den Einsatz im Internet sollten zusätzliche
+                Sicherheitsmaßnahmen implementiert werden:
+            </p>
+            <ul>
+                <li>Authentifizierung (z.B. über Token oder Benutzername/Passwort)</li>
+                <li>Rate Limiting</li>
+                <li>HTTPS-Verschlüsselung</li>
+                <li>CSRF-Schutz</li>
+            </ul>
+        </section>
+
+        <hr>
+        <footer>
+            <p>&copy; 2025 Drehteller 360 Grad Steuerung</p>
+        </footer>
+    </div>
+
+    <script src="js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

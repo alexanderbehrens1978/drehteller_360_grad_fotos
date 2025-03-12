@@ -4,146 +4,229 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>360° Drehteller Steuerung - Dokumentation</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 0;
-            color: #333;
-        }
-
-        header {
-            background-color: #2c3e50;
-            color: white;
-            padding: 1rem 2rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        h1 {
-            margin: 0;
-        }
-
-        main {
-            max-width: 1200px;
-            margin: 2rem auto;
-            padding: 0 1rem;
-        }
-
-        .module-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 1.5rem;
-        }
-
-        .module-card {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .module-card h2 {
-            margin-top: 0;
-            color: #2c3e50;
-        }
-
-        .module-card p {
-            margin-bottom: 1.5rem;
-        }
-
-        a {
-            color: #3498db;
-            text-decoration: none;
-        }
-
-        a:hover {
-            text-decoration: underline;
-        }
-
-        footer {
-            text-align: center;
-            padding: 1rem;
-            background-color: #2c3e50;
-            color: white;
-            margin-top: 2rem;
-        }
-    </style>
+    <link rel="stylesheet" href="css/doc.css">
 </head>
 <body>
     <header>
         <h1>360° Drehteller Steuerung - Dokumentation</h1>
     </header>
-
-    <main>
-        <h2>Module</h2>
-
-        <div class="module-list">
-            <div class="module-card">
-                <h2>App</h2>
-                <p>Hauptmodule der Anwendung.</p>
+    
+    <div class="container">
+        <nav>
+            <ul>
+                <li><a href="#settings">Einstellungen-Modul</a></li>
+                <li><a href="#config">Konfigurationsmanager</a></li>
+                <li><a href="#viewer">360° Viewer-Module</a></li>
+                <li><a href="#pannellum">Pannellum Viewer</a></li>
+                <li><a href="#photo-sphere">Photo Sphere Viewer</a></li>
+                <li><a href="#marzipano">Marzipano Viewer</a></li>
+            </ul>
+        </nav>
+        
+        <main>
+            <section id="settings">
+                <h2>Einstellungen-Modul</h2>
+                <p>Das Einstellungen-Modul ermöglicht die Konfiguration der Hardware-Komponenten der 360° Drehteller Steuerung.</p>
+                
+                <h3>Dateien</h3>
                 <ul>
-                    <li><a href="app.html">Anwendungsinitalisierung</a></li>
-                    <li><a href="config.html">Konfiguration</a></li>
+                    <li><code>app/blueprints/settings/routes.py</code> - Enthält die API-Endpunkte</li>
+                    <li><code>templates/settings.html</code> - Die HTML-Vorlage für die Einstellungsseite</li>
+                    <li><code>static/css/settings.css</code> - CSS-Stile spezifisch für die Einstellungsseite</li>
+                    <li><code>static/js/settings.js</code> - JavaScript-Funktionen für die Einstellungsseite</li>
                 </ul>
-            </div>
-
-            <div class="module-card">
-                <h2>Blueprints</h2>
-                <p>Routen der Anwendung.</p>
+                
+                <h3>Funktionen</h3>
+                <div class="function-doc">
+                    <h4>settings()</h4>
+                    <p>Funktion in <code>app/blueprints/settings/routes.py</code></p>
+                    <p>Zeigt die Einstellungsseite an.</p>
+                    <p>Route: <code>GET /settings/</code></p>
+                </div>
+                
+                <div class="function-doc">
+                    <h4>get_config()</h4>
+                    <p>Funktion in <code>app/blueprints/settings/routes.py</code></p>
+                    <p>Gibt die aktuelle Konfiguration als JSON zurück.</p>
+                    <p>Route: <code>GET /settings/get_config</code></p>
+                    <p>Rückgabe: JSON-Objekt mit der aktuellen Konfiguration</p>
+                </div>
+                
+                <div class="function-doc">
+                    <h4>save_config()</h4>
+                    <p>Funktion in <code>app/blueprints/settings/routes.py</code></p>
+                    <p>Speichert die übergebene Konfiguration.</p>
+                    <p>Route: <code>POST /settings/save_config</code></p>
+                    <p>Erwartet: JSON-Objekt mit der zu speichernden Konfiguration</p>
+                    <p>Rückgabe: JSON-Objekt mit Status der Operation</p>
+                </div>
+            </section>
+            
+            <section id="config">
+                <h2>Konfigurationsmanager</h2>
+                <p>Der Konfigurationsmanager ist zuständig für das Laden, Speichern und Verwalten der Anwendungskonfiguration.</p>
+                
+                <h3>Dateien</h3>
                 <ul>
-                    <li><a href="blueprints_main.html">Hauptseiten</a></li>
-                    <li><a href="blueprints_api.html">API-Endpunkte</a></li>
-                    <li><a href="blueprints_projects.html">Projektverwaltung</a></li>
-                    <li><a href="blueprints_settings.html">Einstellungen</a></li>
+                    <li><code>app/utils/config_manager.py</code> - Enthält die ConfigManager-Klasse</li>
                 </ul>
-            </div>
-
-            <div class="module-card">
-                <h2>Controllers</h2>
-                <p>Steuerungskomponenten für Hardware.</p>
+                
+                <h3>Funktionen</h3>
+                <div class="function-doc">
+                    <h4>ConfigManager.__init__()</h4>
+                    <p>Initialisiert die Konfigurationsverwaltung.</p>
+                    <p>Parameter: <code>config_path</code> (optional) - Pfad zur Konfigurationsdatei</p>
+                </div>
+                
+                <div class="function-doc">
+                    <h4>ConfigManager.load_config()</h4>
+                    <p>Lädt die Konfiguration aus der Datei oder erstellt die Standardkonfiguration.</p>
+                    <p>Rückgabe: Dictionary mit der Konfiguration</p>
+                </div>
+                
+                <div class="function-doc">
+                    <h4>ConfigManager.save_config()</h4>
+                    <p>Speichert die Konfiguration in der Datei.</p>
+                    <p>Parameter: <code>new_config</code> (optional) - Neue Konfiguration als Dictionary</p>
+                    <p>Rückgabe: <code>True</code> bei Erfolg, <code>False</code> bei Fehler</p>
+                </div>
+                
+                <div class="function-doc">
+                    <h4>ConfigManager.get()</h4>
+                    <p>Gibt einen Konfigurationswert zurück.</p>
+                    <p>Parameter:</p>
+                    <ul>
+                        <li><code>key</code> - Durch Punkte getrennter Schlüssel (z.B. 'camera.device_path')</li>
+                        <li><code>default</code> (optional) - Standardwert, falls Schlüssel nicht gefunden</li>
+                    </ul>
+                    <p>Rückgabe: Konfigurationswert oder Standardwert</p>
+                </div>
+            </section>
+            
+            <section id="viewer">
+                <h2>360° Viewer-Module</h2>
+                <p>Die Anwendung unterstützt verschiedene 360° Viewer-Bibliotheken zur Darstellung der aufgenommenen Fotos. Jede Bibliothek hat ihre eigenen Stärken und kann je nach Anforderung gewählt werden.</p>
+                
+                <h3>Integration der Viewer</h3>
+                <p>Für die Integration der verschiedenen Viewer sind folgende Dateien relevant:</p>
                 <ul>
-                    <li><a href="controllers_arduino.html">Arduino-Controller</a></li>
-                    <li><a href="controllers_camera.html">Kamera-Controller</a></li>
-                    <li><a href="controllers_turntable.html">Drehteller-Controller</a></li>
+                    <li><code>templates/viewer_pannellum.html</code> - Template für den Pannellum-Viewer</li>
+                    <li><code>templates/viewer_photo_sphere.html</code> - Template für den Photo Sphere Viewer</li>
+                    <li><code>templates/viewer_marzipano.html</code> - Template für den Marzipano-Viewer</li>
+                    <li><code>static/js/viewer_pannellum.js</code> - JavaScript-Funktionen für den Pannellum-Viewer</li>
+                    <li><code>static/js/viewer_photo_sphere.js</code> - JavaScript-Funktionen für den Photo Sphere Viewer</li>
+                    <li><code>static/js/viewer_marzipano.js</code> - JavaScript-Funktionen für den Marzipano-Viewer</li>
                 </ul>
-            </div>
+            </section>
+            
+            <section id="pannellum">
+                <h2>Pannellum Viewer</h2>
+                <p>Pannellum ist eine leichte und kostenlose Open-Source-Bibliothek, die vollständig auf HTML5, CSS3 und WebGL basiert. Sie ermöglicht die Darstellung von 360-Grad-Bildern ohne zusätzliche Plugins.</p>
+                
+                <h3>Integration</h3>
+                <pre><code>
+&lt;!-- HTML-Einbindung --&gt;
+&lt;div id="panorama"&gt;&lt;/div&gt;
 
-            <div class="module-card">
-                <h2>Models</h2>
-                <p>Datenmodelle der Anwendung.</p>
+&lt;!-- JavaScript-Einbindung --&gt;
+&lt;script src="https://cdn.pannellum.org/2.5/pannellum.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+    pannellum.viewer('panorama', {
+        "type": "equirectangular",
+        "panorama": "pfad/zu/ihrem/360-grad-bild.jpg",
+        "autoLoad": true,
+        "showZoomCtrl": true,
+        "showFullscreenCtrl": true
+    });
+&lt;/script&gt;
+                </code></pre>
+                
+                <h3>Konfigurationsoptionen</h3>
                 <ul>
-                    <li><a href="models_project.html">Projekt</a></li>
-                    <li><a href="models_photosession.html">Fotosession</a></li>
+                    <li><code>type</code>: Art des Panoramas, meist "equirectangular"</li>
+                    <li><code>panorama</code>: Pfad zum Panoramabild</li>
+                    <li><code>autoLoad</code>: Automatisches Laden des Panoramas</li>
+                    <li><code>showZoomCtrl</code>: Anzeigen der Zoom-Steuerelemente</li>
+                    <li><code>showFullscreenCtrl</code>: Anzeigen der Vollbild-Steuerelemente</li>
                 </ul>
-            </div>
+            </section>
+            
+            <section id="photo-sphere">
+                <h2>Photo Sphere Viewer</h2>
+                <p>Photo Sphere Viewer unterstützt sowohl equirektangulare Panoramen als auch Cubemaps und bietet zahlreiche Anpassungsmöglichkeiten sowie Plugins für erweiterte Funktionen.</p>
+                
+                <h3>Integration</h3>
+                <pre><code>
+&lt;!-- HTML-Einbindung --&gt;
+&lt;div id="viewer" style="width: 100%; height: 500px;"&gt;&lt;/div&gt;
 
-            <div class="module-card">
-                <h2>Utils</h2>
-                <p>Hilfsfunktionen und -klassen.</p>
+&lt;!-- JavaScript-Einbindung --&gt;
+&lt;script src="https://cdn.jsdelivr.net/npm/three/build/three.min.js"&gt;&lt;/script&gt;
+&lt;script src="https://cdn.jsdelivr.net/npm/photo-sphere-viewer@4/dist/photo-sphere-viewer.min.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+    const viewer = new PhotoSphereViewer.Viewer({
+        container: document.getElementById('viewer'),
+        panorama: 'pfad/zu/ihrem/360-grad-bild.jpg',
+        navbar: ['autorotate', 'zoom', 'fullscreen']
+    });
+&lt;/script&gt;
+                </code></pre>
+                
+                <h3>Konfigurationsoptionen</h3>
                 <ul>
-                    <li><a href="utils_config_manager.html">Konfigurationsmanager</a></li>
-                    <li><a href="utils_path_manager.html">Pfadmanager</a></li>
-                    <li><a href="utils_device_detector.html">Geräteerkennung</a></li>
-                    <li><a href="utils_webcam_helper.html">Webcam-Helfer</a></li>
-                    <li><a href="utils_secure_path.html">Sichere Pfadverarbeitung</a></li>
+                    <li><code>container</code>: HTML-Element, in dem der Viewer angezeigt wird</li>
+                    <li><code>panorama</code>: Pfad zum Panoramabild</li>
+                    <li><code>navbar</code>: Steuerelemente in der Navigationsleiste</li>
                 </ul>
-            </div>
+            </section>
+            
+            <section id="marzipano">
+                <h2>Marzipano Viewer</h2>
+                <p>Marzipano ist ein 360-Grad-Viewer, der für moderne Webanwendungen entwickelt wurde. Er unterstützt alle gängigen Desktop-Browser und mobilen Geräte und nutzt Standard-Webtechnologien.</p>
+                
+                <h3>Integration</h3>
+                <pre><code>
+&lt;!-- HTML-Einbindung --&gt;
+&lt;div id="pano" style="width: 100%; height: 500px;"&gt;&lt;/div&gt;
 
-            <div class="module-card">
-                <h2>JavaScript</h2>
-                <p>Client-seitige Skripte.</p>
+&lt;!-- JavaScript-Einbindung --&gt;
+&lt;script src="https://cdn.jsdelivr.net/npm/marzipano@0.10.2/dist/marzipano.min.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+    // Viewer erstellen
+    var viewer = new Marzipano.Viewer(document.getElementById('pano'));
+    
+    // Quelle und Geometrie erstellen
+    var source = Marzipano.ImageUrlSource.fromUrl('pfad/zu/ihrem/360-grad-bild.jpg');
+    var geometry = new Marzipano.EquirectGeometry([{ width: 4000 }]);
+    
+    // Ansicht erstellen
+    var limiter = Marzipano.RectilinearView.limit.traditional(1024, 100*Math.PI/180);
+    var view = new Marzipano.RectilinearView(null, limiter);
+    
+    // Szene erstellen und anzeigen
+    var scene = viewer.createScene({
+        source: source,
+        geometry: geometry,
+        view: view,
+        pinFirstLevel: true
+    });
+    scene.switchTo();
+&lt;/script&gt;
+                </code></pre>
+                
+                <h3>Konfigurationsoptionen</h3>
                 <ul>
-                    <li><a href="js_index.html">Startseite</a></li>
-                    <li><a href="js_projects.html">Projektverwaltung</a></li>
-                    <li><a href="js_settings.html">Einstellungen</a></li>
+                    <li><code>Marzipano.Viewer</code>: Erstellt den Viewer im angegebenen HTML-Element</li>
+                    <li><code>Marzipano.ImageUrlSource.fromUrl</code>: Definiert die Bildquelle</li>
+                    <li><code>Marzipano.EquirectGeometry</code>: Definiert die Geometrie des Panoramas</li>
+                    <li><code>Marzipano.RectilinearView</code>: Definiert die Ansicht</li>
                 </ul>
-            </div>
-        </div>
-    </main>
-
+            </section>
+        </main>
+    </div>
+    
     <footer>
-        <p>&copy; 2025 360° Drehteller Steuerung</p>
+        <p>&copy; 2025 360° Drehteller Steuerung | Alexander Behrens | <a href="https://www.alexanderbehrens.com" target="_blank">www.alexanderbehrens.com</a></p>
     </footer>
 </body>
 </html>
