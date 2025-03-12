@@ -20,7 +20,20 @@ logger = logging.getLogger(__name__)
 @main_bp.route('/')
 def index():
     """Hauptseite der Anwendung"""
-    return render_template('index.html')
+    # Projekt-ID aus der Anfrage holen (falls vorhanden)
+    project_id = request.args.get('project_id')
+    project = None
+    
+    # Wenn eine Projekt-ID angegeben wurde, Projekt laden
+    if project_id:
+        from app.models.project import ProjectManager
+        from app.utils.path_manager import PathManager
+        
+        path_manager = PathManager()
+        project_manager = ProjectManager(path_manager.projects_dir)
+        project = project_manager.get_project(project_id)
+    
+    return render_template('index.html', project=project)
 
 @main_bp.route('/viewer')
 def view_360():
@@ -31,43 +44,73 @@ def view_360():
 def rotate():
     """Dreht den Teller und nimmt ein Foto auf"""
     try:
-        # Parameter aus der Anfrage holen
-        degrees = int(request.form['degrees'])
-        project_id = request.form.get('project_id')
-        
-        # Validiere Projekt-ID
-        if not project_id:
-            return jsonify({"error": "Keine Projekt-ID angegeben"}), 400
+        # Parameter validieren
+        if 'degrees' not in request.form:
+            return jsonify({"error": "Parameter 'degrees' fehlt"}), 400
             
+        if 'project_id' not in request.form:
+            return jsonify({"error": "Parameter 'project_id' fehlt"}), 400
+            
+        # Parameter extrahieren
+        try:
+            degrees = int(request.form['degrees'])
+            if degrees <= 0 or degrees > 360:
+                return jsonify({"error": "Ungültiger Drehwinkel. Muss zwischen 1 und 360 Grad liegen."}), 400
+        except ValueError:
+            return jsonify({"error": "Ungültiger Drehwinkel. Muss eine Zahl sein."}), 400
+            
+        project_id = request.form['project_id']
+        
+        # Projekt-ID validieren
         from app.utils.secure_path import validate_project_id
         if not validate_project_id(project_id):
             return jsonify({"error": "Ungültige Projekt-ID"}), 400
+            
+        # Projekt laden
+        from app.models.project import ProjectManager
+        from app.utils.path_manager import PathManager
+        
+        path_manager = PathManager()
+        project_manager = ProjectManager(path_manager.projects_dir)
+        project = project_manager.get_project(project_id)
+        
+        if not project:
+            return jsonify({"error": "Projekt nicht gefunden"}), 404
         
         # Drehteller rotieren
         rotate_teller(degrees)
         
-        # Foto mit Zeitstempel aufnehmen und im Projektordner speichern
+        # Foto mit Zeitstempel aufnehmen
         timestamp = int(time.time())
         filename = f'photo_{timestamp}_{degrees}.jpg'
         photo_path = take_photo(project_id, filename)
         
-        if not photo_path or not os.path.exists(photo_path):
+        if not photo_path:
             return jsonify({"error": "Fehler beim Aufnehmen des Fotos"}), 500
             
-        # Relativen Pfad zum Foto zurückgeben
-        rel_path = os.path.relpath(photo_path, os.path.join(current_app.root_path, '..'))
-        rel_path = '/' + rel_path.replace('\\', '/')
+        # Foto zum Projekt hinzufügen mit dem korrekten Winkel
+        project.add_image(photo_path, angle=degrees, timestamp=timestamp)
         
-        logger.info(f"Foto erfolgreich aufgenommen: {rel_path}")
+        # Relativen Pfad für die Antwort erstellen
+        from pathlib import Path
+        rel_path = '/' + str(Path(photo_path).relative_to(path_manager.base_dir)).replace('\\', '/')
         
         return jsonify({
-            "status": "success", 
+            "status": "success",
             "photo": rel_path,
-            "angle": degrees
+            "angle": degrees  # Winkel in der Antwort zurückgeben
         })
     except Exception as e:
-        logger.error(f"Fehler bei der Rotation oder Fotoaufnahme: {e}")
+        logger.error(f"Fehler bei der Rotation/Fotoaufnahme: {str(e)}")
         return jsonify({"error": str(e)}), 500
+
+
+
+
+
+
+
+
 
 
 

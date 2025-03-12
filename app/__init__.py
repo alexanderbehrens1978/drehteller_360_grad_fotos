@@ -7,7 +7,6 @@ Initialisiert die Flask-Anwendung und registriert alle Blueprints.
 
 import os
 import logging
-import datetime
 from flask import Flask
 from app.utils.config_manager import config_manager
 from app.controllers.arduino_controller import ArduinoController
@@ -23,67 +22,48 @@ turntable_controller = None
 # Gemeinsam genutzte Hilfsprogramme
 path_manager = PathManager()
 
-def datetime_filter(value, format='%d.%m.%Y %H:%M'):
-    """
-    Formatiert einen Timestamp oder datetime-Objekt
-    
-    Args:
-        value: Timestamp oder datetime-Objekt
-        format: Ausgabeformat für das Datum
-    
-    Returns:
-        Formatierter Datums-String
-    """
-    if value is None:
-        return ''
-    
-    # Wenn es sich um einen Timestamp handelt
-    if isinstance(value, (int, float)):
-        value = datetime.datetime.fromtimestamp(value)
-    
-    # Wenn es sich um ein datetime-Objekt handelt
-    if isinstance(value, datetime.datetime):
-        return value.strftime(format)
-    
-    return str(value)
-
 def create_app(config_name=None):
     """
     Erstellt und konfiguriert die Flask-Anwendung
-
+    
     Args:
         config_name: Name der Konfiguration ('development', 'production', 'testing')
-
+    
     Returns:
         Flask-App-Instanz
     """
-    app = Flask(__name__,
+    app = Flask(__name__, 
                 static_folder="../static",
                 static_url_path='/static',
                 template_folder="../templates")
-
+    
     # Konfiguration laden
     app.config.from_object('app.config.DevelopmentConfig')
     if config_name == 'production':
         app.config.from_object('app.config.ProductionConfig')
     elif config_name == 'testing':
         app.config.from_object('app.config.TestingConfig')
-
-    # Jinja2-Filter registrieren
-    app.jinja_env.filters['datetime'] = datetime_filter
-
+    
     # Stelle sicher, dass Verzeichnisse existieren
     create_directories()
-
+    
     # Controller initialisieren
     initialize_controllers()
-
+    
     # Logging konfigurieren
     configure_logging(app)
-
+    
     # Blueprints registrieren
     register_blueprints(app)
-
+    
+    # Jinja-Filter für die Formatierung von Zeitstempeln
+    @app.template_filter('datetime')
+    def format_datetime(timestamp):
+        """Formatiert einen Zeitstempel als lesbares Datum"""
+        from datetime import datetime
+        date = datetime.fromtimestamp(timestamp)
+        return date.strftime('%d.%m.%Y %H:%M')
+    
     # Sicherheits-Header hinzufügen
     @app.after_request
     def add_security_headers(response):
@@ -103,7 +83,7 @@ def create_app(config_name=None):
             "connect-src 'self'"
         )
         return response
-
+    
     return app
 
 def create_directories():
@@ -113,22 +93,22 @@ def create_directories():
 def initialize_controllers():
     """Initialisiert die gemeinsam genutzten Controller"""
     global arduino_controller, camera_controller, turntable_controller
-
+    
     try:
         # Arduino Controller
         port = config_manager.get('arduino.port')
         baudrate = config_manager.get('arduino.baudrate', 9600)
         if port:
             arduino_controller = ArduinoController(port, baudrate)
-
+        
         # Kamera Controller
         camera_type = config_manager.get('camera.type', 'webcam')
         camera_device = config_manager.get('camera.device_path', '/dev/video0')
         resolution = config_manager.get('camera.resolution')
         camera_controller = CameraController(camera_type, camera_device, resolution)
-
+        
         # Drehteller Controller (nutzt den Arduino Controller)
-        turntable_controller = TurntableController(arduino_controller,
+        turntable_controller = TurntableController(arduino_controller, 
                                                  config_manager.get('rotation.default_degrees', 15))
     except Exception as e:
         logging.error(f"Fehler bei der Controller-Initialisierung: {str(e)}")
@@ -137,23 +117,23 @@ def configure_logging(app):
     """Konfiguriert das Logging für die App"""
     log_level = logging.DEBUG if app.config['DEBUG'] else logging.INFO
     log_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
+    
     # File Handler
     file_handler = logging.FileHandler('drehteller360.log')
     file_handler.setLevel(log_level)
     file_handler.setFormatter(log_formatter)
-
+    
     # Console Handler
     console_handler = logging.StreamHandler()
     console_handler.setLevel(log_level)
     console_handler.setFormatter(log_formatter)
-
+    
     # Root Logger konfigurieren
     root_logger = logging.getLogger()
     root_logger.setLevel(log_level)
     root_logger.addHandler(file_handler)
     root_logger.addHandler(console_handler)
-
+    
     # App Logger konfigurieren
     app.logger.setLevel(log_level)
 
@@ -162,15 +142,15 @@ def register_blueprints(app):
     # Blueprint für Hauptseiten
     from app.blueprints.main import main_bp
     app.register_blueprint(main_bp)
-
+    
     # Blueprint für API-Endpunkte
     from app.blueprints.api import api_bp
     app.register_blueprint(api_bp, url_prefix='/api')
-
+    
     # Blueprint für Einstellungen
     from app.blueprints.settings import settings_bp
     app.register_blueprint(settings_bp, url_prefix='/settings')
-
+    
     # Blueprint für Projektverwaltung
     from app.blueprints.projects import projects_bp
     app.register_blueprint(projects_bp, url_prefix='/projects')

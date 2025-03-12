@@ -1,15 +1,33 @@
-/* Grundlegende Stile für die 360° Drehteller Steuerung */
+/* Globale Stile */
+:root {
+    --primary-color: #2c3e50;
+    --primary-light: #34495e;
+    --secondary-color: #3498db;
+    --secondary-light: #5dade2;
+    --accent-color: #e74c3c;
+    --text-color: #333;
+    --light-text: #666;
+    --lightest-text: #999;
+    --background-color: #f5f5f5;
+    --card-color: #fff;
+    --border-color: #ddd;
+    --success-color: #27ae60;
+    --warning-color: #f39c12;
+    --danger-color: #e74c3c;
+}
+
 body {
     font-family: Arial, sans-serif;
     line-height: 1.6;
     margin: 0;
     padding: 0;
-    color: #333;
-    background-color: #f5f5f5;
+    color: var(--text-color);
+    background-color: var(--background-color);
 }
 
+/* Header und Navigation */
 header {
-    background-color: #2c3e50;
+    background-color: var(--primary-color);
     color: white;
     padding: 1rem 2rem;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -22,50 +40,54 @@ h1 {
 
 nav {
     margin-top: 1rem;
+    display: flex;
+    flex-wrap: wrap;
 }
 
 nav a {
     color: white;
-    margin-right: 1rem;
+    margin-right: 1.5rem;
     text-decoration: none;
     padding: 0.5rem 0;
     border-bottom: 2px solid transparent;
     transition: border-color 0.3s;
 }
 
-nav a:hover {
+nav a:hover, nav a.active {
     border-color: white;
 }
 
+/* Main Content */
 main {
     max-width: 1200px;
     margin: 2rem auto;
     padding: 0 1rem;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2rem;
 }
 
-.control-panel {
-    flex: 1;
-    min-width: 300px;
-    background: white;
-    padding: 1.5rem;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.preview {
-    flex: 2;
-    min-width: 400px;
-    background: white;
-    padding: 1.5rem;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.input-group {
+h2 {
+    color: var(--primary-color);
+    margin-top: 0;
     margin-bottom: 1rem;
+}
+
+h3 {
+    color: var(--primary-light);
+    margin-top: 1.5rem;
+    margin-bottom: 0.8rem;
+}
+
+/* Cards und Container */
+.card, .settings-container, .project-details, .error-container {
+    background: var(--card-color);
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1.5rem;
+}
+
+/* Formulare */
+.form-group {
+    margin-bottom: 1.5rem;
 }
 
 label {
@@ -74,41 +96,59 @@ label {
     font-weight: bold;
 }
 
-input, select {
+input, select, textarea {
     width: 100%;
     padding: 0.5rem;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border-color);
     border-radius: 4px;
     font-size: 1rem;
+    box-sizing: border-box;
 }
 
-.controls {
-    margin-top: 1.5rem;
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
+textarea {
+    min-height: 100px;
+    resize: vertical;
 }
 
+/* Buttons */
 .btn {
-    padding: 0.5rem 1rem;
+    display: inline-block;
+    padding: 0.5rem 1.2rem;
     border: none;
     border-radius: 4px;
     cursor: pointer;
     font-size: 1rem;
-    transition: background-color 0.3s;
+    text-decoration: none;
+    text-align: center;
+    transition: background-color 0.3s, transform 0.1s;
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.btn:active {
+    transform: translateY(1px);
 }
 
 .btn-primary {
-    background-color: #3498db;
+    background-color: var(--secondary-color);
     color: white;
 }
 
 .btn-primary:hover {
-    background-color: #2980b9;
+    background-color: var(--secondary-light);
+}
+
+.btn-secondary {
+    background-color: var(--primary-light);
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: var(--primary-color);
 }
 
 .btn-danger {
-    background-color: #e74c3c;
+    background-color: var(--danger-color);
     color: white;
 }
 
@@ -116,88 +156,253 @@ input, select {
     background-color: #c0392b;
 }
 
-.btn-secondary {
-    background-color: #7f8c8d;
-    color: white;
-}
-
-.btn-secondary:hover {
-    background-color: #6c7a7a;
-}
-
 .btn:disabled {
-    background-color: #95a5a6;
+    background-color: var(--lightest-text);
     cursor: not-allowed;
 }
 
-.image-preview {
-    min-height: 300px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: #f9f9f9;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    overflow: hidden;
+/* Projektliste */
+.projects-container {
+    margin-top: 1.5rem;
 }
 
-.no-image {
-    color: #95a5a6;
+.project-actions {
+    margin: 1.5rem 0;
+}
+
+.projects-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.project-card {
+    background: var(--card-color);
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.project-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.project-card h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    color: var(--primary-color);
+}
+
+.project-meta {
+    margin-bottom: 1rem;
+    color: var(--light-text);
+    font-size: 0.9rem;
+}
+
+.no-description {
+    color: var(--lightest-text);
+    font-style: italic;
+}
+
+.created-date, .image-count {
+    margin: 0.5rem 0;
+}
+
+.inline-form {
+    display: inline;
+}
+
+/* Projektdetails */
+.project-info {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.project-images {
+    margin-bottom: 2rem;
+}
+
+.image-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.image-item {
+    position: relative;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.image-item img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.image-info {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.8rem;
+    border-top-left-radius: 4px;
+}
+
+.no-images, .no-projects, .no-sessions {
+    color: var(--lightest-text);
+    font-style: italic;
+    padding: 1rem;
+    text-align: center;
+    background: #f9f9f9;
+    border-radius: 4px;
+}
+
+/* Sessions */
+.sessions-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.session-item {
+    background: #f9f9f9;
+    padding: 1rem;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.session-item h4 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    color: var(--primary-color);
+}
+
+.session-item p {
+    margin: 0.3rem 0;
+    font-size: 0.9rem;
+}
+
+/* Fehlerseite */
+.error-container {
+    max-width: 600px;
+    margin: 2rem auto;
     text-align: center;
     padding: 2rem;
 }
 
-.image-container {
-    position: relative;
-    max-width: 100%;
+.error-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
 }
 
-.captured-image {
-    max-width: 100%;
-    max-height: 400px;
-    display: block;
-}
-
-.angle-label {
-    position: absolute;
-    bottom: 10px;
-    right: 10px;
-    background: rgba(0, 0, 0, 0.7);
-    color: white;
-    padding: 0.3rem 0.6rem;
+.error-message {
+    color: var(--accent-color);
+    margin-bottom: 2rem;
+    padding: 1rem;
+    background: #fef5f5;
     border-radius: 4px;
+}
+
+.error-actions {
+    margin-top: 2rem;
+}
+
+/* Einstellungen */
+.settings-group {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.settings-group:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.settings-group h2 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+}
+
+.setting-row {
+    display: flex;
+    margin-bottom: 1rem;
+    align-items: center;
+}
+
+.setting-label {
+    flex: 1;
+    font-weight: bold;
+}
+
+.setting-control {
+    flex: 2;
+}
+
+.setting-description {
     font-size: 0.9rem;
+    color: var(--light-text);
+    margin-top: 0.3rem;
 }
 
 .status-message {
-    margin-top: 1rem;
-    padding: 0.5rem;
-    background-color: #f8f9fa;
-    border-left: 4px solid #6c757d;
+    padding: 1rem;
+    margin: 1rem 0;
     border-radius: 4px;
+    display: none;
 }
 
-.status-message.success {
-    border-left-color: #28a745;
-    background-color: #e8f5e9;
+.status-success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
 }
 
+.status-error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+/* Footer */
 footer {
     text-align: center;
     padding: 1rem;
-    background-color: #2c3e50;
+    background-color: var(--primary-color);
     color: white;
     margin-top: 2rem;
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
-    main {
+    .setting-row {
         flex-direction: column;
+        align-items: flex-start;
     }
     
-    .control-panel,
-    .preview {
+    .setting-label, .setting-control {
         width: 100%;
+    }
+    
+    .setting-label {
+        margin-bottom: 0.5rem;
+    }
+    
+    .projects-list {
+        grid-template-columns: 1fr;
+    }
+    
+    .sessions-list {
+        grid-template-columns: 1fr;
     }
 }

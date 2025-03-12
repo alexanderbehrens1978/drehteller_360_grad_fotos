@@ -4,60 +4,101 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>360° Drehteller Steuerung</title>
-    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="/static/css/index.css">
 </head>
-<body>
+<body data-project-id="{{ project.id if project else '' }}">
     <header>
         <h1>360° Drehteller Steuerung</h1>
         <nav>
-            <a href="/">Startseite</a>
+            <a href="/" class="active">Startseite</a>
             <a href="/projects">Projekte</a>
             <a href="/settings">Einstellungen</a>
         </nav>
     </header>
     
     <main>
-        <section class="control-panel">
-            <div class="project-selection">
-                <label for="projectSelect">Projekt auswählen:</label>
-                <select id="projectSelect" required>
-                    <option value="">Bitte wählen...</option>
-                    <!-- Projekte werden per JavaScript geladen -->
-                </select>
-            </div>
-            
-            <div class="rotation-settings">
-                <div class="input-group">
-                    <label for="intervalInput">Foto-Intervall (Sekunden):</label>
-                    <input type="number" id="intervalInput" value="5" min="1" max="60">
+        <div class="container">
+            <div class="control-panel card">
+                <h2>{% if project %}Projekt: {{ project.name }}{% else %}Drehteller steuern{% endif %}</h2>
+                
+                {% if not project %}
+                <div class="project-selection">
+                    <label for="projectSelect">Projekt auswählen:</label>
+                    <select id="projectSelect">
+                        <option value="">Bitte wählen...</option>
+                        <option value="new">+ Neues Projekt erstellen</option>
+                        <!-- Projekte werden per JavaScript geladen -->
+                    </select>
+                </div>
+                {% endif %}
+                
+                <div class="rotation-settings">
+                    <div class="form-group">
+                        <label for="intervalInput">Foto-Intervall (Sekunden):</label>
+                        <input type="number" id="intervalInput" value="{{ project.angle_step|default(5) }}" min="1" max="60">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="angleInput">Drehwinkel pro Schritt:</label>
+                        <input type="number" id="angleInput" value="15" min="1" max="90">
+                    </div>
                 </div>
                 
-                <div class="input-group">
-                    <label for="angleInput">Drehwinkel pro Schritt:</label>
-                    <input type="number" id="angleInput" value="15" min="1" max="90">
+                <div class="controls">
+                    <button id="startBtn" class="btn btn-primary">Start 360°</button>
+                    <button id="stopBtn" class="btn btn-danger" disabled>Stop</button>
+                    <button id="rotateBtn" class="btn btn-secondary">Manuell drehen</button>
                 </div>
+                
+                <div id="rotationStatus" class="status-message" style="display: none;"></div>
             </div>
             
-            <div class="controls">
-                <button id="startBtn" class="btn btn-primary">Start 360°</button>
-                <button id="stopBtn" class="btn btn-danger" disabled>Stop</button>
-                <button id="rotateBtn" class="btn btn-secondary">Manuell drehen</button>
+            <div class="preview card">
+                <h2>Vorschau</h2>
+                <div id="imagePreview" class="image-preview">
+                    <div class="no-image">Kein Bild verfügbar</div>
+                </div>
             </div>
-        </section>
+        </div>
         
-        <section class="preview">
-            <h2>Vorschau</h2>
-            <div id="imagePreview" class="image-preview">
-                <div class="no-image">Kein Bild verfügbar</div>
+        <!-- Modal für Projekterstellung -->
+        <div id="projectModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Neues Projekt erstellen</h3>
+                </div>
+                <div class="modal-body">
+                    <form id="projectForm" action="{{ url_for('projects.create_project') }}" method="POST">
+                        <div class="form-group">
+                            <label for="name">Projektname:</label>
+                            <input type="text" id="name" name="name" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="description">Beschreibung:</label>
+                            <textarea id="description" name="description" rows="4"></textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="angle_step">Winkelschritt (Grad):</label>
+                            <input type="number" id="angle_step" name="angle_step" min="1" max="90" value="15">
+                        </div>
+                        
+                        <div class="modal-footer">
+                            <button type="button" id="cancelProject" class="btn btn-secondary">Abbrechen</button>
+                            <button type="submit" class="btn btn-primary">Projekt erstellen</button>
+                        </div>
+                    </form>
+                </div>
             </div>
-        </section>
+        </div>
     </main>
     
     <footer>
         <p>&copy; 2025 360° Drehteller Steuerung</p>
     </footer>
     
-    <!-- JavaScript für die Drehtellersteuerung -->
-    <script src="/static/js/turntable.js"></script>
+    <script src="/static/js/index.js"></script>
 </body>
 </html>

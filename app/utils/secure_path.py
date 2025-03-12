@@ -75,24 +75,6 @@ def secure_join(base_path, *paths):
     
     return safe_path
 
-def is_safe_path(base_path, path):
-    """
-    Überprüft, ob ein Pfad sicher ist (keine Traversierungsangriffe ermöglicht).
-    
-    Args:
-        base_path: Der Basispfad, der nicht verlassen werden soll
-        path: Der zu überprüfende Pfad
-        
-    Returns:
-        True, wenn der Pfad sicher ist, andernfalls False
-    """
-    # Absolute Pfade erstellen
-    base_path = os.path.abspath(base_path)
-    test_path = os.path.abspath(os.path.join(base_path, path))
-    
-    # Prüfen, ob der getestete Pfad innerhalb des Basispfads liegt
-    return test_path.startswith(base_path)
-
 def validate_project_id(project_id):
     """
     Validiert eine Projekt-ID gegen Traversierungsangriffe.

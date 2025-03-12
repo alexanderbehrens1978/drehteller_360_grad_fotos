@@ -104,3 +104,7 @@ def take_photo(project_id, filename=None):
     except Exception as e:
         logger.error(f"Fehler beim Aufnehmen des Fotos: {e}")
         return None
+
+
+
+

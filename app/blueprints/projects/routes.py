@@ -1,19 +1,22 @@
-# Datei: app/blueprints/projects/routes.py
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+app/blueprints/projects/routes.py
+Enthält die Routen für die Projektverwaltung
+"""
+
 import os
 import json
 import time
 import logging
 import uuid
-import re
-from flask import (
-    render_template, request, jsonify, 
-    redirect, url_for, send_from_directory, abort
-)
+from flask import render_template, request, jsonify, redirect, url_for, send_from_directory, abort, flash
 from app.blueprints.projects import projects_bp
 from app.models.project import Project, ProjectManager
 from app.models.photo_session import PhotoSession
 from app import arduino_controller, camera_controller, turntable_controller
 from app.utils.path_manager import PathManager
+from app.utils.secure_path import validate_project_id, secure_join, secure_filename
 
 # Logger einrichten
 logger = logging.getLogger(__name__)
@@ -24,68 +27,59 @@ path_manager = PathManager()
 # Projekt-Manager erstellen
 project_manager = ProjectManager(path_manager.projects_dir)
 
-def sanitize_project_image_path(image_path):
-    """
-    Bereinigt und normalisiert den Bildpfad
-    
-    Args:
-        image_path: Ursprünglicher Bildpfad
-    
-    Returns:
-        Bereinigter Bildpfad
-    """
-    # Entferne mehrfache aufeinanderfolgende statische Verzeichnisse
-    image_path = re.sub(r'^(static/)*', '', image_path)
-    
-    # Entferne Dopplungen von Projektpfaden
-    image_path = re.sub(r'^(projects/)+', '', image_path)
-    
-    # Entferne führende Projekt-ID-Dopplungen
-    parts = image_path.split('/')
-    if len(parts) > 2 and parts[0] == parts[1]:
-        image_path = '/'.join(parts[1:])
-    
-    return image_path
-
 @projects_bp.route('/')
 def projects_page():
     """Zeigt die Projektverwaltungsseite an"""
     try:
         # Alle Projekte laden
         projects = project_manager.get_all_projects()
-        return render_template('projects/index.html', projects=projects)
+        return render_template('projects.html', projects=projects)
     except Exception as e:
-        logger.error(f"Fehler bei der Projektliste: {e}")
+        logger.error(f"Fehler beim Laden der Projekte: {str(e)}")
         return render_template('error.html', message=f"Fehler beim Laden der Projekte: {str(e)}"), 500
 
 @projects_bp.route('/create', methods=['GET', 'POST'])
 def create_project():
     """Erstellt ein neues Projekt"""
-    if request.method == 'POST':
-        try:
-            # Projektdaten aus dem Formular holen
+    try:
+        if request.method == 'POST':
+            # Projektdaten aus dem Formular holen und validieren
             name = request.form.get('name', f"Projekt {time.strftime('%Y-%m-%d %H:%M:%S')}")
             description = request.form.get('description', '')
-            angle_step = int(request.form.get('angle_step', 15))
+            
+            try:
+                angle_step = int(request.form.get('angle_step', 15))
+                if angle_step <= 0 or angle_step > 360:
+                    raise ValueError("Ungültiger Winkelschritt")
+            except ValueError:
+                logger.error(f"Ungültiger Winkelschritt: {request.form.get('angle_step')}")
+                return render_template('project_create.html', error="Ungültiger Winkelschritt, bitte eine positive Zahl eingeben."), 400
             
             # Neues Projekt erstellen
             project = Project(
+                id=str(uuid.uuid4()),
                 name=name,
                 description=description,
                 angle_step=angle_step
             )
             
             # Projekt speichern
-            project_manager.save_project(project)
+            success = project_manager.save_project(project)
+            
+            if not success:
+                logger.error(f"Projekt konnte nicht gespeichert werden: {project.id}")
+                return render_template('project_create.html', error="Fehler beim Speichern des Projekts."), 500
+            
+            logger.info(f"Neues Projekt erstellt: {project.id} - {project.name}")
             
             # Zur Projektseite weiterleiten
             return redirect(url_for('projects.view_project', project_id=project.id))
-        except Exception as e:
-            logger.error(f"Fehler bei der Projekterstellung: {e}")
-            return render_template('error.html', message=f"Fehler bei der Projekterstellung: {str(e)}"), 500
-    
-    # Formular zum Erstellen eines Projekts anzeigen
-    return render_template('projects/create.html')
+        
+        # Formular zum Erstellen eines Projekts anzeigen
+        return render_template('project_create.html')
+    except Exception as e:
+        logger.error(f"Fehler beim Erstellen eines Projekts: {str(e)}")
+        return render_template('project_create.html', error=f"Ein Fehler ist aufgetreten: {str(e)}"), 500
 
 @projects_bp.route('/<project_id>')
 def view_project(project_id):
@@ -96,119 +90,79 @@ def view_project(project_id):
         project_id: ID des Projekts
     """
     try:
+        # Projekt-ID validieren
+        if not validate_project_id(project_id):
+            logger.warning(f"Ungültige Projekt-ID: {project_id}")
+            abort(404)
+            
         # Projekt laden
         project = project_manager.get_project(project_id)
         
         if not project:
             # Wenn das Projekt nicht gefunden wurde, zur Projektliste weiterleiten
             logger.warning(f"Projekt nicht gefunden: {project_id}")
+            flash('Projekt nicht gefunden.', 'error')
             return redirect(url_for('projects.projects_page'))
         
-        # Alle Bilder für das Projekt sammeln
-        project_images = []
-        for session in project.sessions:
-            for angle, photo_path in session.photos.items():
-                # Stelle sicher, dass der Pfad relativ ist
-                try:
-                    # Versuche, einen relativen Pfad zu erstellen
-                    relative_path = os.path.relpath(
-                        photo_path, 
-                        start=os.path.join(path_manager.base_dir, 'static')
-                    )
-                    
-                    # Korrigiere Pfad-Separator
-                    relative_path = relative_path.replace(os.sep, '/')
-                    
-                    project_images.append({
-                        'angle': angle,
-                        'path': relative_path
-                    })
-                except Exception as path_error:
-                    logger.warning(f"Fehler bei Bildpfadverarbeitung: {path_error}")
-        
         # Projekt anzeigen
-        return render_template('projects/view.html', 
-                               project=project, 
-                               images=project_images)
+        return render_template('project_view.html', project=project)
     except Exception as e:
-        logger.error(f"Fehler beim Anzeigen des Projekts {project_id}: {e}")
-        return render_template('error.html', 
-                               message=f"Fehler beim Anzeigen des Projekts: {str(e)}"), 500
+        logger.error(f"Fehler beim Anzeigen des Projekts {project_id}: {str(e)}")
+        return render_template('error.html', message=f"Fehler beim Anzeigen des Projekts: {str(e)}"), 500
 
-@projects_bp.route('/image/<path:image_path>')
-def serve_project_image(image_path):
-    """
-    Liefert ein Projektbild aus
-    
-    Args:
-        image_path: Relativer Pfad zum Bild
-    """
-    try:
-        # Bereinige den Bildpfad
-        clean_image_path = sanitize_project_image_path(image_path)
-        
-        # Basis-Verzeichnis für statische Dateien
-        static_dir = os.path.join(path_manager.base_dir, 'static')
-        
-        # Vollständiger Pfad zur Bilddatei
-        full_path = os.path.normpath(os.path.join(static_dir, clean_image_path))
-        
-        # Sicherheitsüberprüfung: Stelle sicher, dass der Pfad innerhalb des statischen Verzeichnisses liegt
-        if not full_path.startswith(static_dir):
-            logger.warning(f"Ungültiger Bildpfad angefordert: {full_path}")
-            abort(403)  # Verboten
-        
-        # Sicherstellen, dass die Datei existiert
-        if not os.path.exists(full_path):
-            logger.warning(f"Bild nicht gefunden: {full_path}")
-            
-            # Versuche alternative Pfade
-            alternative_paths = [
-                os.path.join(path_manager.base_dir, 'static', 'projects', clean_image_path),
-                os.path.join(path_manager.base_dir, 'static', clean_image_path)
-            ]
-            
-            for alt_path in alternative_paths:
-                if os.path.exists(alt_path):
-                    full_path = alt_path
-                    break
-            else:
-                logger.error(f"Kein alternatives Bild gefunden für: {clean_image_path}")
-                abort(404)
-        
-        # Verzeichnis und Dateiname extrahieren
-        directory = os.path.dirname(full_path)
-        filename = os.path.basename(full_path)
-        
-        # Bild senden
-        return send_from_directory(directory, filename)
-    except Exception as e:
-        logger.error(f"Fehler beim Bereitstellen des Bildes: {e}")
-        return render_template('error.html', 
-                               message=f"Fehler beim Laden des Bildes: {str(e)}"), 500
-
-@projects_bp.route('/<project_id>/delete', methods=['GET', 'POST'])
+@projects_bp.route('/delete/<project_id>', methods=['POST'])
 def delete_project(project_id):
-    """
-    Löscht ein Projekt
-    
-    Args:
-        project_id: ID des Projekts
-    """
+    """Löscht ein Projekt"""
     try:
+        # Projekt-ID validieren
+        if not validate_project_id(project_id):
+            logger.warning(f"Ungültige Projekt-ID: {project_id}")
+            return render_template('error.html', message="Ungültige Projekt-ID"), 400
+            
         # Projekt löschen
         success = project_manager.delete_project(project_id)
         
         if success:
-            logger.info(f"Projekt erfolgreich gelöscht: {project_id}")
+            logger.info(f"Projekt {project_id} gelöscht")
             return redirect(url_for('projects.projects_page'))
         else:
-            logger.warning(f"Projekt konnte nicht gelöscht werden: {project_id}")
-            return render_template('error.html', 
-                                   message=f"Projekt {project_id} konnte nicht gelöscht werden."), 500
+            logger.error(f"Fehler beim Löschen des Projekts {project_id}")
+            return render_template('error.html', message="Fehler beim Löschen des Projekts"), 500
     except Exception as e:
-        logger.error(f"Fehler beim Löschen des Projekts {project_id}: {e}")
-        return render_template('error.html', 
-                               message=f"Fehler beim Löschen des Projekts: {str(e)}"), 500
+        logger.error(f"Fehler beim Löschen des Projekts {project_id}: {str(e)}")
+        return render_template('error.html', message=f"Fehler beim Löschen des Projekts: {str(e)}"), 500
 
-# Zusätzliche Routen können hier hinzugefügt werden
+@projects_bp.route('/image/<project_id>/<path:image_path>')
+def get_project_image(project_id, image_path):
+    """
+    Liefert ein Projektbild
+    
+    Args:
+        project_id: ID des Projekts
+        image_path: Pfad zum Bild innerhalb des Projekts
+    """
+    # ID und Bildpfad validieren
+    if not validate_project_id(project_id):
+        logger.warning(f"Ungültige Projekt-ID: {project_id}")
+        abort(404)
+        
+    # Den Bildpfad sicher machen
+    safe_image_filename = secure_filename(os.path.basename(image_path))
+    if not safe_image_filename:
+        abort(404)
+        
+    # Projektverzeichnis im abgesicherten Pfad
+    project_dir = project_manager.get_project_path(project_id)
+    
+    # Sicherstellen, dass das Verzeichnis existiert
+    if not os.path.isdir(project_dir):
+        abort(404)
+    
+    # Bildverzeichnis und Dateinamen sicher zusammenführen
+    image_dir_path = os.path.dirname(os.path.join(project_dir, image_path))
+    
+    # Sicherstellen, dass das Bildverzeichnis innerhalb des Projektverzeichnisses liegt
+    if not os.path.abspath(image_dir_path).startswith(os.path.abspath(project_dir)):
+        abort(404)
+    
+    return send_from_directory(image_dir_path, safe_image_filename)
