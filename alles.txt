@@ -58,322 +58,6 @@ if __name__ == "__main__":
     main()
 
 
---- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/web.py-11-03-2025_18-01 ---
-from flask import Flask, render_template, request, send_from_directory, jsonify
-import os
-import json
-import time
-import serial
-import subprocess
-
-# Import config manager
-from config_manager import config_manager
-
-# Import device detector and viewer generator
-from device_detector import device_detector
-from viewer_generator import viewer_generator
-
-app = Flask(__name__)
-
-# Arduino connection
-def get_arduino_connection():
-    """
-    Establish Arduino connection based on configuration
-    """
-    try:
-        port = config_manager.get('arduino.port', '/dev/ttyACM0')
-        baudrate = config_manager.get('arduino.baudrate', 9600)
-
-        arduino = serial.Serial(port, baudrate, timeout=1)
-        time.sleep(2)  # Wait for initialization
-        return arduino
-    except Exception as e:
-        print(f"Arduino connection error: {e}")
-        return None
-
-# Global Arduino connection
-arduino = get_arduino_connection()
-
-def rotate_teller(degrees):
-    """
-    Rotate the platform
-
-    :param degrees: Rotation angle
-    """
-    if arduino is None:
-        print("Arduino not connected!")
-        return
-
-    # Berechnung der Drehzeit basierend auf der Gradzahl (0,8 Grad pro Sekunde)
-    rotation_time = degrees / 0.8
-
-    # Relais einschalten (Drehteller starten)
-    arduino.write(b'1')  # '1' senden, um das Relais einzuschalten
-    time.sleep(rotation_time)  # Warte für die berechnete Zeit
-    arduino.write(b'0')  # '0' senden, um das Relais auszuschalten
-    print(f"Drehteller um {degrees} Grad gedreht.")
-
-# Routes
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-@app.route('/settings')
-def settings():
-    return render_template('settings.html')
-
-@app.route('/viewer')
-def view_360():
-    """Zeigt den 360°-Viewer an."""
-    return render_template('viewer.html')
-
-@app.route('/projects')
-def projects_page():
-    """Zeigt die Projektverwaltungsseite an."""
-    return render_template('projects.html')
-
-@app.route('/get_config')
-def get_config():
-    """
-    Retrieve current configuration
-    """
-    return jsonify(config_manager.config)
-
-@app.route('/save_config', methods=['POST'])
-def save_config():
-    """
-    Save new configuration
-    """
-    try:
-        # Prüfen, ob JSON-Daten empfangen wurden
-        if not request.is_json:
-            return jsonify({
-                "status": "error",
-                "message": "Keine JSON-Daten empfangen. Content-Type muss application/json sein."
-            }), 400
-
-        # JSON-Daten abrufen
-        new_config = request.json
-
-        if not new_config:
-            return jsonify({
-                "status": "error",
-                "message": "Leere Konfigurationsdaten empfangen"
-            }), 400
-
-        # Konfigurationsdaten ausgeben für Debugging
-        print("Empfangene Konfiguration:", json.dumps(new_config, indent=2))
-
-        # Versuchen, die Konfiguration zu speichern
-        try:
-            # Konfiguration mit bestehender Konfiguration zusammenführen
-            # (Direkte Implementierung ohne die fehlende _merge_configs-Methode)
-            merged_config = {}
-
-            # Erst die bestehende Konfiguration kopieren
-            for key, value in config_manager.config.items():
-                merged_config[key] = value
-
-            # Dann die neue Konfiguration einarbeiten (rekursiv)
-            def recursive_update(target, source):
-                for key, value in source.items():
-                    if isinstance(value, dict) and key in target and isinstance(target[key], dict):
-                        recursive_update(target[key], value)
-                    else:
-                        target[key] = value
-
-            recursive_update(merged_config, new_config)
-
-            # Aktualisierte Konfiguration speichern
-            config_manager.config = merged_config
-
-            # In Datei speichern
-            with open(config_manager.config_path, 'w') as f:
-                json.dump(merged_config, f, indent=4)
-
-            print(f"Konfiguration gespeichert in: {config_manager.config_path}")
-            return jsonify({"status": "success"})
-        except Exception as config_error:
-            print(f"Fehler beim Speichern der Konfiguration: {config_error}")
-            return jsonify({
-                "status": "error",
-                "message": f"Fehler beim Speichern: {str(config_error)}"
-            }), 500
-
-    except Exception as e:
-        print(f"Allgemeiner Fehler beim Speichern der Konfiguration: {e}")
-        return jsonify({
-            "status": "error",
-            "message": f"Allgemeiner Fehler: {str(e)}"
-        }), 500
-
-@app.route('/api/project/<project_id>')
-def get_project(project_id):
-    """Liefert Projektdaten für den 360°-Viewer."""
-    try:
-        project_dir = os.path.join('static/projects', project_id)
-        metadata_path = os.path.join(project_dir, 'metadata.json')
-
-        if not os.path.exists(metadata_path):
-            return jsonify({"error": "Projekt nicht gefunden"}), 404
-
-        with open(metadata_path, 'r') as f:
-            metadata = json.load(f)
-
-        return jsonify(metadata)
-    except Exception as e:
-        print(f"Fehler beim Laden der Projektdaten: {e}")
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/projects')
-def get_projects():
-    """Liefert eine Liste aller verfügbaren Projekte."""
-    try:
-        projects_dir = 'static/projects'
-        projects = []
-
-        # Verzeichnisse durchsuchen
-        for project_id in os.listdir(projects_dir):
-            project_path = os.path.join(projects_dir, project_id)
-
-            # Nur Verzeichnisse berücksichtigen
-            if os.path.isdir(project_path):
-                metadata_path = os.path.join(project_path, 'metadata.json')
-
-                # Prüfen, ob Metadaten existieren
-                if os.path.exists(metadata_path):
-                    with open(metadata_path, 'r') as f:
-                        metadata = json.load(f)
-
-                    # Projekt-ID hinzufügen
-                    metadata['id'] = project_id
-                    projects.append(metadata)
-                else:
-                    # Fallback, wenn keine Metadaten existieren
-                    images = [f for f in os.listdir(project_path)
-                             if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
-                    projects.append({
-                        'id': project_id,
-                        'name': f"Projekt {project_id}",
-                        'created': os.path.getctime(project_path),
-                        'images': images,
-                        'image_count': len(images)
-                    })
-
-        return jsonify(projects)
-    except Exception as e:
-        print(f"Fehler beim Laden der Projekte: {e}")
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/project/<project_id>', methods=['DELETE'])
-def delete_project(project_id):
-    """Löscht ein Projekt und alle zugehörigen Bilder."""
-    try:
-        # Pfad zum Projektverzeichnis
-        project_dir = os.path.join('static/projects', project_id)
-        
-        if not os.path.exists(project_dir):
-            return jsonify({"error": "Projekt nicht gefunden"}), 404
-        
-        # Metadaten lesen, um Bildinformationen zu erhalten
-        metadata_path = os.path.join(project_dir, 'metadata.json')
-        images_to_delete = []
-        
-        if os.path.exists(metadata_path):
-            try:
-                with open(metadata_path, 'r') as f:
-                    metadata = json.load(f)
-                
-                # Unterverzeichnisse wie sessions/sessions_id/images prüfen
-                if 'sessions' in metadata:
-                    for session in metadata.get('sessions', []):
-                        session_photos = session.get('photos', {})
-                        for photo_path in session_photos.values():
-                            if os.path.exists(photo_path) and os.path.isfile(photo_path):
-                                images_to_delete.append(photo_path)
-            except Exception as metadata_error:
-                print(f"Warnung: Konnte Metadaten nicht lesen: {metadata_error}")
-        
-        # Verzeichnisstruktur des Projekts durchsuchen
-        for root, dirs, files in os.walk(project_dir):
-            for file in files:
-                if file.lower().endswith(('.jpg', '.jpeg', '.png', '.gif')):
-                    file_path = os.path.join(root, file)
-                    images_to_delete.append(file_path)
-        
-        # Zuerst die einzelnen Bilddateien löschen
-        for image_path in images_to_delete:
-            try:
-                if os.path.exists(image_path) and os.path.isfile(image_path):
-                    os.remove(image_path)
-                    print(f"Gelöschtes Bild: {image_path}")
-            except Exception as image_error:
-                print(f"Warnung: Konnte Bild nicht löschen: {image_error}")
-        
-        # Dann das gesamte Projektverzeichnis löschen
-        import shutil
-        shutil.rmtree(project_dir)
-        print(f"Projekt {project_id} und alle zugehörigen Dateien wurden gelöscht.")
-        
-        return jsonify({"status": "success"})
-    except Exception as e:
-        print(f"Fehler beim Löschen des Projekts: {e}")
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/devices')
-def get_devices():
-    """Liefert eine Liste aller erkannten Geräte."""
-    return jsonify(device_detector.get_devices())
-
-@app.route('/generate_360', methods=['POST'])
-def generate_360():
-    """Generiert einen 360°-Viewer aus den aufgenommenen Bildern."""
-    try:
-        # Liste der Fotos nach Zeitstempel sortieren
-        photo_dir = 'static/photos'
-        photos = sorted([f for f in os.listdir(photo_dir)
-                        if f.lower().endswith(('.jpg', '.jpeg', '.png'))])
-
-        if not photos:
-            return jsonify({"error": "Keine Fotos gefunden"}), 400
-
-        # Optionale Metadaten aus der Anfrage
-        metadata = request.get_json() if request.is_json else {}
-
-        # 360°-Viewer generieren
-        viewer_url = viewer_generator.generate_viewer(photos, metadata)
-
-        if viewer_url:
-            return jsonify({"status": "success", "url": viewer_url})
-        else:
-            return jsonify({"error": "Fehler beim Generieren des Viewers"}), 500
-    except Exception as e:
-        print(f"Fehler beim Generieren des 360°-Viewers: {e}")
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/rotate', methods=['POST'])
-def rotate():
-    degrees = int(request.form['degrees'])
-    interval = float(request.form.get('interval', 5))  # Default 5 seconds if not specified
-
-    # Rotate platform
-    rotate_teller(degrees)
-
-    return jsonify({"status": "success", "message": f"Drehung um {degrees} Grad abgeschlossen"})
-
-@app.route('/static/photos/<filename>')
-def serve_photo(filename):
-    return send_from_directory('static/photos', filename)
-
-if __name__ == '__main__':
-    # Ensure static directories exist
-    os.makedirs('static/photos', exist_ok=True)
-    os.makedirs('static/projects', exist_ok=True)
-
-    # Run the Flask app
-    app.run(host='0.0.0.0', port=5000, debug=True)
-
-
 --- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/arduino_drehteller_steuerung.ino ---
 // arduino_drehteller_steuerung.ino
 
@@ -572,6 +256,157 @@ Die Anwendung unterstützt:
 
 
 --- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/FirstInstall-sudo-setup_and_autostart ---
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/config_manager_fix.log ---
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/config_manager.py.bak ---
+import os
+import json
+
+
+class ConfigManager:
+    DEFAULT_CONFIG = {
+        'camera': {
+            'device_path': '/dev/video0',
+            'type': 'webcam',  # or 'gphoto2'
+            'resolution': {
+                'width': 1280,
+                'height': 720
+            }
+        },
+        'arduino': {
+            'port': '/dev/ttyACM0',
+            'baudrate': 9600
+        },
+        'rotation': {
+            'default_degrees': 15,
+            'default_interval': 5
+        },
+        'simulator': {
+            'enabled': True
+        }
+    }
+
+    def __init__(self, config_path=None):
+        """
+        Initialize configuration manager
+
+        :param config_path: Path to the configuration file
+        """
+        # Determine the project directory
+        self.project_dir = os.path.dirname(os.path.abspath(__file__))
+
+        # If no config path provided, use a default in the project directory
+        if config_path is None:
+            config_path = os.path.join(self.project_dir, 'config.json')
+
+        self.config_path = config_path
+        self.config = self.load_config()
+
+    def load_config(self):
+        """
+        Load configuration from file or create default
+
+        :return: Configuration dictionary
+        """
+        try:
+            # Ensure config directory exists
+            os.makedirs(os.path.dirname(self.config_path), exist_ok=True)
+
+            # Try to load existing config
+            if os.path.exists(self.config_path):
+                with open(self.config_path, 'r') as f:
+                    config = json.load(f)
+                    # Merge with default to ensure all keys exist
+                    return {**self.DEFAULT_CONFIG, **config}
+            else:
+                # Create default config file
+                config = self.DEFAULT_CONFIG
+                self.save_config(config)
+                return config
+        except Exception as e:
+            print(f"Error loading config: {e}")
+            # If loading fails, use default config and try to save it
+            try:
+                self.save_config(self.DEFAULT_CONFIG)
+            except Exception as save_error:
+                print(f"Error saving default config: {save_error}")
+            return self.DEFAULT_CONFIG
+
+    def save_config(self, new_config=None):
+        """
+        Save configuration to file
+
+        :param new_config: Optional new configuration to save
+        """
+        try:
+            # Use provided config or current config
+            config_to_save = new_config if new_config is not None else self.config
+
+            # Ensure full path exists
+            os.makedirs(os.path.dirname(self.config_path), exist_ok=True)
+
+            # Save configuration
+            with open(self.config_path, 'w') as f:
+                json.dump(config_to_save, f, indent=4)
+
+            # Update current config
+            if new_config is not None:
+                self.config = new_config
+        except Exception as e:
+            print(f"Error saving config: {e}")
+
+    def get(self, key, default=None):
+        """
+        Get a configuration value
+
+        :param key: Dot-separated key (e.g. 'camera.device_path')
+        :param default: Default value if key not found
+        :return: Configuration value
+        """
+        try:
+            # Split the key into parts
+            parts = key.split('.')
+
+            # Navigate through nested dictionary
+            value = self.config
+            for part in parts:
+                value = value.get(part, {})
+
+            # Return value if found, otherwise default
+            return value if value != {} else default
+        except Exception as e:
+            print(f"Error getting config value: {e}")
+            return default
+
+
+# Create a global config manager
+config_manager = ConfigManager()
+
+# Standalone usage example
+if __name__ == '__main__':
+    # Example usage
+    print("Camera Device Path:", config_manager.get('camera.device_path'))
+    print("Arduino Port:", config_manager.get('arduino.port'))
+
+    # Example of updating config
+    config_manager.save_config({
+        'camera': {
+            'device_path': '/dev/video1',
+            'type': 'gphoto2'
+        },
+        'arduino': {
+            'port': '/dev/ttyUSB0',
+            'baudrate': 115200
+        }
+    })
+
+    # Verify changes
+    print("\nAfter Update:")
+    print("Camera Device Path:", config_manager.get('camera.device_path'))
+    print("Arduino Port:", config_manager.get('arduino.port'))
 
 
 --- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/.gitignore ---
@@ -964,322 +799,6 @@ if __name__ == "__main__":
     main()
 
 
---- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/web.py-11-03-2025_18-01 ---
-from flask import Flask, render_template, request, send_from_directory, jsonify
-import os
-import json
-import time
-import serial
-import subprocess
-
-# Import config manager
-from config_manager import config_manager
-
-# Import device detector and viewer generator
-from device_detector import device_detector
-from viewer_generator import viewer_generator
-
-app = Flask(__name__)
-
-# Arduino connection
-def get_arduino_connection():
-    """
-    Establish Arduino connection based on configuration
-    """
-    try:
-        port = config_manager.get('arduino.port', '/dev/ttyACM0')
-        baudrate = config_manager.get('arduino.baudrate', 9600)
-
-        arduino = serial.Serial(port, baudrate, timeout=1)
-        time.sleep(2)  # Wait for initialization
-        return arduino
-    except Exception as e:
-        print(f"Arduino connection error: {e}")
-        return None
-
-# Global Arduino connection
-arduino = get_arduino_connection()
-
-def rotate_teller(degrees):
-    """
-    Rotate the platform
-
-    :param degrees: Rotation angle
-    """
-    if arduino is None:
-        print("Arduino not connected!")
-        return
-
-    # Berechnung der Drehzeit basierend auf der Gradzahl (0,8 Grad pro Sekunde)
-    rotation_time = degrees / 0.8
-
-    # Relais einschalten (Drehteller starten)
-    arduino.write(b'1')  # '1' senden, um das Relais einzuschalten
-    time.sleep(rotation_time)  # Warte für die berechnete Zeit
-    arduino.write(b'0')  # '0' senden, um das Relais auszuschalten
-    print(f"Drehteller um {degrees} Grad gedreht.")
-
-# Routes
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-@app.route('/settings')
-def settings():
-    return render_template('settings.html')
-
-@app.route('/viewer')
-def view_360():
-    """Zeigt den 360°-Viewer an."""
-    return render_template('viewer.html')
-
-@app.route('/projects')
-def projects_page():
-    """Zeigt die Projektverwaltungsseite an."""
-    return render_template('projects.html')
-
-@app.route('/get_config')
-def get_config():
-    """
-    Retrieve current configuration
-    """
-    return jsonify(config_manager.config)
-
-@app.route('/save_config', methods=['POST'])
-def save_config():
-    """
-    Save new configuration
-    """
-    try:
-        # Prüfen, ob JSON-Daten empfangen wurden
-        if not request.is_json:
-            return jsonify({
-                "status": "error",
-                "message": "Keine JSON-Daten empfangen. Content-Type muss application/json sein."
-            }), 400
-
-        # JSON-Daten abrufen
-        new_config = request.json
-
-        if not new_config:
-            return jsonify({
-                "status": "error",
-                "message": "Leere Konfigurationsdaten empfangen"
-            }), 400
-
-        # Konfigurationsdaten ausgeben für Debugging
-        print("Empfangene Konfiguration:", json.dumps(new_config, indent=2))
-
-        # Versuchen, die Konfiguration zu speichern
-        try:
-            # Konfiguration mit bestehender Konfiguration zusammenführen
-            # (Direkte Implementierung ohne die fehlende _merge_configs-Methode)
-            merged_config = {}
-
-            # Erst die bestehende Konfiguration kopieren
-            for key, value in config_manager.config.items():
-                merged_config[key] = value
-
-            # Dann die neue Konfiguration einarbeiten (rekursiv)
-            def recursive_update(target, source):
-                for key, value in source.items():
-                    if isinstance(value, dict) and key in target and isinstance(target[key], dict):
-                        recursive_update(target[key], value)
-                    else:
-                        target[key] = value
-
-            recursive_update(merged_config, new_config)
-
-            # Aktualisierte Konfiguration speichern
-            config_manager.config = merged_config
-
-            # In Datei speichern
-            with open(config_manager.config_path, 'w') as f:
-                json.dump(merged_config, f, indent=4)
-
-            print(f"Konfiguration gespeichert in: {config_manager.config_path}")
-            return jsonify({"status": "success"})
-        except Exception as config_error:
-            print(f"Fehler beim Speichern der Konfiguration: {config_error}")
-            return jsonify({
-                "status": "error",
-                "message": f"Fehler beim Speichern: {str(config_error)}"
-            }), 500
-
-    except Exception as e:
-        print(f"Allgemeiner Fehler beim Speichern der Konfiguration: {e}")
-        return jsonify({
-            "status": "error",
-            "message": f"Allgemeiner Fehler: {str(e)}"
-        }), 500
-
-@app.route('/api/project/<project_id>')
-def get_project(project_id):
-    """Liefert Projektdaten für den 360°-Viewer."""
-    try:
-        project_dir = os.path.join('static/projects', project_id)
-        metadata_path = os.path.join(project_dir, 'metadata.json')
-
-        if not os.path.exists(metadata_path):
-            return jsonify({"error": "Projekt nicht gefunden"}), 404
-
-        with open(metadata_path, 'r') as f:
-            metadata = json.load(f)
-
-        return jsonify(metadata)
-    except Exception as e:
-        print(f"Fehler beim Laden der Projektdaten: {e}")
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/projects')
-def get_projects():
-    """Liefert eine Liste aller verfügbaren Projekte."""
-    try:
-        projects_dir = 'static/projects'
-        projects = []
-
-        # Verzeichnisse durchsuchen
-        for project_id in os.listdir(projects_dir):
-            project_path = os.path.join(projects_dir, project_id)
-
-            # Nur Verzeichnisse berücksichtigen
-            if os.path.isdir(project_path):
-                metadata_path = os.path.join(project_path, 'metadata.json')
-
-                # Prüfen, ob Metadaten existieren
-                if os.path.exists(metadata_path):
-                    with open(metadata_path, 'r') as f:
-                        metadata = json.load(f)
-
-                    # Projekt-ID hinzufügen
-                    metadata['id'] = project_id
-                    projects.append(metadata)
-                else:
-                    # Fallback, wenn keine Metadaten existieren
-                    images = [f for f in os.listdir(project_path)
-                             if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
-                    projects.append({
-                        'id': project_id,
-                        'name': f"Projekt {project_id}",
-                        'created': os.path.getctime(project_path),
-                        'images': images,
-                        'image_count': len(images)
-                    })
-
-        return jsonify(projects)
-    except Exception as e:
-        print(f"Fehler beim Laden der Projekte: {e}")
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/project/<project_id>', methods=['DELETE'])
-def delete_project(project_id):
-    """Löscht ein Projekt und alle zugehörigen Bilder."""
-    try:
-        # Pfad zum Projektverzeichnis
-        project_dir = os.path.join('static/projects', project_id)
-        
-        if not os.path.exists(project_dir):
-            return jsonify({"error": "Projekt nicht gefunden"}), 404
-        
-        # Metadaten lesen, um Bildinformationen zu erhalten
-        metadata_path = os.path.join(project_dir, 'metadata.json')
-        images_to_delete = []
-        
-        if os.path.exists(metadata_path):
-            try:
-                with open(metadata_path, 'r') as f:
-                    metadata = json.load(f)
-                
-                # Unterverzeichnisse wie sessions/sessions_id/images prüfen
-                if 'sessions' in metadata:
-                    for session in metadata.get('sessions', []):
-                        session_photos = session.get('photos', {})
-                        for photo_path in session_photos.values():
-                            if os.path.exists(photo_path) and os.path.isfile(photo_path):
-                                images_to_delete.append(photo_path)
-            except Exception as metadata_error:
-                print(f"Warnung: Konnte Metadaten nicht lesen: {metadata_error}")
-        
-        # Verzeichnisstruktur des Projekts durchsuchen
-        for root, dirs, files in os.walk(project_dir):
-            for file in files:
-                if file.lower().endswith(('.jpg', '.jpeg', '.png', '.gif')):
-                    file_path = os.path.join(root, file)
-                    images_to_delete.append(file_path)
-        
-        # Zuerst die einzelnen Bilddateien löschen
-        for image_path in images_to_delete:
-            try:
-                if os.path.exists(image_path) and os.path.isfile(image_path):
-                    os.remove(image_path)
-                    print(f"Gelöschtes Bild: {image_path}")
-            except Exception as image_error:
-                print(f"Warnung: Konnte Bild nicht löschen: {image_error}")
-        
-        # Dann das gesamte Projektverzeichnis löschen
-        import shutil
-        shutil.rmtree(project_dir)
-        print(f"Projekt {project_id} und alle zugehörigen Dateien wurden gelöscht.")
-        
-        return jsonify({"status": "success"})
-    except Exception as e:
-        print(f"Fehler beim Löschen des Projekts: {e}")
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/devices')
-def get_devices():
-    """Liefert eine Liste aller erkannten Geräte."""
-    return jsonify(device_detector.get_devices())
-
-@app.route('/generate_360', methods=['POST'])
-def generate_360():
-    """Generiert einen 360°-Viewer aus den aufgenommenen Bildern."""
-    try:
-        # Liste der Fotos nach Zeitstempel sortieren
-        photo_dir = 'static/photos'
-        photos = sorted([f for f in os.listdir(photo_dir)
-                        if f.lower().endswith(('.jpg', '.jpeg', '.png'))])
-
-        if not photos:
-            return jsonify({"error": "Keine Fotos gefunden"}), 400
-
-        # Optionale Metadaten aus der Anfrage
-        metadata = request.get_json() if request.is_json else {}
-
-        # 360°-Viewer generieren
-        viewer_url = viewer_generator.generate_viewer(photos, metadata)
-
-        if viewer_url:
-            return jsonify({"status": "success", "url": viewer_url})
-        else:
-            return jsonify({"error": "Fehler beim Generieren des Viewers"}), 500
-    except Exception as e:
-        print(f"Fehler beim Generieren des 360°-Viewers: {e}")
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/rotate', methods=['POST'])
-def rotate():
-    degrees = int(request.form['degrees'])
-    interval = float(request.form.get('interval', 5))  # Default 5 seconds if not specified
-
-    # Rotate platform
-    rotate_teller(degrees)
-
-    return jsonify({"status": "success", "message": f"Drehung um {degrees} Grad abgeschlossen"})
-
-@app.route('/static/photos/<filename>')
-def serve_photo(filename):
-    return send_from_directory('static/photos', filename)
-
-if __name__ == '__main__':
-    # Ensure static directories exist
-    os.makedirs('static/photos', exist_ok=True)
-    os.makedirs('static/projects', exist_ok=True)
-
-    # Run the Flask app
-    app.run(host='0.0.0.0', port=5000, debug=True)
-
-
 --- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/arduino_drehteller_steuerung.ino ---
 // arduino_drehteller_steuerung.ino
 
@@ -1478,6 +997,157 @@ Die Anwendung unterstützt:
 
 
 --- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/FirstInstall-sudo-setup_and_autostart ---
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/config_manager_fix.log ---
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/config_manager.py.bak ---
+import os
+import json
+
+
+class ConfigManager:
+    DEFAULT_CONFIG = {
+        'camera': {
+            'device_path': '/dev/video0',
+            'type': 'webcam',  # or 'gphoto2'
+            'resolution': {
+                'width': 1280,
+                'height': 720
+            }
+        },
+        'arduino': {
+            'port': '/dev/ttyACM0',
+            'baudrate': 9600
+        },
+        'rotation': {
+            'default_degrees': 15,
+            'default_interval': 5
+        },
+        'simulator': {
+            'enabled': True
+        }
+    }
+
+    def __init__(self, config_path=None):
+        """
+        Initialize configuration manager
+
+        :param config_path: Path to the configuration file
+        """
+        # Determine the project directory
+        self.project_dir = os.path.dirname(os.path.abspath(__file__))
+
+        # If no config path provided, use a default in the project directory
+        if config_path is None:
+            config_path = os.path.join(self.project_dir, 'config.json')
+
+        self.config_path = config_path
+        self.config = self.load_config()
+
+    def load_config(self):
+        """
+        Load configuration from file or create default
+
+        :return: Configuration dictionary
+        """
+        try:
+            # Ensure config directory exists
+            os.makedirs(os.path.dirname(self.config_path), exist_ok=True)
+
+            # Try to load existing config
+            if os.path.exists(self.config_path):
+                with open(self.config_path, 'r') as f:
+                    config = json.load(f)
+                    # Merge with default to ensure all keys exist
+                    return {**self.DEFAULT_CONFIG, **config}
+            else:
+                # Create default config file
+                config = self.DEFAULT_CONFIG
+                self.save_config(config)
+                return config
+        except Exception as e:
+            print(f"Error loading config: {e}")
+            # If loading fails, use default config and try to save it
+            try:
+                self.save_config(self.DEFAULT_CONFIG)
+            except Exception as save_error:
+                print(f"Error saving default config: {save_error}")
+            return self.DEFAULT_CONFIG
+
+    def save_config(self, new_config=None):
+        """
+        Save configuration to file
+
+        :param new_config: Optional new configuration to save
+        """
+        try:
+            # Use provided config or current config
+            config_to_save = new_config if new_config is not None else self.config
+
+            # Ensure full path exists
+            os.makedirs(os.path.dirname(self.config_path), exist_ok=True)
+
+            # Save configuration
+            with open(self.config_path, 'w') as f:
+                json.dump(config_to_save, f, indent=4)
+
+            # Update current config
+            if new_config is not None:
+                self.config = new_config
+        except Exception as e:
+            print(f"Error saving config: {e}")
+
+    def get(self, key, default=None):
+        """
+        Get a configuration value
+
+        :param key: Dot-separated key (e.g. 'camera.device_path')
+        :param default: Default value if key not found
+        :return: Configuration value
+        """
+        try:
+            # Split the key into parts
+            parts = key.split('.')
+
+            # Navigate through nested dictionary
+            value = self.config
+            for part in parts:
+                value = value.get(part, {})
+
+            # Return value if found, otherwise default
+            return value if value != {} else default
+        except Exception as e:
+            print(f"Error getting config value: {e}")
+            return default
+
+
+# Create a global config manager
+config_manager = ConfigManager()
+
+# Standalone usage example
+if __name__ == '__main__':
+    # Example usage
+    print("Camera Device Path:", config_manager.get('camera.device_path'))
+    print("Arduino Port:", config_manager.get('arduino.port'))
+
+    # Example of updating config
+    config_manager.save_config({
+        'camera': {
+            'device_path': '/dev/video1',
+            'type': 'gphoto2'
+        },
+        'arduino': {
+            'port': '/dev/ttyUSB0',
+            'baudrate': 115200
+        }
+    })
+
+    # Verify changes
+    print("\nAfter Update:")
+    print("Camera Device Path:", config_manager.get('camera.device_path'))
+    print("Arduino Port:", config_manager.get('arduino.port'))
 
 
 --- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/.gitignore ---
@@ -1789,6 +1459,1285 @@ class ViewerGenerator:
 
 # Globale Instanz für die Anwendung
 viewer_generator = ViewerGenerator()
+
+--- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/projekt_struktur_bericht.json ---
+{
+  "meta": {
+    "analyzed_path": "/home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos",
+    "analysis_timestamp": "2025-03-11T21:16:23.110863",
+    "total_files": 132,
+    "total_directories": 27,
+    "file_types": {
+      ".ino": 4,
+      ".py": 63,
+      ".py-11-03-2025_18-01": 1,
+      ".txt": 3,
+      ".md": 1,
+      "": 5,
+      ".log": 5,
+      ".bak": 2,
+      ".html": 8,
+      ".sh": 4,
+      ".1741723643": 1,
+      ".json": 1,
+      ".jpg": 15,
+      ".js": 12,
+      ".jsx": 1,
+      ".css": 6
+    },
+    "directory_structure": {
+      "arduino": [],
+      "utils": [],
+      "app": [],
+      "app/utils": [],
+      "app/controllers": [],
+      "app/models": [],
+      "app/blueprints": [],
+      "app/blueprints/api": [],
+      "app/blueprints/main": [],
+      "app/blueprints/projects": [],
+      "app/blueprints/settings": [],
+      "controllers": [],
+      "config": [],
+      "arduino_drehteller_steuerung": [],
+      "templates": [],
+      "models": [],
+      "utility": [],
+      "projects": [],
+      "static": [],
+      "static/temp": [],
+      "static/photos": [],
+      "static/js": [],
+      "static/js/components": [],
+      "static/js/modules": [],
+      "static/projects": [],
+      "static/sample_images": [],
+      "static/css": []
+    }
+  },
+  "files": [
+    {
+      "path": "arduino/turntable_controller.ino",
+      "name": "turntable_controller.ino",
+      "size": 1822,
+      "created": 1741711001.4852598,
+      "modified": 1741711001.4852598,
+      "hash": "30f89cbd60272bc0d0869f632001c0a9"
+    },
+    {
+      "path": "diagnose_modules.py",
+      "name": "diagnose_modules.py",
+      "size": 1569,
+      "created": 1741712003.6605735,
+      "modified": 1741712003.6555734,
+      "hash": "ed36829eb964e9e0654985929f6e7ed0"
+    },
+    {
+      "path": "web.py-11-03-2025_18-01",
+      "name": "web.py-11-03-2025_18-01",
+      "size": 11146,
+      "created": 1741712504.4845097,
+      "modified": 1741712504.4845097,
+      "hash": "9ce6ca67d1b1c646b608445b44800c50"
+    },
+    {
+      "path": "utils/__init__.py",
+      "name": "__init__.py",
+      "size": 314,
+      "created": 1741711001.8912601,
+      "modified": 1741711001.8912601,
+      "hash": "65ad0a89ce860bdf1532ec0db439be22"
+    },
+    {
+      "path": "utils/arduino_finder.py",
+      "name": "arduino_finder.py",
+      "size": 7255,
+      "created": 1741711001.8912601,
+      "modified": 1741711001.8912601,
+      "hash": "a927a80853f81beb88b8996eefed82e4"
+    },
+    {
+      "path": "utils/camera_finder.py",
+      "name": "camera_finder.py",
+      "size": 9390,
+      "created": 1741711001.8912601,
+      "modified": 1741711001.8912601,
+      "hash": "02575ca34fa41413d93bf3ceff225a75"
+    },
+    {
+      "path": "utils/image_processor.py",
+      "name": "image_processor.py",
+      "size": 0,
+      "created": 1741711001.89226,
+      "modified": 1741711001.89226,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "path": "utils/background_remover.py",
+      "name": "background_remover.py",
+      "size": 10954,
+      "created": 1741711001.8912601,
+      "modified": 1741711001.8912601,
+      "hash": "395df5de26a2f9626e9a394b3bbd2b0e"
+    },
+    {
+      "path": "arduino_drehteller_steuerung.ino",
+      "name": "arduino_drehteller_steuerung.ino",
+      "size": 1157,
+      "created": 1741711001.4862597,
+      "modified": 1741711001.4862597,
+      "hash": "68d13453b1daf0d775fdf1b3e3491ee0"
+    },
+    {
+      "path": "app/__init__.py",
+      "name": "__init__.py",
+      "size": 4238,
+      "created": 1741721934.4418275,
+      "modified": 1741721934.4158278,
+      "hash": "33d4591205eea3d3e001134ae8e82e5e"
+    },
+    {
+      "path": "app/utils/__init__.py",
+      "name": "__init__.py",
+      "size": 155,
+      "created": 1741718494.6315436,
+      "modified": 1741718494.6315436,
+      "hash": "4828cf401a1aedce594f6e4e81bfc80e"
+    },
+    {
+      "path": "app/utils/webcam_simulator.py",
+      "name": "webcam_simulator.py",
+      "size": 5245,
+      "created": 1741719001.2617867,
+      "modified": 1741719001.2617867,
+      "hash": "4f3f0f602d1de0681676c3811eacc509"
+    },
+    {
+      "path": "app/utils/device_detector.py",
+      "name": "device_detector.py",
+      "size": 6239,
+      "created": 1741719116.3345988,
+      "modified": 1741719116.3345988,
+      "hash": "2611bcf9589532bc97709b518cc6cbe9"
+    },
+    {
+      "path": "app/utils/viewer_generator.py",
+      "name": "viewer_generator.py",
+      "size": 4915,
+      "created": 1741719039.1827252,
+      "modified": 1741719039.1827252,
+      "hash": "51ec462383de671529899e4c235fff06"
+    },
+    {
+      "path": "app/utils/webcam_detection_helper.py",
+      "name": "webcam_detection_helper.py",
+      "size": 8456,
+      "created": 1741719086.1436484,
+      "modified": 1741719086.1436484,
+      "hash": "c8e591d52e95db9efb5a40f9d6caf374"
+    },
+    {
+      "path": "app/utils/config_manager.py",
+      "name": "config_manager.py",
+      "size": 7007,
+      "created": 1741718521.236508,
+      "modified": 1741718521.236508,
+      "hash": "8f5fd2813926a4b09020879b8054cbdd"
+    },
+    {
+      "path": "app/utils/sample_images_generator.py",
+      "name": "sample_images_generator.py",
+      "size": 9941,
+      "created": 1741721202.4528522,
+      "modified": 1741719731.1454697,
+      "hash": "317fc5d6dac913b91a3de4c1663e0c14"
+    },
+    {
+      "path": "app/utils/path_manager.py",
+      "name": "path_manager.py",
+      "size": 3681,
+      "created": 1741720041.0768588,
+      "modified": 1741720041.0698588,
+      "hash": "b74afb5ae392ac7875dd74ddaafb2e62"
+    },
+    {
+      "path": "app/controllers/__init__.py",
+      "name": "__init__.py",
+      "size": 317,
+      "created": 1741719239.327772,
+      "modified": 1741719239.327772,
+      "hash": "7be81506b1147b2b1621a72e522cca65"
+    },
+    {
+      "path": "app/controllers/camera_controller.py",
+      "name": "camera_controller.py",
+      "size": 7413,
+      "created": 1741719490.6718686,
+      "modified": 1741719490.6718686,
+      "hash": "b97bd756b8634f317bb0eac9fac251dc"
+    },
+    {
+      "path": "app/controllers/arduino_controller.py",
+      "name": "arduino_controller.py",
+      "size": 4660,
+      "created": 1741719468.5097945,
+      "modified": 1741719468.5027945,
+      "hash": "705e22e06efe94c4ace9df589ac935fd"
+    },
+    {
+      "path": "app/controllers/turntable_controller.py",
+      "name": "turntable_controller.py",
+      "size": 5653,
+      "created": 1741719514.484944,
+      "modified": 1741719514.484944,
+      "hash": "ba5d96287546423fadbcd5349ebfcdb7"
+    },
+    {
+      "path": "app/alles.txt",
+      "name": "alles.txt",
+      "size": 115110,
+      "created": 1741721601.6542246,
+      "modified": 1741721601.6542246,
+      "hash": "1ce3f0d2b1f1a2b97c9ca6927ab3e2a1"
+    },
+    {
+      "path": "app/models/__init__.py",
+      "name": "__init__.py",
+      "size": 215,
+      "created": 1741719173.7875035,
+      "modified": 1741719173.7875035,
+      "hash": "733febb2c5117e3031446aab56c2db24"
+    },
+    {
+      "path": "app/models/project.py",
+      "name": "project.py",
+      "size": 9248,
+      "created": 1741719193.1664972,
+      "modified": 1741719193.1664972,
+      "hash": "17b3d52c8769f3cbd4a016e4378e7718"
+    },
+    {
+      "path": "app/models/photo_session.py",
+      "name": "photo_session.py",
+      "size": 3309,
+      "created": 1741719213.422621,
+      "modified": 1741719213.422621,
+      "hash": "2edd598c2e30b4eb5e01e14ed00c9235"
+    },
+    {
+      "path": "app/blueprints/__init__.py",
+      "name": "__init__.py",
+      "size": 204,
+      "created": 1741719134.7795682,
+      "modified": 1741719134.7795682,
+      "hash": "60f16cf57f9c205ea094d53412d9eab4"
+    },
+    {
+      "path": "app/blueprints/api/__init__.py",
+      "name": "__init__.py",
+      "size": 266,
+      "created": 1741718720.2952247,
+      "modified": 1741718720.2952247,
+      "hash": "cf58a16f54979e5c47b8cab007a2f6a2"
+    },
+    {
+      "path": "app/blueprints/api/routes.py",
+      "name": "routes.py",
+      "size": 6904,
+      "created": 1741718744.105189,
+      "modified": 1741718744.105189,
+      "hash": "1981658fab15b2a75312eb9ad6979a96"
+    },
+    {
+      "path": "app/blueprints/main/__init__.py",
+      "name": "__init__.py",
+      "size": 331,
+      "created": 1741718562.0604522,
+      "modified": 1741718562.0604522,
+      "hash": "f129aca43e75edd6e9ef60fbd328c427"
+    },
+    {
+      "path": "app/blueprints/main/utils.py",
+      "name": "utils.py",
+      "size": 4686,
+      "created": 1741718687.0682738,
+      "modified": 1741718687.0682738,
+      "hash": "0e35f37c9cba9ef01501e0cf19bebca2"
+    },
+    {
+      "path": "app/blueprints/main/routes.py",
+      "name": "routes.py",
+      "size": 1581,
+      "created": 1741718662.5273097,
+      "modified": 1741718662.5213096,
+      "hash": "c99cbb3a4f984e37800eb06bca4cc4f2"
+    },
+    {
+      "path": "app/blueprints/projects/__init__.py",
+      "name": "__init__.py",
+      "size": 291,
+      "created": 1741718855.3660185,
+      "modified": 1741718855.3660185,
+      "hash": "a692176be2365f0d930c368f98e1df92"
+    },
+    {
+      "path": "app/blueprints/projects/routes.py",
+      "name": "routes.py",
+      "size": 9341,
+      "created": 1741719620.0572338,
+      "modified": 1741719620.0502338,
+      "hash": "d3c7d40d33a8a3642bcdfd4f9277f5d1"
+    },
+    {
+      "path": "app/blueprints/settings/__init__.py",
+      "name": "__init__.py",
+      "size": 291,
+      "created": 1741718799.280105,
+      "modified": 1741718799.280105,
+      "hash": "196f0045007fd4a12e9763808a61272c"
+    },
+    {
+      "path": "app/blueprints/settings/routes.py",
+      "name": "routes.py",
+      "size": 3858,
+      "created": 1741718820.5080726,
+      "modified": 1741718820.5080726,
+      "hash": "1ee5f0cb95e0d87fbb4f4ff9c25170e3"
+    },
+    {
+      "path": "app/config.py",
+      "name": "config.py",
+      "size": 1804,
+      "created": 1741720003.624828,
+      "modified": 1741720003.619828,
+      "hash": "cdd1a67eac771a2857058080e8005962"
+    },
+    {
+      "path": "app/zeige-alles-an.py",
+      "name": "zeige-alles-an.py",
+      "size": 1267,
+      "created": 1741721579.746255,
+      "modified": 1741721554.1292915,
+      "hash": "ead839abb728fd3a8d273e7fb996c377"
+    },
+    {
+      "path": "README.md",
+      "name": "README.md",
+      "size": 4305,
+      "created": 1741719545.5040367,
+      "modified": 1741719545.4990368,
+      "hash": "c0ad470699dd048d1e4a24a4daf07229"
+    },
+    {
+      "path": "FirstInstall-sudo-setup_and_autostart",
+      "name": "FirstInstall-sudo-setup_and_autostart",
+      "size": 0,
+      "created": 1741711001.4852598,
+      "modified": 1741711001.4852598,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "path": "config_manager_fix.log",
+      "name": "config_manager_fix.log",
+      "size": 1213,
+      "created": 1741723508.140397,
+      "modified": 1741723508.140397,
+      "hash": "2777fc554df561cda62cae101faf88e4"
+    },
+    {
+      "path": "config_manager.py.bak",
+      "name": "config_manager.py.bak",
+      "size": 4476,
+      "created": 1741723508.138397,
+      "modified": 1741723508.138397,
+      "hash": "b88d1e026c92ac2f9804b6dd67bc2bcd"
+    },
+    {
+      "path": "web.py.bak",
+      "name": "web.py.bak",
+      "size": 11146,
+      "created": 1741723508.139397,
+      "modified": 1741723508.139397,
+      "hash": "9ce6ca67d1b1c646b608445b44800c50"
+    },
+    {
+      "path": ".gitignore",
+      "name": ".gitignore",
+      "size": 541,
+      "created": 1741711001.4852598,
+      "modified": 1741711001.4852598,
+      "hash": "4aa66ec5ca666a1173471be76d1a3967"
+    },
+    {
+      "path": "controllers/__init__.py",
+      "name": "__init__.py",
+      "size": 0,
+      "created": 1741711001.8352602,
+      "modified": 1741711001.8352602,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "path": "controllers/camera_controller.py",
+      "name": "camera_controller.py",
+      "size": 5792,
+      "created": 1741711001.8352602,
+      "modified": 1741711001.8352602,
+      "hash": "47cc45c3a77490aa61a4dc9c9a5a4bc9"
+    },
+    {
+      "path": "controllers/arduino_controller.py",
+      "name": "arduino_controller.py",
+      "size": 3251,
+      "created": 1741711001.8352602,
+      "modified": 1741711001.8352602,
+      "hash": "013fccc240c901cd5508a9551338359c"
+    },
+    {
+      "path": "controllers/turntable_controller.py",
+      "name": "turntable_controller.py",
+      "size": 4696,
+      "created": 1741711001.8352602,
+      "modified": 1741711001.8352602,
+      "hash": "ecc98ec56c59b1c58af14150fd2ad723"
+    },
+    {
+      "path": "config/__init__.py",
+      "name": "__init__.py",
+      "size": 0,
+      "created": 1741711001.8352602,
+      "modified": 1741711001.8352602,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "path": "config/settings.py",
+      "name": "settings.py",
+      "size": 3759,
+      "created": 1741711001.8352602,
+      "modified": 1741711001.8352602,
+      "hash": "d4d40f4dbf2d4ee1ba287e78ee31b832"
+    },
+    {
+      "path": "arduino_drehteller_steuerung/arduino_drehteller_steuerung.ino",
+      "name": "arduino_drehteller_steuerung.ino",
+      "size": 1157,
+      "created": 1741711001.4862597,
+      "modified": 1741711001.4862597,
+      "hash": "68d13453b1daf0d775fdf1b3e3491ee0"
+    },
+    {
+      "path": "webcam_simulator.py",
+      "name": "webcam_simulator.py",
+      "size": 4201,
+      "created": 1741711001.89226,
+      "modified": 1741711001.89226,
+      "hash": "2532fa75ccfd54ce8b6ea718d710f5ee"
+    },
+    {
+      "path": "device_detector.py",
+      "name": "device_detector.py",
+      "size": 4531,
+      "created": 1741711001.83626,
+      "modified": 1741711001.83626,
+      "hash": "23f49ee2f0ea137dc79eda407bef195e"
+    },
+    {
+      "path": "alles.txt",
+      "name": "alles.txt",
+      "size": 506644,
+      "created": 1741721435.8004732,
+      "modified": 1741721435.8004732,
+      "hash": "818056b513aa6f43a820329604fe60c4"
+    },
+    {
+      "path": "templates/logs.html",
+      "name": "logs.html",
+      "size": 0,
+      "created": 1741711001.8902602,
+      "modified": 1741711001.8902602,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "path": "templates/project_edit.html",
+      "name": "project_edit.html",
+      "size": 14530,
+      "created": 1741711001.8902602,
+      "modified": 1741711001.8902602,
+      "hash": "ba6bd62a30ef7ff4af31ddb154ebe30a"
+    },
+    {
+      "path": "templates/base.html",
+      "name": "base.html",
+      "size": 21200,
+      "created": 1741711001.8902602,
+      "modified": 1741711001.8902602,
+      "hash": "4b5e04355c6a93266861d588a4893a86"
+    },
+    {
+      "path": "templates/viewer.html",
+      "name": "viewer.html",
+      "size": 3580,
+      "created": 1741711001.8912601,
+      "modified": 1741711001.8912601,
+      "hash": "7eeb3e125f57f35ea85f2c4bcf7a1d5c"
+    },
+    {
+      "path": "templates/settings.html",
+      "name": "settings.html",
+      "size": 9252,
+      "created": 1741711001.8902602,
+      "modified": 1741711001.8902602,
+      "hash": "ab837a5f1166c45528e4083dfb4b13a7"
+    },
+    {
+      "path": "templates/viewer-example.html",
+      "name": "viewer-example.html",
+      "size": 10196,
+      "created": 1741711001.8902602,
+      "modified": 1741711001.8902602,
+      "hash": "ca52619d641271f35ebd59f825a205eb"
+    },
+    {
+      "path": "templates/projects.html",
+      "name": "projects.html",
+      "size": 4623,
+      "created": 1741711001.8902602,
+      "modified": 1741711001.8902602,
+      "hash": "91d2d7ea5c5dc0b3452f3d2596ad5b98"
+    },
+    {
+      "path": "templates/index.html",
+      "name": "index.html",
+      "size": 6365,
+      "created": 1741711001.8902602,
+      "modified": 1741711001.8902602,
+      "hash": "322dc8db3e04cb2799f913400f69b197"
+    },
+    {
+      "path": "viewer_generator.py",
+      "name": "viewer_generator.py",
+      "size": 3709,
+      "created": 1741711001.89226,
+      "modified": 1741711001.89226,
+      "hash": "9995bd898e033877078c9955f6380811"
+    },
+    {
+      "path": "models/__init__.py",
+      "name": "__init__.py",
+      "size": 0,
+      "created": 1741711001.83626,
+      "modified": 1741711001.83626,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "path": "models/project.py",
+      "name": "project.py",
+      "size": 6879,
+      "created": 1741711001.83726,
+      "modified": 1741711001.83726,
+      "hash": "43f1ba6fc1bc460113d5463af5ef0b47"
+    },
+    {
+      "path": "models/photo_session.py",
+      "name": "photo_session.py",
+      "size": 1880,
+      "created": 1741711001.83626,
+      "modified": 1741711001.83626,
+      "hash": "d243cd0a295f69982dba4fdf88330e4d"
+    },
+    {
+      "path": "route_fix.log",
+      "name": "route_fix.log",
+      "size": 390,
+      "created": 1741723643.1757734,
+      "modified": 1741723643.1757734,
+      "hash": "717d0cb4ff230e73a4d58f436e733e10"
+    },
+    {
+      "path": "utility/dateien-verzeichnisse-auflisten.py",
+      "name": "dateien-verzeichnisse-auflisten.py",
+      "size": 925,
+      "created": 1741711001.8912601,
+      "modified": 1741711001.8912601,
+      "hash": "b79ea894c28bda834d89a3dd02758afb"
+    },
+    {
+      "path": "utility/relais_test.ino",
+      "name": "relais_test.ino",
+      "size": 295,
+      "created": 1741711001.8912601,
+      "modified": 1741711001.8912601,
+      "hash": "0c3cc0c63757ada736db4454fd5caa76"
+    },
+    {
+      "path": "utility/test_relais.py",
+      "name": "test_relais.py",
+      "size": 340,
+      "created": 1741711001.8912601,
+      "modified": 1741711001.8912601,
+      "hash": "ab1d55a2d2ac747f5c7daf511306adec"
+    },
+    {
+      "path": "utility/zeige-alles-an.py",
+      "name": "zeige-alles-an.py",
+      "size": 1263,
+      "created": 1741721586.193246,
+      "modified": 1741721536.580317,
+      "hash": "6b2288c8fde625fb3c1ef0bdc27ec034"
+    },
+    {
+      "path": "git_uploader.py",
+      "name": "git_uploader.py",
+      "size": 5502,
+      "created": 1741711001.83626,
+      "modified": 1741711001.83626,
+      "hash": "4437e5783a42d5fd8ea15d821259419b"
+    },
+    {
+      "path": "webcam_detection_helper.py",
+      "name": "webcam_detection_helper.py",
+      "size": 6776,
+      "created": 1741711001.89226,
+      "modified": 1741711001.89226,
+      "hash": "4e73bcc7d7f165fc3f7941ad657247ba"
+    },
+    {
+      "path": "main.py",
+      "name": "main.py",
+      "size": 2159,
+      "created": 1741711001.83626,
+      "modified": 1741711001.83626,
+      "hash": "6bb3b4da2143a105b6ff53c5c6656c9a"
+    },
+    {
+      "path": "web.py",
+      "name": "web.py",
+      "size": 11146,
+      "created": 1741712100.6681242,
+      "modified": 1741712100.6631243,
+      "hash": "9ce6ca67d1b1c646b608445b44800c50"
+    },
+    {
+      "path": "drehteller360_diagnose.log",
+      "name": "drehteller360_diagnose.log",
+      "size": 3995,
+      "created": 1741723146.2728271,
+      "modified": 1741723146.2728271,
+      "hash": "18ed0d107207bb11494a112f92d828a5"
+    },
+    {
+      "path": "run.py",
+      "name": "run.py",
+      "size": 1402,
+      "created": 1741719986.1098123,
+      "modified": 1741719986.0768123,
+      "hash": "b628fb0fa87ac8b72d3acf827a435c70"
+    },
+    {
+      "path": "drehteller360.log",
+      "name": "drehteller360.log",
+      "size": 36086,
+      "created": 1741723667.154674,
+      "modified": 1741723667.154674,
+      "hash": "728f1746728dbcf8a0a159d957cbc669"
+    },
+    {
+      "path": "requirements.txt",
+      "name": "requirements.txt",
+      "size": 599,
+      "created": 1741711973.3325748,
+      "modified": 1741711973.3305748,
+      "hash": "f87028663e89b9f7b640e7c6b32cb349"
+    },
+    {
+      "path": "project_manager.py",
+      "name": "project_manager.py",
+      "size": 6918,
+      "created": 1741711001.83726,
+      "modified": 1741711001.83726,
+      "hash": "087c01a40901a956e9124223d36e2684"
+    },
+    {
+      "path": "setup_and_autostart.sh",
+      "name": "setup_and_autostart.sh",
+      "size": 17374,
+      "created": 1741711001.83726,
+      "modified": 1741711001.83726,
+      "hash": "ccb2380b8a39a86c6004b9cdcda9277e"
+    },
+    {
+      "path": "config_manager.py",
+      "name": "config_manager.py",
+      "size": 4871,
+      "created": 1741723508.138397,
+      "modified": 1741723508.138397,
+      "hash": "9b6f5fc9fe727a1ffe70807a8f794804"
+    },
+    {
+      "path": "config_server.log",
+      "name": "config_server.log",
+      "size": 1768,
+      "created": 1741723952.9506872,
+      "modified": 1741723952.9506872,
+      "hash": "5988b196e5e95a956154d8ccaff148ba"
+    },
+    {
+      "path": "github_upload.sh",
+      "name": "github_upload.sh",
+      "size": 3495,
+      "created": 1741711001.83626,
+      "modified": 1741711001.83626,
+      "hash": "a5ba565938e70e7ff09cb8ebd8594bcf"
+    },
+    {
+      "path": "generate_placeholder.py",
+      "name": "generate_placeholder.py",
+      "size": 1338,
+      "created": 1741711001.83626,
+      "modified": 1741711001.83626,
+      "hash": "802001018fe7d907590ee9e35b9d0ea8"
+    },
+    {
+      "path": "web.py.bak.1741723643",
+      "name": "web.py.bak.1741723643",
+      "size": 11146,
+      "created": 1741723643.1757734,
+      "modified": 1741723643.1757734,
+      "hash": "9ce6ca67d1b1c646b608445b44800c50"
+    },
+    {
+      "path": "drehteller.sh",
+      "name": "drehteller.sh",
+      "size": 4401,
+      "created": 1741712003.6515734,
+      "modified": 1741712003.6465735,
+      "hash": "86a2797250dea64dc55c81bc544d110e"
+    },
+    {
+      "path": "config.json",
+      "name": "config.json",
+      "size": 394,
+      "created": 1741711001.8352602,
+      "modified": 1741711001.8352602,
+      "hash": "6f8b698c4ef32203121000abee4d0723"
+    },
+    {
+      "path": "web-fix.py",
+      "name": "web-fix.py",
+      "size": 6421,
+      "created": 1741723637.5037975,
+      "modified": 1741723637.5037975,
+      "hash": "739ee649ec27288bf347f66fb1c4e581"
+    },
+    {
+      "path": "config_server.py",
+      "name": "config_server.py",
+      "size": 5328,
+      "created": 1741723927.727762,
+      "modified": 1741723927.720762,
+      "hash": "c41664ff97314b15be13c736e2dac333"
+    },
+    {
+      "path": "sample_images_generator.py",
+      "name": "sample_images_generator.py",
+      "size": 2394,
+      "created": 1741711001.83726,
+      "modified": 1741711001.83726,
+      "hash": "18e1b9697b620c64d028750ec37789e1"
+    },
+    {
+      "path": "directory_file_lister.py",
+      "name": "directory_file_lister.py",
+      "size": 5312,
+      "created": 1741724177.5570943,
+      "modified": 1741724177.5570943,
+      "hash": "2027b43c91636c20728e892e9007971e"
+    },
+    {
+      "path": "drehteller-diagnose-skript.py",
+      "name": "drehteller-diagnose-skript.py",
+      "size": 26001,
+      "created": 1741723254.5527494,
+      "modified": 1741723254.5477493,
+      "hash": "bcb435e3e57b21e11f6d84c1cdfc594a"
+    },
+    {
+      "path": "upload_arduino_sketch.sh",
+      "name": "upload_arduino_sketch.sh",
+      "size": 9933,
+      "created": 1741711001.8912601,
+      "modified": 1741711001.8912601,
+      "hash": "b5697956e84d1ebb27a56231cae34793"
+    },
+    {
+      "path": "static/placeholder.jpg",
+      "name": "placeholder.jpg",
+      "size": 9099,
+      "created": 1741711994.2715738,
+      "modified": 1741711001.83926,
+      "hash": "cbab8a097ec0bcd2fa9930cc723b2b8b"
+    },
+    {
+      "path": "static/photos/photo_1741722041_15.jpg",
+      "name": "photo_1741722041_15.jpg",
+      "size": 2087477,
+      "created": 1741722043.7117171,
+      "modified": 1741722012.0,
+      "hash": "f11d2a2b5280d684c0e8cd007af9948f"
+    },
+    {
+      "path": "static/photos/photo_1741722107_15.jpg",
+      "name": "photo_1741722107_15.jpg",
+      "size": 2097510,
+      "created": 1741722110.565653,
+      "modified": 1741722078.0,
+      "hash": "a9bb882ec7ba4d93ecb4fb6ae37c772b"
+    },
+    {
+      "path": "static/photos/.gitkeep",
+      "name": ".gitkeep",
+      "size": 0,
+      "created": 1741711994.2715738,
+      "modified": 1741711001.83926,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "path": "static/photos/photo_1741722141_15.jpg",
+      "name": "photo_1741722141_15.jpg",
+      "size": 2074893,
+      "created": 1741722144.6146212,
+      "modified": 1741722112.0,
+      "hash": "a84737a85fa2c54c073c49085fdc5b09"
+    },
+    {
+      "path": "static/photos/photo_1741722074_15.jpg",
+      "name": "photo_1741722074_15.jpg",
+      "size": 2083222,
+      "created": 1741722076.7636852,
+      "modified": 1741722046.0,
+      "hash": "1047ff8c059985dfacf9ae7bdc8601db"
+    },
+    {
+      "path": "static/js/viewer-app.js",
+      "name": "viewer-app.js",
+      "size": 1806,
+      "created": 1741711994.2715738,
+      "modified": 1741711001.83926,
+      "hash": "3d6bc8ba78e1e7701f86a78e46ec4274"
+    },
+    {
+      "path": "static/js/components/Viewer360.jsx",
+      "name": "Viewer360.jsx",
+      "size": 11364,
+      "created": 1741711994.2715738,
+      "modified": 1741711001.8382602,
+      "hash": "50fe102c567f523d6cdc081f9774a775"
+    },
+    {
+      "path": "static/js/modules/projectManager.js",
+      "name": "projectManager.js",
+      "size": 3043,
+      "created": 1741711994.2715738,
+      "modified": 1741711001.8382602,
+      "hash": "6377a95e1f853991f7fed7bae59c95c8"
+    },
+    {
+      "path": "static/js/modules/viewer.js",
+      "name": "viewer.js",
+      "size": 10617,
+      "created": 1741711994.2715738,
+      "modified": 1741711001.8382602,
+      "hash": "52fc3299974ff7111234506976ae837d"
+    },
+    {
+      "path": "static/js/modules/projects.js",
+      "name": "projects.js",
+      "size": 5828,
+      "created": 1741711994.2715738,
+      "modified": 1741711001.8382602,
+      "hash": "12c4aaa64049a805c32411ea7a7acb4f"
+    },
+    {
+      "path": "static/js/modules/api.js",
+      "name": "api.js",
+      "size": 3265,
+      "created": 1741711994.2715738,
+      "modified": 1741711001.8382602,
+      "hash": "8438f67574d0646552d6ab0e5615f805"
+    },
+    {
+      "path": "static/js/simple-viewer.js",
+      "name": "simple-viewer.js",
+      "size": 8778,
+      "created": 1741711994.2715738,
+      "modified": 1741711001.83926,
+      "hash": "60b8dc639ee61d250d014e16181ac31a"
+    },
+    {
+      "path": "static/js/index.js",
+      "name": "index.js",
+      "size": 4233,
+      "created": 1741711994.2715738,
+      "modified": 1741711001.8382602,
+      "hash": "62f7524bf375c15d6ff97121680b7078"
+    },
+    {
+      "path": "static/js/main.js",
+      "name": "main.js",
+      "size": 12465,
+      "created": 1741711994.2715738,
+      "modified": 1741711001.8382602,
+      "hash": "21bd786e537c03aa88f5d38d4fad2038"
+    },
+    {
+      "path": "static/js/viewer.js",
+      "name": "viewer.js",
+      "size": 11127,
+      "created": 1741711994.2715738,
+      "modified": 1741711001.83926,
+      "hash": "8fc83975b903d3e27fb100f47fd9abcb"
+    },
+    {
+      "path": "static/js/settings.js",
+      "name": "settings.js",
+      "size": 13357,
+      "created": 1741711994.2715738,
+      "modified": 1741711001.8382602,
+      "hash": "ceb874d4b88188866a7942c5a0393639"
+    },
+    {
+      "path": "static/js/projects.js",
+      "name": "projects.js",
+      "size": 5828,
+      "created": 1741711994.2715738,
+      "modified": 1741711001.8382602,
+      "hash": "12c4aaa64049a805c32411ea7a7acb4f"
+    },
+    {
+      "path": "static/js/viewer360.js",
+      "name": "viewer360.js",
+      "size": 5027,
+      "created": 1741711994.2715738,
+      "modified": 1741711001.83926,
+      "hash": "33d3a9e8fed97d0276bd5a767a2f07ac"
+    },
+    {
+      "path": "static/sample_images/sample_image_8.jpg",
+      "name": "sample_image_8.jpg",
+      "size": 18168,
+      "created": 1741711994.2745738,
+      "modified": 1741711099.853347,
+      "hash": "8d3f1769fdff68239c8558ed69af7fc7"
+    },
+    {
+      "path": "static/sample_images/sample_image_1.jpg",
+      "name": "sample_image_1.jpg",
+      "size": 18034,
+      "created": 1741711994.2745738,
+      "modified": 1741711099.7753472,
+      "hash": "2feb50a656777b3e582e4a8ef8af1329"
+    },
+    {
+      "path": "static/sample_images/.gitkeep",
+      "name": ".gitkeep",
+      "size": 0,
+      "created": 1741711994.2745738,
+      "modified": 1741711001.8902602,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "path": "static/sample_images/sample_image_7.jpg",
+      "name": "sample_image_7.jpg",
+      "size": 18061,
+      "created": 1741711994.2745738,
+      "modified": 1741711099.8443472,
+      "hash": "3c69907dea51348a05e23cbfdf67bfd7"
+    },
+    {
+      "path": "static/sample_images/sample_image_9.jpg",
+      "name": "sample_image_9.jpg",
+      "size": 18138,
+      "created": 1741711994.2745738,
+      "modified": 1741711099.8643472,
+      "hash": "47edbebd64c75ba003ce651715fc2cf8"
+    },
+    {
+      "path": "static/sample_images/sample_image_6.jpg",
+      "name": "sample_image_6.jpg",
+      "size": 18144,
+      "created": 1741711994.2745738,
+      "modified": 1741711099.8353472,
+      "hash": "70421ae3d6c447982c07f5763b380269"
+    },
+    {
+      "path": "static/sample_images/sample_image_3.jpg",
+      "name": "sample_image_3.jpg",
+      "size": 18099,
+      "created": 1741711994.2745738,
+      "modified": 1741711099.803347,
+      "hash": "acd41dba747eda8d0e25bc9ab70d7e32"
+    },
+    {
+      "path": "static/sample_images/sample_image_0.jpg",
+      "name": "sample_image_0.jpg",
+      "size": 18108,
+      "created": 1741711994.2745738,
+      "modified": 1741711099.754347,
+      "hash": "175428858bdc2f7f2b1eeda4304a8877"
+    },
+    {
+      "path": "static/sample_images/sample_image_4.jpg",
+      "name": "sample_image_4.jpg",
+      "size": 18118,
+      "created": 1741711994.2745738,
+      "modified": 1741711099.8143473,
+      "hash": "bf8b9000c276c2950ea7935af9caf4d1"
+    },
+    {
+      "path": "static/sample_images/sample_image_5.jpg",
+      "name": "sample_image_5.jpg",
+      "size": 18125,
+      "created": 1741711994.2745738,
+      "modified": 1741711099.8243473,
+      "hash": "641679d30c9b4391604456153a8f5ce0"
+    },
+    {
+      "path": "static/sample_images/sample_image_2.jpg",
+      "name": "sample_image_2.jpg",
+      "size": 18131,
+      "created": 1741711994.2745738,
+      "modified": 1741711099.790347,
+      "hash": "50c15b8ad558882d0055e35da6a61ff3"
+    },
+    {
+      "path": "static/css/index.css",
+      "name": "index.css",
+      "size": 583,
+      "created": 1741711994.2745738,
+      "modified": 1741711001.83726,
+      "hash": "4059c3af721afd565fa74a23f03335e4"
+    },
+    {
+      "path": "static/css/project_edit.css",
+      "name": "project_edit.css",
+      "size": 762,
+      "created": 1741711994.2745738,
+      "modified": 1741711001.83726,
+      "hash": "edb06cca8d2b4f90f2c60084befed8a9"
+    },
+    {
+      "path": "static/css/projects.css",
+      "name": "projects.css",
+      "size": 1169,
+      "created": 1741711994.2745738,
+      "modified": 1741711001.83726,
+      "hash": "79d9eb135c841fb60e3181852f7b3ca6"
+    },
+    {
+      "path": "static/css/settings.css",
+      "name": "settings.css",
+      "size": 696,
+      "created": 1741711994.2745738,
+      "modified": 1741711001.83726,
+      "hash": "97899335349d5ba12da0309b86b47d56"
+    },
+    {
+      "path": "static/css/main.css",
+      "name": "main.css",
+      "size": 8086,
+      "created": 1741711994.2745738,
+      "modified": 1741711001.83726,
+      "hash": "0076fa8d54fdb684b6639128f92edbcc"
+    },
+    {
+      "path": "static/css/viewer.css",
+      "name": "viewer.css",
+      "size": 1527,
+      "created": 1741711994.2745738,
+      "modified": 1741711001.83726,
+      "hash": "e4b8788801edfc23c78ea6caf0d198bf"
+    },
+    {
+      "path": "laeuft-10-03-2025_17-47-werkzeug306-flask303-Pillow103",
+      "name": "laeuft-10-03-2025_17-47-werkzeug306-flask303-Pillow103",
+      "size": 0,
+      "created": 1741711001.83626,
+      "modified": 1741711001.83626,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "path": "drehteller-konfigurations-fix.py",
+      "name": "drehteller-konfigurations-fix.py",
+      "size": 12273,
+      "created": 1741723505.7004094,
+      "modified": 1741723505.6704094,
+      "hash": "5b3171c492ad59a9ea5147991308f66d"
+    }
+  ],
+  "directories": [
+    {
+      "path": "arduino",
+      "name": "arduino",
+      "created": 1741711001.4852598,
+      "modified": 1741711001.4852598
+    },
+    {
+      "path": "utils",
+      "name": "utils",
+      "created": 1741711001.89226,
+      "modified": 1741711001.89226
+    },
+    {
+      "path": "app",
+      "name": "app",
+      "created": 1741721979.9077806,
+      "modified": 1741721979.9077806
+    },
+    {
+      "path": "app/utils",
+      "name": "utils",
+      "created": 1741721202.4528522,
+      "modified": 1741721202.4528522
+    },
+    {
+      "path": "app/controllers",
+      "name": "controllers",
+      "created": 1741719629.3122559,
+      "modified": 1741719629.3122559
+    },
+    {
+      "path": "app/models",
+      "name": "models",
+      "created": 1741719629.5212564,
+      "modified": 1741719629.5212564
+    },
+    {
+      "path": "app/blueprints",
+      "name": "blueprints",
+      "created": 1741721841.6399279,
+      "modified": 1741721841.6399279
+    },
+    {
+      "path": "app/blueprints/api",
+      "name": "api",
+      "created": 1741719631.5532613,
+      "modified": 1741719631.5532613
+    },
+    {
+      "path": "app/blueprints/main",
+      "name": "main",
+      "created": 1741719631.5452611,
+      "modified": 1741719631.5452611
+    },
+    {
+      "path": "app/blueprints/projects",
+      "name": "projects",
+      "created": 1741721212.6718483,
+      "modified": 1741721212.6718483
+    },
+    {
+      "path": "app/blueprints/settings",
+      "name": "settings",
+      "created": 1741721366.5415912,
+      "modified": 1741721366.5415912
+    },
+    {
+      "path": "controllers",
+      "name": "controllers",
+      "created": 1741711001.8352602,
+      "modified": 1741711001.8352602
+    },
+    {
+      "path": "config",
+      "name": "config",
+      "created": 1741711001.8352602,
+      "modified": 1741711001.8352602
+    },
+    {
+      "path": "arduino_drehteller_steuerung",
+      "name": "arduino_drehteller_steuerung",
+      "created": 1741711001.4862597,
+      "modified": 1741711001.4862597
+    },
+    {
+      "path": "templates",
+      "name": "templates",
+      "created": 1741711001.8902602,
+      "modified": 1741711001.8902602
+    },
+    {
+      "path": "models",
+      "name": "models",
+      "created": 1741711001.83626,
+      "modified": 1741711001.83626
+    },
+    {
+      "path": "utility",
+      "name": "utility",
+      "created": 1741721586.193246,
+      "modified": 1741721586.193246
+    },
+    {
+      "path": "projects",
+      "name": "projects",
+      "created": 1741711994.276574,
+      "modified": 1741711096.4103444
+    },
+    {
+      "path": "static",
+      "name": "static",
+      "created": 1741719629.5332565,
+      "modified": 1741719629.5332565
+    },
+    {
+      "path": "static/temp",
+      "name": "temp",
+      "created": 1741719629.5332565,
+      "modified": 1741719629.5332565
+    },
+    {
+      "path": "static/photos",
+      "name": "photos",
+      "created": 1741722144.6146212,
+      "modified": 1741722144.6146212
+    },
+    {
+      "path": "static/js",
+      "name": "js",
+      "created": 1741711994.2715738,
+      "modified": 1741711001.83926
+    },
+    {
+      "path": "static/js/components",
+      "name": "components",
+      "created": 1741711994.2715738,
+      "modified": 1741711001.83726
+    },
+    {
+      "path": "static/js/modules",
+      "name": "modules",
+      "created": 1741711994.2715738,
+      "modified": 1741711001.8382602
+    },
+    {
+      "path": "static/projects",
+      "name": "projects",
+      "created": 1741712288.2752607,
+      "modified": 1741712288.2752607
+    },
+    {
+      "path": "static/sample_images",
+      "name": "sample_images",
+      "created": 1741711994.2745738,
+      "modified": 1741711099.8603473
+    },
+    {
+      "path": "static/css",
+      "name": "css",
+      "created": 1741711994.2745738,
+      "modified": 1741711001.83726
+    }
+  ]
+}
 
 --- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/git_uploader.py ---
 # git_uploader.py
@@ -2591,6 +3540,9 @@ if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
 
 
+--- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/drehteller360_diagnose.log ---
+
+
 --- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/run.py ---
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
@@ -2638,65 +3590,6 @@ if __name__ == '__main__':
 
 
 --- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/drehteller360.log ---
-2025-03-11 20:00:31,565 - app.utils.device_detector - DEBUG - DeviceDetector initialisiert mit Scan-Intervall von 10 Sekunden
-2025-03-11 20:00:31,588 - app.utils.path_manager - DEBUG - PathManager initialisiert mit Basis-Verzeichnis: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos
-2025-03-11 20:00:31,588 - app.utils.viewer_generator - DEBUG - Viewer-Generator initialisiert: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/static/photos -> /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/static/projects
-2025-03-11 20:00:31,603 - app.utils.path_manager - DEBUG - PathManager initialisiert mit Basis-Verzeichnis: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos
-2025-03-11 20:00:32,055 - app.utils.webcam_detection_helper - INFO - Funktionierende Webcam gefunden (fswebcam): /dev/video0
-2025-03-11 20:00:32,056 - app.utils.webcam_simulator - DEBUG - Webcam-Simulator initialisiert mit Kamera: /dev/video0
-2025-03-11 20:00:52,227 - app.utils.device_detector - DEBUG - DeviceDetector initialisiert mit Scan-Intervall von 10 Sekunden
-2025-03-11 20:00:52,247 - app.utils.path_manager - DEBUG - PathManager initialisiert mit Basis-Verzeichnis: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos
-2025-03-11 20:00:52,247 - app.utils.viewer_generator - DEBUG - Viewer-Generator initialisiert: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/static/photos -> /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/static/projects
-2025-03-11 20:00:52,256 - app.utils.path_manager - DEBUG - PathManager initialisiert mit Basis-Verzeichnis: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos
-2025-03-11 20:00:52,706 - app.utils.webcam_detection_helper - INFO - Funktionierende Webcam gefunden (fswebcam): /dev/video0
-2025-03-11 20:00:52,707 - app.utils.webcam_simulator - DEBUG - Webcam-Simulator initialisiert mit Kamera: /dev/video0
-2025-03-11 20:02:17,055 - app.utils.device_detector - DEBUG - DeviceDetector initialisiert mit Scan-Intervall von 10 Sekunden
-2025-03-11 20:02:17,088 - app.utils.path_manager - DEBUG - PathManager initialisiert mit Basis-Verzeichnis: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos
-2025-03-11 20:02:17,089 - app.utils.viewer_generator - DEBUG - Viewer-Generator initialisiert: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/static/photos -> /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/static/projects
-2025-03-11 20:02:17,102 - app.utils.path_manager - DEBUG - PathManager initialisiert mit Basis-Verzeichnis: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos
-2025-03-11 20:02:17,447 - app.utils.webcam_detection_helper - INFO - Funktionierende Webcam gefunden (fswebcam): /dev/video0
-2025-03-11 20:02:17,447 - app.utils.webcam_simulator - DEBUG - Webcam-Simulator initialisiert mit Kamera: /dev/video0
-2025-03-11 20:18:55,881 - app.utils.device_detector - DEBUG - DeviceDetector initialisiert mit Scan-Intervall von 10 Sekunden
-2025-03-11 20:18:55,917 - app.utils.path_manager - DEBUG - PathManager initialisiert mit Basis-Verzeichnis: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos
-2025-03-11 20:18:55,918 - app.utils.viewer_generator - DEBUG - Viewer-Generator initialisiert: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/static/photos -> /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/static/projects
-2025-03-11 20:18:55,934 - app.utils.path_manager - DEBUG - PathManager initialisiert mit Basis-Verzeichnis: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos
-2025-03-11 20:18:56,378 - app.utils.webcam_detection_helper - INFO - Funktionierende Webcam gefunden (fswebcam): /dev/video0
-2025-03-11 20:18:56,378 - app.utils.webcam_simulator - DEBUG - Webcam-Simulator initialisiert mit Kamera: /dev/video0
-2025-03-11 20:26:52,223 - app.utils.device_detector - DEBUG - DeviceDetector initialisiert mit Scan-Intervall von 10 Sekunden
-2025-03-11 20:26:52,254 - app.utils.path_manager - DEBUG - PathManager initialisiert mit Basis-Verzeichnis: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos
-2025-03-11 20:26:52,254 - app.utils.viewer_generator - DEBUG - Viewer-Generator initialisiert: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/static/photos -> /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/static/projects
-2025-03-11 20:26:52,262 - app.utils.path_manager - DEBUG - PathManager initialisiert mit Basis-Verzeichnis: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos
-2025-03-11 20:26:52,607 - app.utils.webcam_detection_helper - INFO - Funktionierende Webcam gefunden (fswebcam): /dev/video0
-2025-03-11 20:26:52,608 - app.utils.webcam_simulator - DEBUG - Webcam-Simulator initialisiert mit Kamera: /dev/video0
-2025-03-11 20:26:52,677 - app.utils.path_manager - DEBUG - PathManager initialisiert mit Basis-Verzeichnis: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos
-2025-03-11 20:26:52,677 - app.models.project - DEBUG - ProjectManager initialisiert: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/static/projects
-2025-03-11 20:26:52,732 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
- * Running on all addresses (0.0.0.0)
- * Running on http://127.0.0.1:5000
- * Running on http://192.168.188.105:5000
-2025-03-11 20:26:52,732 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
-2025-03-11 20:26:52,734 - werkzeug - INFO -  * Restarting with stat
-2025-03-11 20:26:55,267 - app.utils.device_detector - DEBUG - DeviceDetector initialisiert mit Scan-Intervall von 10 Sekunden
-2025-03-11 20:26:55,293 - app.utils.path_manager - DEBUG - PathManager initialisiert mit Basis-Verzeichnis: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos
-2025-03-11 20:26:55,294 - app.utils.viewer_generator - DEBUG - Viewer-Generator initialisiert: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/static/photos -> /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/static/projects
-2025-03-11 20:26:55,305 - app.utils.path_manager - DEBUG - PathManager initialisiert mit Basis-Verzeichnis: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos
-2025-03-11 20:26:55,758 - app.utils.webcam_detection_helper - INFO - Funktionierende Webcam gefunden (fswebcam): /dev/video0
-2025-03-11 20:26:55,758 - app.utils.webcam_simulator - DEBUG - Webcam-Simulator initialisiert mit Kamera: /dev/video0
-2025-03-11 20:26:55,785 - app.utils.path_manager - DEBUG - PathManager initialisiert mit Basis-Verzeichnis: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos
-2025-03-11 20:26:55,785 - app.models.project - DEBUG - ProjectManager initialisiert: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/static/projects
-2025-03-11 20:26:55,833 - werkzeug - WARNING -  * Debugger is active!
-2025-03-11 20:26:55,849 - werkzeug - INFO -  * Debugger PIN: 132-222-603
-2025-03-11 20:27:47,572 - werkzeug - INFO - 192.168.188.104 - - [11/Mar/2025 20:27:47] "GET / HTTP/1.1" 200 -
-2025-03-11 20:27:47,631 - werkzeug - INFO - 192.168.188.104 - - [11/Mar/2025 20:27:47] "GET /static/css/index.css HTTP/1.1" 200 -
-2025-03-11 20:27:47,632 - werkzeug - INFO - 192.168.188.104 - - [11/Mar/2025 20:27:47] "GET /static/placeholder.jpg HTTP/1.1" 200 -
-2025-03-11 20:27:47,637 - werkzeug - INFO - 192.168.188.104 - - [11/Mar/2025 20:27:47] "GET /static/js/index.js HTTP/1.1" 200 -
-2025-03-11 20:27:50,526 - werkzeug - INFO - 192.168.188.104 - - [11/Mar/2025 20:27:50] "[32mGET /settings HTTP/1.1[0m" 308 -
-2025-03-11 20:27:50,558 - werkzeug - INFO - 192.168.188.104 - - [11/Mar/2025 20:27:50] "GET /settings/ HTTP/1.1" 200 -
-2025-03-11 20:27:50,595 - werkzeug - INFO - 192.168.188.104 - - [11/Mar/2025 20:27:50] "GET /static/css/settings.css HTTP/1.1" 200 -
-2025-03-11 20:27:50,595 - werkzeug - INFO - 192.168.188.104 - - [11/Mar/2025 20:27:50] "GET /static/js/settings.js HTTP/1.1" 200 -
-2025-03-11 20:27:50,628 - werkzeug - INFO - 192.168.188.104 - - [11/Mar/2025 20:27:50] "GET /api/devices HTTP/1.1" 200 -
-2025-03-11 20:27:50,631 - werkzeug - INFO - 192.168.188.104 - - [11/Mar/2025 20:27:50] "[33mGET /get_config HTTP/1.1[0m" 404 -
-2025-03-11 20:28:15,406 - werkzeug - INFO - 192.168.188.104 - - [11/Mar/2025 20:28:15] "[33mPOST /save_config HTTP/1.1[0m" 404 -
 
 
 --- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/requirements.txt ---
@@ -3439,7 +4332,7 @@ echo -e "\n${GREEN}Viel Erfolg mit deinem 360° Drehteller-System!${NC}"
 --- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/config_manager.py ---
 import os
 import json
-
+import logging
 
 class ConfigManager:
     DEFAULT_CONFIG = {
@@ -3465,9 +4358,8 @@ class ConfigManager:
     }
 
     def __init__(self, config_path=None):
-        """
-        Initialize configuration manager
-
+        """Initialize configuration manager
+        
         :param config_path: Path to the configuration file
         """
         # Determine the project directory
@@ -3481,9 +4373,8 @@ class ConfigManager:
         self.config = self.load_config()
 
     def load_config(self):
-        """
-        Load configuration from file or create default
-
+        """Load configuration from file or create default
+        
         :return: Configuration dictionary
         """
         try:
@@ -3495,25 +4386,27 @@ class ConfigManager:
                 with open(self.config_path, 'r') as f:
                     config = json.load(f)
                     # Merge with default to ensure all keys exist
-                    return {**self.DEFAULT_CONFIG, **config}
+                    merged_config = self._merge_configs(self.DEFAULT_CONFIG, config)
+                    return merged_config
             else:
                 # Create default config file
                 config = self.DEFAULT_CONFIG
-                self.save_config(config)
+                with open(self.config_path, 'w') as f:
+                    json.dump(config, f, indent=4)
                 return config
         except Exception as e:
             print(f"Error loading config: {e}")
             # If loading fails, use default config and try to save it
             try:
-                self.save_config(self.DEFAULT_CONFIG)
+                with open(self.config_path, 'w') as f:
+                    json.dump(self.DEFAULT_CONFIG, f, indent=4)
             except Exception as save_error:
                 print(f"Error saving default config: {save_error}")
             return self.DEFAULT_CONFIG
 
     def save_config(self, new_config=None):
-        """
-        Save configuration to file
-
+        """Save configuration to file
+        
         :param new_config: Optional new configuration to save
         """
         try:
@@ -3534,9 +4427,8 @@ class ConfigManager:
             print(f"Error saving config: {e}")
 
     def get(self, key, default=None):
-        """
-        Get a configuration value
-
+        """Get a configuration value
+        
         :param key: Dot-separated key (e.g. 'camera.device_path')
         :param default: Default value if key not found
         :return: Configuration value
@@ -3548,40 +4440,42 @@ class ConfigManager:
             # Navigate through nested dictionary
             value = self.config
             for part in parts:
-                value = value.get(part, {})
+                if part in value:
+                    value = value[part]
+                else:
+                    return default
 
             # Return value if found, otherwise default
-            return value if value != {} else default
+            return value
         except Exception as e:
             print(f"Error getting config value: {e}")
             return default
 
+    def _merge_configs(self, default_config, user_config):
+        """Merge default config with user config to ensure all keys exist
+        
+        :param default_config: Default configuration dictionary
+        :param user_config: User configuration dictionary
+        :return: Merged configuration dictionary
+        """
+        merged_config = default_config.copy()
 
-# Create a global config manager
+        for key, value in user_config.items():
+            if key in merged_config and isinstance(merged_config[key], dict) and isinstance(value, dict):
+                # Recursive merge for nested dictionaries
+                merged_config[key] = self._merge_configs(merged_config[key], value)
+            else:
+                # Use user config value
+                merged_config[key] = value
+
+        return merged_config
+
+
+# Create a global config manager instance
 config_manager = ConfigManager()
 
-# Standalone usage example
-if __name__ == '__main__':
-    # Example usage
-    print("Camera Device Path:", config_manager.get('camera.device_path'))
-    print("Arduino Port:", config_manager.get('arduino.port'))
 
-    # Example of updating config
-    config_manager.save_config({
-        'camera': {
-            'device_path': '/dev/video1',
-            'type': 'gphoto2'
-        },
-        'arduino': {
-            'port': '/dev/ttyUSB0',
-            'baudrate': 115200
-        }
-    })
-
-    # Verify changes
-    print("\nAfter Update:")
-    print("Camera Device Path:", config_manager.get('camera.device_path'))
-    print("Arduino Port:", config_manager.get('arduino.port'))
+--- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/config_server.log ---
 
 
 --- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/github_upload.sh ---
@@ -3909,8 +4803,8 @@ exit 0
         "device_path": "/dev/video0",
         "type": "gphoto2",
         "resolution": {
-            "width": 640,
-            "height": 480
+            "width": 3840,
+            "height": 2160
         }
     },
     "arduino": {
@@ -3925,6 +4819,180 @@ exit 0
         "enabled": false
     }
 }
+
+--- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/laeuft-11-03-2025_21-54-werkzeug306-flask303-Pillow103-app ---
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/config_server.py ---
+#!/usr/bin/env python3
+"""
+Eigenständiger Konfigurationsserver für das 360° Drehteller-System
+
+Dieses Skript startet einen eigenständigen Flask-Server, der die fehlenden
+/get_config und /save_config Endpunkte bereitstellt. Außerdem dient er als
+Proxy für den Hauptserver.
+
+Starte diesen Server mit einem anderen Port (z.B. 5001) als den Hauptserver.
+"""
+
+import os
+import json
+import sys
+import logging
+from flask import Flask, jsonify, request, redirect
+from flask_cors import CORS
+
+# Logger konfigurieren
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler("config_server.log"),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger("config_server")
+
+# Konfigurationsdatei-Pfad
+CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
+MAIN_SERVER = 'http://192.168.188.105:5000'  # Der Hauptserver-URL
+
+# Flask-App erstellen
+app = Flask(__name__)
+CORS(app)  # CORS aktivieren, um Anfragen von anderen Ursprüngen zu erlauben
+
+def load_config():
+    """Lädt die Konfiguration aus der Datei"""
+    try:
+        if os.path.exists(CONFIG_PATH):
+            with open(CONFIG_PATH, 'r') as f:
+                config = json.load(f)
+                return config
+        else:
+            # Standard-Konfiguration
+            default_config = {
+                'camera': {
+                    'device_path': '/dev/video0',
+                    'type': 'webcam',
+                    'resolution': {
+                        'width': 1280,
+                        'height': 720
+                    }
+                },
+                'arduino': {
+                    'port': '/dev/ttyACM0',
+                    'baudrate': 9600
+                },
+                'rotation': {
+                    'default_degrees': 15,
+                    'default_interval': 5
+                },
+                'simulator': {
+                    'enabled': True
+                }
+            }
+            
+            # Speichere die Standard-Konfiguration
+            with open(CONFIG_PATH, 'w') as f:
+                json.dump(default_config, f, indent=4)
+            
+            return default_config
+    except Exception as e:
+        logger.error(f"Fehler beim Laden der Konfiguration: {e}")
+        return {}
+
+def save_config(config):
+    """Speichert die Konfiguration in der Datei"""
+    try:
+        with open(CONFIG_PATH, 'w') as f:
+            json.dump(config, f, indent=4)
+        return True
+    except Exception as e:
+        logger.error(f"Fehler beim Speichern der Konfiguration: {e}")
+        return False
+
+# Die fehlenden Routen implementieren
+@app.route('/get_config')
+def get_config():
+    """
+    Retrieve current configuration
+    """
+    config = load_config()
+    return jsonify(config)
+
+@app.route('/save_config', methods=['POST'])
+def save_config_route():
+    """
+    Save new configuration
+    """
+    try:
+        # Prüfen, ob JSON-Daten empfangen wurden
+        if not request.is_json:
+            return jsonify({
+                "status": "error", 
+                "message": "Keine JSON-Daten empfangen. Content-Type muss application/json sein."
+            }), 400
+        
+        # JSON-Daten abrufen
+        new_config = request.json
+        
+        if not new_config:
+            return jsonify({
+                "status": "error", 
+                "message": "Leere Konfigurationsdaten empfangen"
+            }), 400
+        
+        # Konfigurationsdaten ausgeben für Debugging
+        logger.info(f"Empfangene Konfiguration: {json.dumps(new_config, indent=2)}")
+        
+        # Bestehende Konfiguration laden
+        current_config = load_config()
+        
+        # Konfiguration zusammenführen
+        def recursive_update(target, source):
+            for key, value in source.items():
+                if isinstance(value, dict) and key in target and isinstance(target[key], dict):
+                    recursive_update(target[key], value)
+                else:
+                    target[key] = value
+        
+        recursive_update(current_config, new_config)
+        
+        # Aktualisierte Konfiguration speichern
+        success = save_config(current_config)
+        
+        if success:
+            logger.info(f"Konfiguration gespeichert in: {CONFIG_PATH}")
+            return jsonify({"status": "success"})
+        else:
+            return jsonify({
+                "status": "error", 
+                "message": "Fehler beim Speichern der Konfiguration"
+            }), 500
+    except Exception as e:
+        logger.error(f"Fehler beim Speichern der Konfiguration: {e}")
+        return jsonify({
+            "status": "error", 
+            "message": f"Fehler beim Speichern: {str(e)}"
+        }), 500
+
+# Proxy für alle anderen Anfragen
+@app.route('/<path:path>')
+def proxy(path):
+    """Leitet alle anderen Anfragen an den Hauptserver weiter"""
+    return redirect(f"{MAIN_SERVER}/{path}")
+
+@app.route('/')
+def index():
+    """Startseite, leitet zum Hauptserver weiter"""
+    return redirect(MAIN_SERVER)
+
+if __name__ == '__main__':
+    # Server starten
+    port = 5001  # Anderer Port als der Hauptserver
+    logger.info(f"Starte Konfigurationsserver auf Port {port}...")
+    app.run(host='0.0.0.0', port=port, debug=True)
+
 
 --- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/sample_images_generator.py ---
 import os
@@ -4004,6 +5072,827 @@ if __name__ == '__main__':
     print("Generated Sample Images:")
     for img in generated_images:
         print(img)
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/directory_file_lister.py ---
+#!/usr/bin/env python3
+# Datei: directory_file_lister.py
+# Skript zur detaillierten Analyse der Projektstruktur des 360° Drehtellers
+
+import os
+import json
+import hashlib
+from datetime import datetime
+
+class ProjectStructureAnalyzer:
+    def __init__(self, base_path):
+        """
+        Initialisiert den Projektstruktur-Analyzer
+        
+        :param base_path: Basisverzeichnis für die Analyse
+        """
+        self.base_path = os.path.abspath(base_path)
+        self.ignore_patterns = [
+            '.git', '__pycache__', '.vscode', '.idea', 
+            'myenv', 'venv', 'env', 'bin', 
+            '.DS_Store', 'Thumbs.db'
+        ]
+        self.report = {
+            'meta': {
+                'analyzed_path': self.base_path,
+                'analysis_timestamp': datetime.now().isoformat(),
+                'total_files': 0,
+                'total_directories': 0,
+                'file_types': {},
+                'directory_structure': {}
+            },
+            'files': [],
+            'directories': []
+        }
+
+    def should_ignore(self, path):
+        """
+        Prüft, ob ein Pfad ignoriert werden soll
+        
+        :param path: Zu prüfender Pfad
+        :return: True wenn ignoriert, False sonst
+        """
+        return any(ignored in path.split(os.path.sep) for ignored in self.ignore_patterns)
+
+    def calculate_file_hash(self, filepath):
+        """
+        Berechnet MD5-Hash einer Datei
+        
+        :param filepath: Pfad zur Datei
+        :return: MD5-Hash als Hexadezimalstring
+        """
+        try:
+            with open(filepath, 'rb') as f:
+                return hashlib.md5(f.read()).hexdigest()
+        except (IOError, PermissionError):
+            return 'UNREADABLE'
+
+    def analyze_directory(self, path=None):
+        """
+        Analysiert rekursiv das Verzeichnis
+        
+        :param path: Zu analysierendes Verzeichnis (Standard: Basisverzeichnis)
+        """
+        if path is None:
+            path = self.base_path
+
+        try:
+            for item in os.scandir(path):
+                if self.should_ignore(item.path):
+                    continue
+
+                if item.is_dir(follow_symlinks=False):
+                    # Verzeichnis-Analyse
+                    dir_info = {
+                        'path': os.path.relpath(item.path, self.base_path),
+                        'name': item.name,
+                        'created': item.stat().st_ctime,
+                        'modified': item.stat().st_mtime
+                    }
+                    self.report['directories'].append(dir_info)
+                    self.report['meta']['total_directories'] += 1
+                    self.report['meta']['directory_structure'][dir_info['path']] = []
+
+                    # Rekursive Analyse von Unterverzeichnissen
+                    self.analyze_directory(item.path)
+
+                elif item.is_file(follow_symlinks=False):
+                    # Datei-Analyse
+                    file_info = {
+                        'path': os.path.relpath(item.path, self.base_path),
+                        'name': item.name,
+                        'size': item.stat().st_size,
+                        'created': item.stat().st_ctime,
+                        'modified': item.stat().st_mtime,
+                        'hash': self.calculate_file_hash(item.path)
+                    }
+
+                    # Dateityp-Statistik
+                    file_ext = os.path.splitext(item.name)[1].lower()
+                    self.report['meta']['file_types'][file_ext] = \
+                        self.report['meta']['file_types'].get(file_ext, 0) + 1
+
+                    self.report['files'].append(file_info)
+                    self.report['meta']['total_files'] += 1
+
+        except PermissionError:
+            print(f"Keine Berechtigung für Verzeichnis: {path}")
+
+    def generate_report(self, output_file=None):
+        """
+        Generiert einen detaillierten Bericht
+        
+        :param output_file: Optionale Ausgabedatei für den Bericht
+        :return: JSON-formatierter Bericht
+        """
+        report_json = json.dumps(self.report, indent=2)
+        
+        if output_file:
+            with open(output_file, 'w', encoding='utf-8') as f:
+                f.write(report_json)
+        
+        return report_json
+
+def main():
+    # Projektverzeichnis ermitteln
+    project_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    # Analyzer initialisieren
+    analyzer = ProjectStructureAnalyzer(project_dir)
+    
+    # Verzeichnisstruktur analysieren
+    print(f"Analysiere Projekt im Verzeichnis: {project_dir}")
+    analyzer.analyze_directory()
+    
+    # Bericht generieren
+    report_file = os.path.join(project_dir, 'projekt_struktur_bericht.json')
+    report = analyzer.generate_report(report_file)
+    
+    # Zusammenfassung ausgeben
+    print("\n--- Projekt-Struktur-Zusammenfassung ---")
+    print(f"Gesamtzahl Dateien: {analyzer.report['meta']['total_files']}")
+    print(f"Gesamtzahl Verzeichnisse: {analyzer.report['meta']['total_directories']}")
+    print("\nDateitypen:")
+    for ext, count in analyzer.report['meta']['file_types'].items():
+        print(f"  {ext or 'Ohne Erweiterung'}: {count}")
+    
+    print(f"\nDetaillierter Bericht gespeichert in: {report_file}")
+
+if __name__ == '__main__':
+    main()
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/drehteller-diagnose-skript.py ---
+#!/usr/bin/env python3
+"""
+Diagnose- und Reparaturskript für das 360° Drehteller-System
+Dieses Skript prüft die Konfiguration und behebt typische Probleme.
+"""
+
+import os
+import sys
+import json
+import shutil
+import logging
+import subprocess
+from pathlib import Path
+
+# Logger konfigurieren
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler("drehteller360_diagnose.log"),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger("drehteller360.diagnose")
+
+class Drehteller360Diagnose:
+    """Klasse zur Diagnose und Reparatur des Drehteller-Systems"""
+
+    def __init__(self):
+        """Initialisiert die Diagnose"""
+        # Projektverzeichnis bestimmen (aktuelles Verzeichnis)
+        self.project_dir = os.path.abspath(os.getcwd())
+        logger.info(f"Projektverzeichnis: {self.project_dir}")
+        
+        # Wichtige Pfade
+        self.config_path = os.path.join(self.project_dir, "config.json")
+        self.static_dir = os.path.join(self.project_dir, "static")
+        self.photos_dir = os.path.join(self.static_dir, "photos")
+        self.sample_images_dir = os.path.join(self.static_dir, "sample_images")
+        self.projects_dir = os.path.join(self.project_dir, "projects")
+        self.templates_dir = os.path.join(self.project_dir, "templates")
+        
+        # Web.py-Datei finden
+        self.web_py_path = os.path.join(self.project_dir, "web.py")
+        self.backup_web_py_path = None
+        for file in os.listdir(self.project_dir):
+            if file.startswith("web.py-"):
+                self.backup_web_py_path = os.path.join(self.project_dir, file)
+                break
+        
+        # Konfiguration
+        self.config = self._load_config()
+
+    def run_diagnostics(self):
+        """Führt alle Diagnoseprüfungen durch"""
+        logger.info("Starte Diagnose des 360° Drehteller-Systems...")
+        
+        # Struktur prüfen
+        self._check_directory_structure()
+        
+        # Konfiguration prüfen
+        self._check_config()
+        
+        # Web.py-Datei prüfen
+        self._check_web_py()
+        
+        # Module prüfen
+        self._check_modules()
+        
+        # Geräte prüfen
+        self._check_devices()
+        
+        logger.info("Diagnose abgeschlossen.")
+
+    def fix_issues(self):
+        """Behebt erkannte Probleme"""
+        logger.info("Starte Reparatur des 360° Drehteller-Systems...")
+        
+        # Verzeichnisstruktur erstellen
+        self._create_directory_structure()
+        
+        # Konfiguration reparieren/erstellen
+        self._fix_config()
+        
+        # Web.py wiederherstellen, falls nötig
+        self._fix_web_py()
+        
+        # Platzhalter-Bild erstellen
+        self._create_placeholder_image()
+        
+        # Sample-Bilder generieren
+        self._generate_sample_images()
+        
+        logger.info("Reparatur abgeschlossen.")
+
+    def _load_config(self):
+        """Lädt die Konfigurationsdatei"""
+        try:
+            if os.path.exists(self.config_path):
+                with open(self.config_path, 'r') as f:
+                    return json.load(f)
+            else:
+                logger.warning(f"Konfigurationsdatei nicht gefunden: {self.config_path}")
+                return {}
+        except Exception as e:
+            logger.error(f"Fehler beim Laden der Konfiguration: {str(e)}")
+            return {}
+
+    def _save_config(self, config):
+        """Speichert die Konfigurationsdatei"""
+        try:
+            with open(self.config_path, 'w') as f:
+                json.dump(config, f, indent=4)
+            logger.info(f"Konfiguration gespeichert: {self.config_path}")
+            return True
+        except Exception as e:
+            logger.error(f"Fehler beim Speichern der Konfiguration: {str(e)}")
+            return False
+
+    def _check_directory_structure(self):
+        """Prüft, ob die Verzeichnisstruktur korrekt ist"""
+        dirs_to_check = [
+            self.static_dir,
+            self.photos_dir,
+            self.sample_images_dir,
+            self.projects_dir,
+            self.templates_dir
+        ]
+        
+        for directory in dirs_to_check:
+            if os.path.exists(directory):
+                logger.info(f"Verzeichnis vorhanden: {os.path.relpath(directory, self.project_dir)}")
+            else:
+                logger.warning(f"Verzeichnis fehlt: {os.path.relpath(directory, self.project_dir)}")
+
+    def _create_directory_structure(self):
+        """Erstellt die erforderliche Verzeichnisstruktur"""
+        dirs_to_create = [
+            self.static_dir,
+            self.photos_dir,
+            self.sample_images_dir,
+            self.projects_dir,
+            self.templates_dir
+        ]
+        
+        for directory in dirs_to_create:
+            if not os.path.exists(directory):
+                os.makedirs(directory, exist_ok=True)
+                logger.info(f"Verzeichnis erstellt: {os.path.relpath(directory, self.project_dir)}")
+
+    def _check_config(self):
+        """Prüft die Konfigurationsdatei"""
+        if not self.config:
+            logger.warning("Keine Konfiguration gefunden oder Konfiguration leer")
+            return
+        
+        # Erforderliche Konfigurationsabschnitte prüfen
+        required_sections = ["camera", "arduino", "rotation", "simulator"]
+        for section in required_sections:
+            if section not in self.config:
+                logger.warning(f"Konfigurationsabschnitt fehlt: {section}")
+            else:
+                logger.info(f"Konfigurationsabschnitt vorhanden: {section}")
+        
+        # Prüfen, ob die Arduino-Konfiguration korrekt ist
+        if "arduino" in self.config:
+            arduino_config = self.config["arduino"]
+            if "port" not in arduino_config or not arduino_config["port"]:
+                logger.warning("Arduino-Port nicht konfiguriert")
+            else:
+                logger.info(f"Arduino-Port: {arduino_config['port']}")
+            
+            if "baudrate" not in arduino_config:
+                logger.warning("Arduino-Baudrate nicht konfiguriert")
+            else:
+                logger.info(f"Arduino-Baudrate: {arduino_config['baudrate']}")
+        
+        # Prüfen, ob die Kamera-Konfiguration korrekt ist
+        if "camera" in self.config:
+            camera_config = self.config["camera"]
+            if "device_path" not in camera_config or not camera_config["device_path"]:
+                logger.warning("Kamera-Gerätepfad nicht konfiguriert")
+            else:
+                logger.info(f"Kamera-Gerätepfad: {camera_config['device_path']}")
+            
+            if "type" not in camera_config:
+                logger.warning("Kamera-Typ nicht konfiguriert")
+            else:
+                logger.info(f"Kamera-Typ: {camera_config['type']}")
+
+    def _fix_config(self):
+        """Repariert oder erstellt die Konfigurationsdatei"""
+        default_config = {
+            "camera": {
+                "device_path": "/dev/video0",
+                "type": "webcam",
+                "resolution": {
+                    "width": 1280,
+                    "height": 720
+                }
+            },
+            "arduino": {
+                "port": "/dev/ttyACM0",
+                "baudrate": 9600
+            },
+            "rotation": {
+                "default_degrees": 15,
+                "default_interval": 5
+            },
+            "simulator": {
+                "enabled": True
+            }
+        }
+        
+        # Wenn Konfiguration leer oder nicht vorhanden, verwende die Standardkonfiguration
+        if not self.config:
+            logger.info("Verwende Standardkonfiguration")
+            self.config = default_config
+            self._save_config(self.config)
+            return
+        
+        # Fehlerhafte Konfiguration reparieren
+        modified = False
+        
+        # Erforderliche Abschnitte hinzufügen, falls sie fehlen
+        for section, default_section in default_config.items():
+            if section not in self.config:
+                logger.info(f"Füge fehlenden Konfigurationsabschnitt hinzu: {section}")
+                self.config[section] = default_section
+                modified = True
+            else:
+                # Fehlende Eigenschaften innerhalb der Abschnitte hinzufügen
+                for key, value in default_section.items():
+                    if key not in self.config[section]:
+                        logger.info(f"Füge fehlende Konfigurationseigenschaft hinzu: {section}.{key}")
+                        self.config[section][key] = value
+                        modified = True
+        
+        # Konfiguration speichern, wenn sie geändert wurde
+        if modified:
+            self._save_config(self.config)
+
+    def _check_web_py(self):
+        """Prüft die web.py-Datei"""
+        if not os.path.exists(self.web_py_path):
+            logger.warning(f"web.py nicht gefunden: {self.web_py_path}")
+            
+            if self.backup_web_py_path:
+                logger.info(f"Backup von web.py gefunden: {self.backup_web_py_path}")
+            else:
+                logger.warning("Kein Backup von web.py gefunden")
+        else:
+            logger.info(f"web.py gefunden: {self.web_py_path}")
+
+    def _fix_web_py(self):
+        """Repariert die web.py-Datei, falls nötig"""
+        if not os.path.exists(self.web_py_path) and self.backup_web_py_path:
+            logger.info(f"Stelle web.py aus Backup wieder her: {self.backup_web_py_path}")
+            shutil.copy(self.backup_web_py_path, self.web_py_path)
+            logger.info(f"web.py wiederhergestellt: {self.web_py_path}")
+
+    def _check_modules(self):
+        """Prüft, ob die erforderlichen Python-Module verfügbar sind"""
+        modules_to_check = [
+            "flask", 
+            "werkzeug", 
+            "cv2", 
+            "numpy", 
+            "PIL", 
+            "serial", 
+            "gphoto2"
+        ]
+        
+        for module_name in modules_to_check:
+            try:
+                __import__(module_name)
+                logger.info(f"Modul verfügbar: {module_name}")
+            except ImportError:
+                logger.warning(f"Modul nicht verfügbar: {module_name}")
+
+    def _check_devices(self):
+        """Prüft verfügbare Geräte (Arduino, Kameras)"""
+        # Prüfe Arduino-Geräte
+        self._check_arduino_devices()
+        
+        # Prüfe Kamera-Geräte
+        self._check_camera_devices()
+
+    def _check_arduino_devices(self):
+        """Prüft verfügbare Arduino-Geräte"""
+        try:
+            import serial.tools.list_ports
+            
+            arduino_ports = []
+            for port in serial.tools.list_ports.comports():
+                if "Arduino" in port.description or "ACM" in port.device:
+                    arduino_ports.append({
+                        'port': port.device,
+                        'description': port.description
+                    })
+            
+            if arduino_ports:
+                logger.info(f"Arduino-Geräte gefunden ({len(arduino_ports)}):")
+                for device in arduino_ports:
+                    logger.info(f"  - {device['port']} ({device['description']})")
+            else:
+                logger.warning("Keine Arduino-Geräte gefunden")
+                
+        except ImportError:
+            logger.warning("Modul 'serial' nicht verfügbar, Arduino-Geräte können nicht geprüft werden")
+
+    def _check_camera_devices(self):
+        """Prüft verfügbare Kamera-Geräte"""
+        # Prüfe Webcams
+        self._check_webcams()
+        
+        # Prüfe gphoto2-Kameras
+        self._check_gphoto2_cameras()
+
+    def _check_webcams(self):
+        """Prüft verfügbare Webcams"""
+        try:
+            import cv2
+            
+            webcams = []
+            # Versuche die ersten 5 Webcam-Indizes
+            for i in range(5):
+                cap = cv2.VideoCapture(i)
+                if cap.isOpened():
+                    webcams.append(f"/dev/video{i}")
+                    cap.release()
+            
+            if webcams:
+                logger.info(f"Webcams gefunden ({len(webcams)}):")
+                for webcam in webcams:
+                    logger.info(f"  - {webcam}")
+            else:
+                logger.warning("Keine Webcams gefunden")
+                
+            # Zusätzliche Prüfung für Linux-Systeme
+            if os.name == 'posix':
+                video_devices = [f for f in os.listdir('/dev') if f.startswith('video')]
+                if video_devices:
+                    logger.info(f"Video-Geräte in /dev gefunden ({len(video_devices)}):")
+                    for device in video_devices:
+                        device_path = f"/dev/{device}"
+                        logger.info(f"  - {device_path}")
+                else:
+                    logger.warning("Keine Video-Geräte in /dev gefunden")
+            
+        except ImportError:
+            logger.warning("Modul 'cv2' nicht verfügbar, Webcams können nicht geprüft werden")
+
+    def _check_gphoto2_cameras(self):
+        """Prüft verfügbare gphoto2-Kameras"""
+        try:
+            result = subprocess.run(['which', 'gphoto2'],
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
+            
+            if result.returncode == 0:
+                logger.info("gphoto2 ist installiert")
+                
+                # Kameras auflisten
+                result = subprocess.run(['gphoto2', '--auto-detect'],
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.PIPE,
+                                        text=True)
+                
+                if result.returncode == 0:
+                    output = result.stdout.strip()
+                    if output:
+                        logger.info("gphoto2 Ausgabe:")
+                        for line in output.split('\n'):
+                            logger.info(f"  {line}")
+                    else:
+                        logger.warning("Keine gphoto2-Kameras gefunden")
+                else:
+                    logger.warning(f"Fehler bei gphoto2 --auto-detect: {result.stderr}")
+            else:
+                logger.warning("gphoto2 ist nicht installiert")
+                
+        except Exception as e:
+            logger.warning(f"Fehler beim Prüfen von gphoto2-Kameras: {str(e)}")
+
+    def _create_placeholder_image(self):
+        """Erstellt ein Platzhalter-Bild für den Viewer"""
+        placeholder_path = os.path.join(self.static_dir, "placeholder.jpg")
+        
+        if os.path.exists(placeholder_path):
+            logger.info(f"Platzhalter-Bild existiert bereits: {placeholder_path}")
+            return
+        
+        try:
+            from PIL import Image, ImageDraw, ImageFont
+            
+            # Erstelle ein einfaches Platzhalter-Bild
+            width, height = 640, 480
+            image = Image.new("RGB", (width, height), color=(240, 240, 240))
+            draw = ImageDraw.Draw(image)
+            
+            # Rahmen zeichnen
+            draw.rectangle([0, 0, width-1, height-1], outline=(200, 200, 200), width=2)
+            
+            # Text hinzufügen
+            try:
+                font = ImageFont.load_default()
+            except IOError:
+                font = None
+            
+            text = "Kein Bild verfügbar"
+            # In neueren Pillow-Versionen muss textlength oder textbbox verwendet werden
+            try:
+                if font:
+                    if hasattr(draw, 'textlength'):
+                        text_width = draw.textlength(text, font=font)
+                    elif hasattr(draw, 'textbbox'):
+                        bbox = draw.textbbox((0, 0), text, font=font)
+                        text_width = bbox[2] - bbox[0]
+                    else:
+                        text_width = font.getlength(text) if hasattr(font, 'getlength') else 200
+                else:
+                    text_width = 200  # Ungefähre Breite
+            except:
+                text_width = 200  # Fallback-Wert
+                
+            text_position = ((width - text_width) // 2, height // 2 - 15)
+            draw.text(text_position, text, fill=(100, 100, 100), font=font)
+            
+            # Bild speichern
+            image.save(placeholder_path)
+            logger.info(f"Platzhalter-Bild erstellt: {placeholder_path}")
+            
+        except ImportError:
+            logger.warning("Modul 'PIL' nicht verfügbar, Platzhalter-Bild kann nicht erstellt werden")
+        except Exception as e:
+            logger.error(f"Fehler beim Erstellen des Platzhalter-Bildes: {str(e)}")
+
+    def _generate_sample_images(self):
+        """Generiert Beispielbilder für den Simulator"""
+        if os.path.exists(self.sample_images_dir) and len(os.listdir(self.sample_images_dir)) > 0:
+            logger.info(f"Beispielbilder existieren bereits: {len(os.listdir(self.sample_images_dir))} Bilder gefunden")
+            return
+        
+        try:
+            from PIL import Image, ImageDraw, ImageFont
+            import numpy as np
+            
+            # Erstelle 10 verschiedene Beispielbilder
+            for i in range(10):
+                filename = os.path.join(self.sample_images_dir, f"sample_image_{i}.jpg")
+                
+                # Erstelle ein Bild mit Farbverlauf
+                width, height = 800, 600
+                image = Image.new("RGB", (width, height))
+                draw = ImageDraw.Draw(image)
+                
+                # Farbverlauf erzeugen
+                for y in range(height):
+                    r = int(255 * y / height)
+                    g = int(255 * (1 - y / height))
+                    b = int(128 + 127 * np.sin(y / 50 + i))
+                    
+                    for x in range(width):
+                        draw.point((x, y), fill=(r, g, b))
+                
+                # Text hinzufügen
+                try:
+                    font = ImageFont.load_default()
+                except IOError:
+                    font = None
+                
+                text = f"Beispielbild {i+1}"
+                # In neueren Pillow-Versionen muss textlength oder textbbox verwendet werden
+                try:
+                    if font:
+                        if hasattr(draw, 'textlength'):
+                            text_width = draw.textlength(text, font=font)
+                        elif hasattr(draw, 'textbbox'):
+                            bbox = draw.textbbox((0, 0), text, font=font)
+                            text_width = bbox[2] - bbox[0]
+                        else:
+                            text_width = font.getlength(text) if hasattr(font, 'getlength') else 150
+                    else:
+                        text_width = 150  # Ungefähre Breite
+                except:
+                    text_width = 150  # Fallback-Wert
+                    
+                text_position = ((width - text_width) // 2, height // 2 - 15)
+                draw.text(text_position, text, fill=(255, 255, 255), font=font)
+                
+                # Bild speichern
+                image.save(filename)
+                logger.info(f"Beispielbild erstellt: {filename}")
+            
+            logger.info(f"10 Beispielbilder wurden generiert in: {self.sample_images_dir}")
+            
+        except ImportError as e:
+            logger.warning(f"Modul nicht verfügbar, Beispielbilder können nicht erstellt werden: {str(e)}")
+        except Exception as e:
+            logger.error(f"Fehler beim Erstellen der Beispielbilder: {str(e)}")
+
+    def test_arduino_connection(self):
+        """Testet die Verbindung zum Arduino"""
+        if "arduino" not in self.config:
+            logger.warning("Keine Arduino-Konfiguration gefunden")
+            return False
+        
+        arduino_config = self.config["arduino"]
+        if "port" not in arduino_config or not arduino_config["port"]:
+            logger.warning("Arduino-Port nicht konfiguriert")
+            return False
+        
+        try:
+            import serial
+            import time
+            
+            port = arduino_config["port"]
+            baudrate = arduino_config.get("baudrate", 9600)
+            
+            logger.info(f"Verbindungsversuch zum Arduino: {port}, {baudrate} Baud")
+            arduino = serial.Serial(port, baudrate, timeout=2)
+            time.sleep(2)  # Warten auf Arduino-Reset
+            
+            # Testbefehl senden ('1' einschalten, kurz warten, '0' ausschalten)
+            arduino.write(b'1')
+            time.sleep(1)
+            response = arduino.readline().decode('utf-8', errors='ignore').strip()
+            logger.info(f"Arduino-Antwort: {response}")
+            
+            arduino.write(b'0')
+            time.sleep(0.5)
+            response = arduino.readline().decode('utf-8', errors='ignore').strip()
+            logger.info(f"Arduino-Antwort: {response}")
+            
+            arduino.close()
+            logger.info("Arduino-Verbindungstest erfolgreich")
+            return True
+            
+        except ImportError:
+            logger.warning("Modul 'serial' nicht verfügbar, Arduino-Verbindung kann nicht getestet werden")
+            return False
+        except Exception as e:
+            logger.error(f"Fehler beim Testen der Arduino-Verbindung: {str(e)}")
+            return False
+
+    def test_camera_capture(self):
+        """Testet die Kameraaufnahme"""
+        if "camera" not in self.config:
+            logger.warning("Keine Kamera-Konfiguration gefunden")
+            return False
+        
+        camera_config = self.config["camera"]
+        camera_type = camera_config.get("type", "webcam")
+        device_path = camera_config.get("device_path", "/dev/video0")
+        
+        if camera_type == "webcam":
+            return self._test_webcam_capture(device_path)
+        elif camera_type == "gphoto2":
+            return self._test_gphoto2_capture(device_path)
+        else:
+            logger.warning(f"Unbekannter Kamera-Typ: {camera_type}")
+            return False
+
+    def _test_webcam_capture(self, device_path):
+        """Testet die Aufnahme mit einer Webcam"""
+        try:
+            import cv2
+            
+            logger.info(f"Teste Webcam-Aufnahme mit Gerät: {device_path}")
+            
+            # Versuche, die Kamera zu öffnen
+            if device_path.isdigit():
+                cap = cv2.VideoCapture(int(device_path))
+            else:
+                cap = cv2.VideoCapture(device_path)
+            
+            if not cap.isOpened():
+                logger.warning(f"Konnte Webcam nicht öffnen: {device_path}")
+                return False
+            
+            # Bild aufnehmen
+            ret, frame = cap.read()
+            cap.release()
+            
+            if not ret:
+                logger.warning("Konnte kein Bild von der Webcam aufnehmen")
+                return False
+            
+            # Bild speichern
+            test_image_path = os.path.join(self.photos_dir, "webcam_test.jpg")
+            cv2.imwrite(test_image_path, frame)
+            
+            logger.info(f"Webcam-Testbild gespeichert: {test_image_path}")
+            return True
+            
+        except ImportError:
+            logger.warning("Modul 'cv2' nicht verfügbar, Webcam-Aufnahme kann nicht getestet werden")
+            return False
+        except Exception as e:
+            logger.error(f"Fehler beim Testen der Webcam-Aufnahme: {str(e)}")
+            return False
+
+    def _test_gphoto2_capture(self, device_path):
+        """Testet die Aufnahme mit einer gphoto2-Kamera"""
+        try:
+            test_image_path = os.path.join(self.photos_dir, "gphoto2_test.jpg")
+            
+            # Kommando zusammenbauen
+            cmd = ['gphoto2', '--capture-image-and-download', '--filename', test_image_path]
+            
+            # Port hinzufügen, falls angegeben
+            if device_path and device_path != "auto":
+                cmd.extend(['--port', device_path])
+            
+            logger.info(f"Teste gphoto2-Aufnahme mit Befehl: {' '.join(cmd)}")
+            
+            # Befehl ausführen
+            result = subprocess.run(cmd, 
+                                    stdout=subprocess.PIPE, 
+                                    stderr=subprocess.PIPE, 
+                                    text=True, 
+                                    timeout=30)
+            
+            if result.returncode == 0:
+                logger.info(f"gphoto2-Testbild gespeichert: {test_image_path}")
+                return True
+            else:
+                logger.warning(f"Fehler bei gphoto2-Aufnahme: {result.stderr}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Fehler beim Testen der gphoto2-Aufnahme: {str(e)}")
+            return False
+
+
+if __name__ == "__main__":
+    diagnosetool = Drehteller360Diagnose()
+    
+    print("=" * 60)
+    print("360° Drehteller Diagnose- und Reparaturskript")
+    print("=" * 60)
+    print("\nDieses Skript prüft und repariert das 360° Drehteller-System.")
+    print("Es werden die Verzeichnisstruktur, Konfiguration und Geräte überprüft.\n")
+    
+    print("1. Diagnose durchführen")
+    print("2. Reparatur durchführen")
+    print("3. Arduino-Verbindung testen")
+    print("4. Kameraaufnahme testen")
+    print("5. Beenden")
+    
+    choice = input("\nBitte wählen Sie eine Option (1-5): ")
+    
+    if choice == "1":
+        diagnosetool.run_diagnostics()
+    elif choice == "2":
+        diagnosetool.fix_issues()
+    elif choice == "3":
+        diagnosetool.test_arduino_connection()
+    elif choice == "4":
+        diagnosetool.test_camera_capture()
+    elif choice == "5":
+        print("Programm wird beendet.")
+    else:
+        print("Ungültige Eingabe. Programm wird beendet.")
 
 
 --- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/upload_arduino_sketch.sh ---
@@ -4293,7 +6182,372 @@ echo "Der Arduino ist nun bereit für die Steuerung des Drehtellers."
 echo "Sie können die Funktionalität mit dem folgenden Befehl testen:"
 echo "python -c \"import serial, time; s = serial.Serial('$PORT', 9600); time.sleep(2); s.write(b'1'); time.sleep(2); s.write(b'0'); s.close()\""
 
---- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/laeuft-10-03-2025_17-47-werkzeug306-flask303-Pillow103 ---
+--- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/drehteller-konfigurations-fix.py ---
+#!/usr/bin/env python3
+"""
+Konfigurationsmanager-Fix für das 360° Drehteller-System
+Dieses Skript implementiert fehlende config_manager.py Funktionen und Routen
+"""
+
+import os
+import json
+import logging
+import sys
+import shutil
+from pathlib import Path
+
+# Logger konfigurieren
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler("config_manager_fix.log"),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger("config_manager_fix")
+
+# Verbesserte Version von config_manager.py
+def create_config_manager():
+    """Erstellt eine verbesserte Version der config_manager.py-Datei"""
+    config_path = "config_manager.py"
+    
+    # Backup der alten Datei erstellen, falls vorhanden
+    if os.path.exists(config_path):
+        backup_path = f"{config_path}.bak"
+        logger.info(f"Erstelle Backup der alten config_manager.py: {backup_path}")
+        shutil.copy(config_path, backup_path)
+    
+    improved_content = """import os
+import json
+import logging
+
+class ConfigManager:
+    DEFAULT_CONFIG = {
+        'camera': {
+            'device_path': '/dev/video0',
+            'type': 'webcam',  # or 'gphoto2'
+            'resolution': {
+                'width': 1280,
+                'height': 720
+            }
+        },
+        'arduino': {
+            'port': '/dev/ttyACM0',
+            'baudrate': 9600
+        },
+        'rotation': {
+            'default_degrees': 15,
+            'default_interval': 5
+        },
+        'simulator': {
+            'enabled': True
+        }
+    }
+
+    def __init__(self, config_path=None):
+        \"\"\"Initialize configuration manager
+        
+        :param config_path: Path to the configuration file
+        \"\"\"
+        # Determine the project directory
+        self.project_dir = os.path.dirname(os.path.abspath(__file__))
+
+        # If no config path provided, use a default in the project directory
+        if config_path is None:
+            config_path = os.path.join(self.project_dir, 'config.json')
+
+        self.config_path = config_path
+        self.config = self.load_config()
+
+    def load_config(self):
+        \"\"\"Load configuration from file or create default
+        
+        :return: Configuration dictionary
+        \"\"\"
+        try:
+            # Ensure config directory exists
+            os.makedirs(os.path.dirname(self.config_path), exist_ok=True)
+
+            # Try to load existing config
+            if os.path.exists(self.config_path):
+                with open(self.config_path, 'r') as f:
+                    config = json.load(f)
+                    # Merge with default to ensure all keys exist
+                    merged_config = self._merge_configs(self.DEFAULT_CONFIG, config)
+                    return merged_config
+            else:
+                # Create default config file
+                config = self.DEFAULT_CONFIG
+                with open(self.config_path, 'w') as f:
+                    json.dump(config, f, indent=4)
+                return config
+        except Exception as e:
+            print(f"Error loading config: {e}")
+            # If loading fails, use default config and try to save it
+            try:
+                with open(self.config_path, 'w') as f:
+                    json.dump(self.DEFAULT_CONFIG, f, indent=4)
+            except Exception as save_error:
+                print(f"Error saving default config: {save_error}")
+            return self.DEFAULT_CONFIG
+
+    def save_config(self, new_config=None):
+        \"\"\"Save configuration to file
+        
+        :param new_config: Optional new configuration to save
+        \"\"\"
+        try:
+            # Use provided config or current config
+            config_to_save = new_config if new_config is not None else self.config
+
+            # Ensure full path exists
+            os.makedirs(os.path.dirname(self.config_path), exist_ok=True)
+
+            # Save configuration
+            with open(self.config_path, 'w') as f:
+                json.dump(config_to_save, f, indent=4)
+
+            # Update current config
+            if new_config is not None:
+                self.config = new_config
+        except Exception as e:
+            print(f"Error saving config: {e}")
+
+    def get(self, key, default=None):
+        \"\"\"Get a configuration value
+        
+        :param key: Dot-separated key (e.g. 'camera.device_path')
+        :param default: Default value if key not found
+        :return: Configuration value
+        \"\"\"
+        try:
+            # Split the key into parts
+            parts = key.split('.')
+
+            # Navigate through nested dictionary
+            value = self.config
+            for part in parts:
+                if part in value:
+                    value = value[part]
+                else:
+                    return default
+
+            # Return value if found, otherwise default
+            return value
+        except Exception as e:
+            print(f"Error getting config value: {e}")
+            return default
+
+    def _merge_configs(self, default_config, user_config):
+        \"\"\"Merge default config with user config to ensure all keys exist
+        
+        :param default_config: Default configuration dictionary
+        :param user_config: User configuration dictionary
+        :return: Merged configuration dictionary
+        \"\"\"
+        merged_config = default_config.copy()
+
+        for key, value in user_config.items():
+            if key in merged_config and isinstance(merged_config[key], dict) and isinstance(value, dict):
+                # Recursive merge for nested dictionaries
+                merged_config[key] = self._merge_configs(merged_config[key], value)
+            else:
+                # Use user config value
+                merged_config[key] = value
+
+        return merged_config
+
+
+# Create a global config manager instance
+config_manager = ConfigManager()
+"""
+
+    # Schreibe verbesserte Version der Datei
+    with open(config_path, "w") as f:
+        f.write(improved_content)
+    
+    logger.info(f"Verbesserte config_manager.py erstellt: {config_path}")
+    return True
+
+def add_get_config_route():
+    """Fügt die fehlende /get_config Route zur web.py-Datei hinzu"""
+    web_py_path = "web.py"
+    
+    if not os.path.exists(web_py_path):
+        logger.error(f"Konnte web.py nicht finden: {web_py_path}")
+        return False
+    
+    # Backup der alten Datei erstellen
+    backup_path = f"{web_py_path}.bak"
+    logger.info(f"Erstelle Backup der alten web.py: {backup_path}")
+    shutil.copy(web_py_path, backup_path)
+    
+    # Dateiinhalt lesen
+    with open(web_py_path, "r") as f:
+        content = f.read()
+    
+    # Prüfen, ob die Route bereits existiert
+    if "@app.route('/get_config')" in content:
+        logger.info("Die Route /get_config existiert bereits")
+        return True
+    
+    # Füge Import für jsonify hinzu, falls noch nicht vorhanden
+    if "from flask import" in content and "jsonify" not in content:
+        content = content.replace(
+            "from flask import", 
+            "from flask import jsonify, "
+        )
+    
+    # Füge die Route an einer geeigneten Stelle ein
+    # Suche nach einer vorhandenen Route
+    route_marker = "@app.route("
+    
+    if route_marker in content:
+        # Finde die Position der letzten Route
+        route_positions = [pos for pos in range(len(content)) if content.startswith(route_marker, pos)]
+        
+        if route_positions:
+            # Finde das Ende der letzten Route-Funktion
+            last_route_pos = route_positions[-1]
+            func_start = content.find("def ", last_route_pos)
+            
+            if func_start != -1:
+                # Finde die nächste leere Zeile nach dieser Funktion
+                func_name_end = content.find("(", func_start)
+                func_name = content[func_start+4:func_name_end]
+                
+                # Finde das Ende der Funktion (nächste Funktion oder Ende der Datei)
+                next_def = content.find("\ndef ", func_start + 1)
+                
+                if next_def != -1:
+                    insertion_point = next_def
+                else:
+                    # Wenn keine weitere Funktion gefunden wurde, füge am Ende ein
+                    insertion_point = len(content)
+                
+                # Füge die neue Route ein
+                new_route = """
+
+@app.route('/get_config')
+def get_config():
+    \"\"\"
+    Retrieve current configuration
+    \"\"\"
+    return jsonify(config_manager.config)
+"""
+                new_content = content[:insertion_point] + new_route + content[insertion_point:]
+                
+                # Schreibe die aktualisierte Datei
+                with open(web_py_path, "w") as f:
+                    f.write(new_content)
+                
+                logger.info("Route /get_config erfolgreich zur web.py hinzugefügt")
+                return True
+    
+    logger.error("Konnte keine geeignete Stelle zum Einfügen der Route finden")
+    return False
+
+def create_default_config():
+    """Erstellt eine Standardkonfigurationsdatei, falls keine vorhanden ist"""
+    config_path = "config.json"
+    
+    if os.path.exists(config_path):
+        logger.info(f"Konfigurationsdatei existiert bereits: {config_path}")
+        return True
+    
+    default_config = {
+        'camera': {
+            'device_path': '/dev/video0',
+            'type': 'webcam',
+            'resolution': {
+                'width': 1280,
+                'height': 720
+            }
+        },
+        'arduino': {
+            'port': '/dev/ttyACM0',
+            'baudrate': 9600
+        },
+        'rotation': {
+            'default_degrees': 15,
+            'default_interval': 5
+        },
+        'simulator': {
+            'enabled': True
+        }
+    }
+    
+    try:
+        with open(config_path, "w") as f:
+            json.dump(default_config, f, indent=4)
+        
+        logger.info(f"Standardkonfigurationsdatei erstellt: {config_path}")
+        return True
+    except Exception as e:
+        logger.error(f"Fehler beim Erstellen der Konfigurationsdatei: {str(e)}")
+        return False
+
+def fix_gitignore():
+    """Aktualisiert die .gitignore-Datei, um config.json nicht zu ignorieren"""
+    gitignore_path = ".gitignore"
+    
+    if not os.path.exists(gitignore_path):
+        logger.info(f".gitignore-Datei nicht gefunden: {gitignore_path}")
+        return True
+    
+    with open(gitignore_path, "r") as f:
+        content = f.read()
+    
+    # Prüfen, ob config.json ignoriert wird
+    if "config.json" in content:
+        # Entferne den Eintrag
+        lines = content.splitlines()
+        new_lines = [line for line in lines if line.strip() != "config.json"]
+        
+        # Schreibe die aktualisierte Datei
+        with open(gitignore_path, "w") as f:
+            f.write("\n".join(new_lines))
+        
+        logger.info("config.json aus .gitignore entfernt")
+    else:
+        logger.info("config.json wird nicht ignoriert")
+    
+    return True
+
+def main():
+    """Hauptfunktion"""
+    logger.info("Starte Konfigurationsmanager-Fix...")
+    
+    # Erstelle verbesserte Version von config_manager.py
+    if create_config_manager():
+        logger.info("config_manager.py erfolgreich aktualisiert")
+    else:
+        logger.error("Fehler beim Aktualisieren von config_manager.py")
+    
+    # Füge die /get_config Route hinzu
+    if add_get_config_route():
+        logger.info("Route /get_config erfolgreich hinzugefügt")
+    else:
+        logger.error("Fehler beim Hinzufügen der Route /get_config")
+    
+    # Erstelle eine Standardkonfigurationsdatei
+    if create_default_config():
+        logger.info("Standardkonfigurationsdatei erstellt oder vorhanden")
+    else:
+        logger.error("Fehler beim Erstellen der Standardkonfigurationsdatei")
+    
+    # Aktualisiere .gitignore
+    if fix_gitignore():
+        logger.info(".gitignore erfolgreich aktualisiert oder nicht benötigt")
+    else:
+        logger.error("Fehler beim Aktualisieren der .gitignore")
+    
+    logger.info("Konfigurationsmanager-Fix abgeschlossen")
+    print("\nKonfigurationsmanager-Fix abgeschlossen. Starten Sie den Flask-Server neu.")
+
+if __name__ == "__main__":
+    main()
 
 
 --- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/arduino/turntable_controller.ino ---
@@ -5160,6 +7414,7 @@ def create_app(config_name=None):
     """
     app = Flask(__name__, 
                 static_folder="../static",
+                static_url_path='/static',
                 template_folder="../templates")
     
     # Konfiguration laden
@@ -5187,6 +7442,10 @@ def create_directories():
     """Stellt sicher, dass alle erforderlichen Verzeichnisse existieren"""
     path_manager.ensure_directories()
 
+
+
+
+
 def initialize_controllers():
     """Initialisiert die gemeinsam genutzten Controller"""
     global arduino_controller, camera_controller, turntable_controller
@@ -5201,13 +7460,19 @@ def initialize_controllers():
         # Kamera Controller
         camera_type = config_manager.get('camera.type', 'webcam')
         camera_device = config_manager.get('camera.device_path', '/dev/video0')
-        camera_controller = CameraController(camera_type, camera_device)
+        resolution = config_manager.get('camera.resolution')
+        camera_controller = CameraController(camera_type, camera_device, resolution)
         
         # Drehteller Controller (nutzt den Arduino Controller)
         turntable_controller = TurntableController(arduino_controller, 
                                                  config_manager.get('rotation.default_degrees', 15))
     except Exception as e:
         logging.error(f"Fehler bei der Controller-Initialisierung: {str(e)}")
+
+
+
+
+
 
 def configure_logging(app):
     """Konfiguriert das Logging für die App"""
@@ -5321,6 +7586,392 @@ class TestingConfig(Config):
     # Einstellungen für Tests
     PRESERVE_CONTEXT_ON_EXCEPTION = False
     WTF_CSRF_ENABLED = False
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/app/zeige-alles-an.py ---
+import os
+
+def zeige_dateien_und_inhalt(verzeichnis):
+    # Durchlaufe rekursiv alle Unterverzeichnisse und Dateien
+    for root, dirs, files in os.walk(verzeichnis):
+        # Entferne .git aus der Liste der zu durchsuchenden Verzeichnisse
+        if '.git' in dirs:
+            dirs.remove('.git')
+        if 'bin' in dirs:
+            dirs.remove('bin')
+        if '__pycache__' in dirs:
+            dirs.remove('__pycache__')
+        if '.idea' in dirs: 
+            dirs.remove('.idea')
+        if 'myenv' in dirs:
+            dirs.remove('myenv')
+        for file in files:
+            dateipfad = os.path.join(root, file)
+            print(f"\n--- Datei: {dateipfad} ---")
+            try:
+                # Versuche, die Datei im UTF-8 Format zu öffnen
+                with open(dateipfad, 'r', encoding='utf-8') as f:
+                    inhalt = f.read()
+                    print(inhalt)
+            except Exception as e:
+                print(f"Fehler beim Lesen der Datei: {e}")
+
+# Beispielnutzung
+verzeichnis_pfad = "/home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/app"
+#verzeichnis_pfad = "/home/alex/Dokumente/drehteller_360_grad_fotos"  # Hier den gewünschten Pfad angeben
+zeige_dateien_und_inhalt(verzeichnis_pfad)
+
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/app/init.py-original ---
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+app/__init__.py
+Initialisiert die Flask-Anwendung und registriert alle Blueprints.
+"""
+
+import os
+import logging
+from flask import Flask
+from app.utils.config_manager import config_manager
+from app.controllers.arduino_controller import ArduinoController
+from app.controllers.camera_controller import CameraController
+from app.controllers.turntable_controller import TurntableController
+from app.utils.path_manager import PathManager
+
+# Gemeinsam genutzte Controller-Instanzen
+arduino_controller = None
+camera_controller = None
+turntable_controller = None
+
+# Gemeinsam genutzte Hilfsprogramme
+path_manager = PathManager()
+
+def create_app(config_name=None):
+    """
+    Erstellt und konfiguriert die Flask-Anwendung
+    
+    Args:
+        config_name: Name der Konfiguration ('development', 'production', 'testing')
+    
+    Returns:
+        Flask-App-Instanz
+    """
+    app = Flask(__name__, 
+                static_folder="../static",
+                template_folder="../templates")
+    
+    # Konfiguration laden
+    app.config.from_object('app.config.DevelopmentConfig')
+    if config_name == 'production':
+        app.config.from_object('app.config.ProductionConfig')
+    elif config_name == 'testing':
+        app.config.from_object('app.config.TestingConfig')
+    
+    # Stelle sicher, dass Verzeichnisse existieren
+    create_directories()
+    
+    # Controller initialisieren
+    initialize_controllers()
+    
+    # Logging konfigurieren
+    configure_logging(app)
+    
+    # Blueprints registrieren
+    register_blueprints(app)
+    
+    return app
+
+def create_directories():
+    """Stellt sicher, dass alle erforderlichen Verzeichnisse existieren"""
+    path_manager.ensure_directories()
+
+
+
+
+
+def initialize_controllers():
+    """Initialisiert die gemeinsam genutzten Controller"""
+    global arduino_controller, camera_controller, turntable_controller
+    
+    try:
+        # Arduino Controller
+        port = config_manager.get('arduino.port')
+        baudrate = config_manager.get('arduino.baudrate', 9600)
+        if port:
+            arduino_controller = ArduinoController(port, baudrate)
+        
+        # Kamera Controller
+        camera_type = config_manager.get('camera.type', 'webcam')
+        camera_device = config_manager.get('camera.device_path', '/dev/video0')
+        resolution = config_manager.get('camera.resolution')
+        camera_controller = CameraController(camera_type, camera_device, resolution)
+        
+        # Drehteller Controller (nutzt den Arduino Controller)
+        turntable_controller = TurntableController(arduino_controller, 
+                                                 config_manager.get('rotation.default_degrees', 15))
+    except Exception as e:
+        logging.error(f"Fehler bei der Controller-Initialisierung: {str(e)}")
+
+
+
+
+
+
+def configure_logging(app):
+    """Konfiguriert das Logging für die App"""
+    log_level = logging.DEBUG if app.config['DEBUG'] else logging.INFO
+    log_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    
+    # File Handler
+    file_handler = logging.FileHandler('drehteller360.log')
+    file_handler.setLevel(log_level)
+    file_handler.setFormatter(log_formatter)
+    
+    # Console Handler
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(log_level)
+    console_handler.setFormatter(log_formatter)
+    
+    # Root Logger konfigurieren
+    root_logger = logging.getLogger()
+    root_logger.setLevel(log_level)
+    root_logger.addHandler(file_handler)
+    root_logger.addHandler(console_handler)
+    
+    # App Logger konfigurieren
+    app.logger.setLevel(log_level)
+
+def register_blueprints(app):
+    """Registriert alle Blueprints bei der App"""
+    # Blueprint für Hauptseiten
+    from app.blueprints.main import main_bp
+    app.register_blueprint(main_bp)
+    
+    # Blueprint für API-Endpunkte
+    from app.blueprints.api import api_bp
+    app.register_blueprint(api_bp, url_prefix='/api')
+    
+    # Blueprint für Einstellungen
+    from app.blueprints.settings import settings_bp
+    app.register_blueprint(settings_bp, url_prefix='/settings')
+    
+    # Blueprint für Projektverwaltung
+    from app.blueprints.projects import projects_bp
+    app.register_blueprint(projects_bp, url_prefix='/projects')
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/app/utils/config_manager.py-original ---
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+app/utils/config_manager.py
+Verwaltet die Benutzerkonfiguration
+"""
+
+import os
+import json
+import logging
+
+class ConfigManager:
+    """Klasse zur Verwaltung der Benutzerkonfiguration"""
+    
+    DEFAULT_CONFIG = {
+        'camera': {
+            'device_path': '/dev/video0',
+            'type': 'webcam',
+            'resolution': {
+                'width': 1280,
+                'height': 720
+            }
+        },
+        'arduino': {
+            'port': '/dev/ttyACM0',
+            'baudrate': 9600
+        },
+        'rotation': {
+            'default_degrees': 15,
+            'default_interval': 5
+        },
+        'simulator': {
+            'enabled': True
+        }
+    }
+
+    def __init__(self, config_path=None):
+        """
+        Initialisiert die Konfigurationsverwaltung
+        
+        Args:
+            config_path: Pfad zur Konfigurationsdatei (optional)
+        """
+        # Logger einrichten
+        self.logger = logging.getLogger(__name__)
+        
+        # Projektverzeichnis bestimmen
+        self.project_dir = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
+        # Konfigurationspfad festlegen
+        if config_path is None:
+            config_path = os.path.join(self.project_dir, 'config.json')
+        self.config_path = config_path
+        
+        # Konfiguration laden
+        self.config = self.load_config()
+        self.logger.debug(f"ConfigManager initialisiert mit Konfigurationspfad: {self.config_path}")
+
+    def load_config(self):
+        """
+        Lädt die Konfiguration aus der Datei oder erstellt die Standardkonfiguration
+        
+        Returns:
+            Konfiguration als Dictionary
+        """
+        try:
+            # Stelle sicher, dass das Verzeichnis existiert
+            os.makedirs(os.path.dirname(self.config_path), exist_ok=True)
+
+            # Versuche, bestehende Konfiguration zu laden
+            if os.path.exists(self.config_path):
+                with open(self.config_path, 'r') as f:
+                    config = json.load(f)
+                    # Mit Standardkonfiguration zusammenführen, um sicherzustellen,
+                    # dass alle Schlüssel existieren
+                    merged_config = self._merge_configs(self.DEFAULT_CONFIG, config)
+                    self.logger.debug("Konfiguration aus Datei geladen und zusammengeführt")
+                    return merged_config
+            else:
+                # Standardkonfiguration erstellen
+                config = self.DEFAULT_CONFIG.copy()
+                self.save_config(config)
+                self.logger.info("Standardkonfiguration erstellt und gespeichert")
+                return config
+        except Exception as e:
+            self.logger.error(f"Fehler beim Laden der Konfiguration: {str(e)}")
+            # Bei Fehlern Standardkonfiguration verwenden
+            try:
+                self.save_config(self.DEFAULT_CONFIG)
+            except Exception as save_error:
+                self.logger.error(f"Fehler beim Speichern der Standardkonfiguration: {str(save_error)}")
+            return self.DEFAULT_CONFIG.copy()
+
+    def save_config(self, new_config=None):
+        """
+        Speichert die Konfiguration in der Datei
+        
+        Args:
+            new_config: Neue Konfiguration (optional)
+            
+        Returns:
+            True bei Erfolg, False bei Fehler
+        """
+        try:
+            # Verwende die angegebene Konfiguration oder die aktuelle
+            config_to_save = new_config if new_config is not None else self.config
+
+            # Stelle sicher, dass das Verzeichnis existiert
+            os.makedirs(os.path.dirname(self.config_path), exist_ok=True)
+
+            # Konfiguration speichern
+            with open(self.config_path, 'w') as f:
+                json.dump(config_to_save, f, indent=4)
+
+            # Aktuelle Konfiguration aktualisieren
+            if new_config is not None:
+                self.config = new_config.copy()
+                
+            self.logger.debug("Konfiguration erfolgreich gespeichert")
+            return True
+        except Exception as e:
+            self.logger.error(f"Fehler beim Speichern der Konfiguration: {str(e)}")
+            return False
+
+    def get(self, key, default=None):
+        """
+        Gibt einen Konfigurationswert zurück
+        
+        Args:
+            key: Durch Punkte getrennter Schlüssel (z.B. 'camera.device_path')
+            default: Standardwert, falls Schlüssel nicht gefunden (optional)
+            
+        Returns:
+            Konfigurationswert oder Standardwert
+        """
+        try:
+            # Schlüssel in Teile aufteilen
+            parts = key.split('.')
+
+            # Durch verschachteltes Dictionary navigieren
+            value = self.config
+            for part in parts:
+                if part in value:
+                    value = value[part]
+                else:
+                    return default
+
+            return value
+        except Exception as e:
+            self.logger.error(f"Fehler beim Abrufen des Konfigurationswerts: {str(e)}")
+            return default
+
+    def set(self, key, value):
+        """
+        Setzt einen Konfigurationswert
+        
+        Args:
+            key: Durch Punkte getrennter Schlüssel (z.B. 'camera.device_path')
+            value: Zu setzender Wert
+            
+        Returns:
+            True bei Erfolg, False bei Fehler
+        """
+        try:
+            # Schlüssel in Teile aufteilen
+            parts = key.split('.')
+
+            # In der aktuellen Konfiguration navigieren
+            config = self.config
+            for i, part in enumerate(parts[:-1]):
+                if part not in config:
+                    config[part] = {}
+                config = config[part]
+
+            # Wert setzen
+            config[parts[-1]] = value
+
+            # Konfiguration speichern
+            return self.save_config()
+        except Exception as e:
+            self.logger.error(f"Fehler beim Setzen des Konfigurationswerts: {str(e)}")
+            return False
+
+    def _merge_configs(self, default_config, user_config):
+        """
+        Führt zwei Konfigurationen zusammen
+        
+        Args:
+            default_config: Standardkonfiguration
+            user_config: Benutzerkonfiguration
+            
+        Returns:
+            Zusammengeführte Konfiguration
+        """
+        result = default_config.copy()
+        
+        for key, value in user_config.items():
+            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+                # Rekursiv zusammenführen, wenn beide Werte Dictionaries sind
+                result[key] = self._merge_configs(result[key], value)
+            else:
+                # Sonst den Wert aus der Benutzerkonfiguration übernehmen
+                result[key] = value
+                
+        return result
+
+
+# Globale Instanz des ConfigManager erstellen
+config_manager = ConfigManager()
 
 
 --- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/app/utils/__init__.py ---
@@ -6151,6 +8802,29 @@ class ConfigManager:
         self.config = self.load_config()
         self.logger.debug(f"ConfigManager initialisiert mit Konfigurationspfad: {self.config_path}")
 
+    def _merge_configs(self, default_config, user_config):
+        """
+        Führt zwei Konfigurationen zusammen
+        
+        Args:
+            default_config: Standardkonfiguration
+            user_config: Benutzerkonfiguration
+            
+        Returns:
+            Zusammengeführte Konfiguration
+        """
+        result = default_config.copy()
+        
+        for key, value in user_config.items():
+            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+                # Rekursiv zusammenführen, wenn beide Werte Dictionaries sind
+                result[key] = self._merge_configs(result[key], value)
+            else:
+                # Sonst den Wert aus der Benutzerkonfiguration übernehmen
+                result[key] = value
+                
+        return result
+
     def load_config(self):
         """
         Lädt die Konfiguration aus der Datei oder erstellt die Standardkonfiguration
@@ -6244,60 +8918,6 @@ class ConfigManager:
         except Exception as e:
             self.logger.error(f"Fehler beim Abrufen des Konfigurationswerts: {str(e)}")
             return default
-
-    def set(self, key, value):
-        """
-        Setzt einen Konfigurationswert
-        
-        Args:
-            key: Durch Punkte getrennter Schlüssel (z.B. 'camera.device_path')
-            value: Zu setzender Wert
-            
-        Returns:
-            True bei Erfolg, False bei Fehler
-        """
-        try:
-            # Schlüssel in Teile aufteilen
-            parts = key.split('.')
-
-            # In der aktuellen Konfiguration navigieren
-            config = self.config
-            for i, part in enumerate(parts[:-1]):
-                if part not in config:
-                    config[part] = {}
-                config = config[part]
-
-            # Wert setzen
-            config[parts[-1]] = value
-
-            # Konfiguration speichern
-            return self.save_config()
-        except Exception as e:
-            self.logger.error(f"Fehler beim Setzen des Konfigurationswerts: {str(e)}")
-            return False
-
-    def _merge_configs(self, default_config, user_config):
-        """
-        Führt zwei Konfigurationen zusammen
-        
-        Args:
-            default_config: Standardkonfiguration
-            user_config: Benutzerkonfiguration
-            
-        Returns:
-            Zusammengeführte Konfiguration
-        """
-        result = default_config.copy()
-        
-        for key, value in user_config.items():
-            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
-                # Rekursiv zusammenführen, wenn beide Werte Dictionaries sind
-                result[key] = self._merge_configs(result[key], value)
-            else:
-                # Sonst den Wert aus der Benutzerkonfiguration übernehmen
-                result[key] = value
-                
-        return result
 
 
 # Globale Instanz des ConfigManager erstellen
@@ -8109,6 +10729,12 @@ def serve_photo(filename):
     """Liefert ein aufgenommenes Foto aus"""
     return send_from_directory('static/photos', filename)
 
+@main_bp.route('/get_config')
+def get_config():
+    """Gibt die aktuelle Konfiguration zurück"""
+    from app.utils.config_manager import config_manager
+    return jsonify(config_manager.config)
+
 
 --- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/app/blueprints/projects/__init__.py ---
 #!/usr/bin/env python3
@@ -8412,21 +11038,13 @@ settings_bp = Blueprint('settings', __name__)
 from app.blueprints.settings import routes
 
 
---- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/app/blueprints/settings/routes.py ---
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-app/blueprints/settings/routes.py
-Enthält die Routen für die Einstellungsseite
-"""
-
+--- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/app/blueprints/settings/routes.py-original ---
+# app/blueprints/settings/routes.py
 import json
 import logging
 from flask import render_template, request, jsonify, redirect, url_for
 from app.blueprints.settings import settings_bp
 from app.utils.config_manager import config_manager
-from app.utils.webcam_simulator import WebcamCaptureSimulator
-from app.utils.sample_images_generator import SampleImagesGenerator
 
 # Logger einrichten
 logger = logging.getLogger(__name__)
@@ -8464,10 +11082,30 @@ def save_config():
         # Konfigurationsdaten ausgeben für Debugging
         logger.debug(f"Empfangene Konfiguration: {json.dumps(new_config, indent=2)}")
         
+        # Rekursive Aktualisierung der Konfiguration
+        def recursive_update(target, source):
+            for key, value in source.items():
+                if isinstance(value, dict) and key in target and isinstance(target[key], dict):
+                    recursive_update(target[key], value)
+                else:
+                    target[key] = value
+        
+        # Kopie der aktuellen Konfiguration erstellen
+        merged_config = config_manager.config.copy()
+        
+        # Neue Konfiguration rekursiv zusammenführen
+        recursive_update(merged_config, new_config)
+        
         # Versuchen, die Konfiguration zu speichern
-        if config_manager.save_config(new_config):
-            logger.info(f"Konfiguration gespeichert: {config_manager.config_path}")
-            return jsonify({"status": "success"})
+        config_save_success = config_manager.save_config(merged_config)
+        
+        if config_save_success:
+            logger.info(f"Konfiguration erfolgreich gespeichert: {config_manager.config_path}")
+            return jsonify({
+                "status": "success", 
+                "message": "Konfiguration erfolgreich gespeichert",
+                "config": merged_config
+            })
         else:
             return jsonify({
                 "status": "error", 
@@ -8481,48 +11119,168 @@ def save_config():
             "message": f"Allgemeiner Fehler: {str(e)}"
         }), 500
 
-@settings_bp.route('/generate_sample_images', methods=['POST'])
-def generate_sample_images():
-    """Generiert Beispielbilder für den Simulator"""
+
+--- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/app/blueprints/settings/routes.py-original-11-03-2025_21-44 ---
+# app/blueprints/settings/routes.py
+import json
+import logging
+from flask import render_template, request, jsonify, redirect, url_for
+from app.blueprints.settings import settings_bp
+from app.utils.config_manager import config_manager
+
+# Logger einrichten
+logger = logging.getLogger(__name__)
+
+@settings_bp.route('/')
+def settings():
+    """Zeigt die Einstellungsseite an"""
+    return render_template('settings.html')
+
+@settings_bp.route('/get_config')
+def get_config():
+    """Gibt die aktuelle Konfiguration zurück"""
+    return jsonify(config_manager.config)
+
+@settings_bp.route('/save_config', methods=['POST'])
+def save_config():
+    """Speichert die Konfiguration"""
     try:
-        # Beispielbilder-Generator erstellen
-        image_generator = SampleImagesGenerator()
+        # Prüfen, ob JSON-Daten empfangen wurden
+        if not request.is_json:
+            return jsonify({
+                "status": "error", 
+                "message": "Keine JSON-Daten empfangen. Content-Type muss application/json sein."
+            }), 400
         
-        # Anzahl der zu generierenden Bilder aus der Anfrage holen (Standardwert: 10)
-        count = int(request.form.get('count', 10))
+        # JSON-Daten abrufen
+        new_config = request.json
         
-        # Beispielbilder generieren
-        generated_images = image_generator.generate_sample_images(count)
+        if not new_config:
+            return jsonify({
+                "status": "error", 
+                "message": "Leere Konfigurationsdaten empfangen"
+            }), 400
         
-        return jsonify({
-            "status": "success", 
-            "message": f"{len(generated_images)} Beispielbilder generiert",
-            "images": generated_images
-        })
+        # Konfigurationsdaten ausgeben für Debugging
+        logger.debug(f"Empfangene Konfiguration: {json.dumps(new_config, indent=2)}")
+        
+        # Rekursive Aktualisierung der Konfiguration
+        def recursive_update(target, source):
+            for key, value in source.items():
+                if isinstance(value, dict) and key in target and isinstance(target[key], dict):
+                    recursive_update(target[key], value)
+                else:
+                    target[key] = value
+        
+        # Kopie der aktuellen Konfiguration erstellen
+        merged_config = config_manager.config.copy()
+        
+        # Neue Konfiguration rekursiv zusammenführen
+        recursive_update(merged_config, new_config)
+        
+        # Versuchen, die Konfiguration zu speichern
+        config_save_success = config_manager.save_config(merged_config)
+        
+        if config_save_success:
+            logger.info(f"Konfiguration erfolgreich gespeichert: {config_manager.config_path}")
+            return jsonify({
+                "status": "success", 
+                "message": "Konfiguration erfolgreich gespeichert",
+                "config": merged_config
+            })
+        else:
+            return jsonify({
+                "status": "error", 
+                "message": "Fehler beim Speichern der Konfiguration"
+            }), 500
+            
     except Exception as e:
-        logger.error(f"Fehler beim Generieren von Beispielbildern: {e}")
+        logger.error(f"Allgemeiner Fehler beim Speichern der Konfiguration: {e}")
         return jsonify({
             "status": "error", 
-            "message": str(e)
+            "message": f"Allgemeiner Fehler: {str(e)}"
         }), 500
 
-@settings_bp.route('/test_webcam_simulator', methods=['POST'])
-def test_webcam_simulator():
-    """Testet den Webcam-Simulator durch Aufnahme eines Beispielbilds"""
+
+--- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/app/blueprints/settings/routes.py ---
+# app/blueprints/settings/routes.py
+import json
+import logging
+from flask import render_template, request, jsonify, redirect, url_for
+from app.blueprints.settings import settings_bp
+from app.utils.config_manager import config_manager
+
+# Logger einrichten
+logger = logging.getLogger(__name__)
+
+@settings_bp.route('/')
+def settings():
+    """Zeigt die Einstellungsseite an"""
+    return render_template('settings.html')
+
+@settings_bp.route('/get_config')
+def get_config():
+    """Gibt die aktuelle Konfiguration zurück"""
+    return jsonify(config_manager.config)
+
+@settings_bp.route('/save_config', methods=['POST'])
+def save_config():
+    """Speichert die Konfiguration"""
     try:
-        # Webcam-Simulator erstellen
-        webcam_simulator = WebcamCaptureSimulator()
+        # Prüfen, ob JSON-Daten empfangen wurden
+        if not request.is_json:
+            return jsonify({
+                "status": "error", 
+                "message": "Keine JSON-Daten empfangen. Content-Type muss application/json sein."
+            }), 400
         
-        # Testbild aufnehmen
-        photo_path = webcam_simulator.capture_photo('test_simulator.jpg')
+        # JSON-Daten abrufen
+        new_config = request.json
         
-        # Bildpfad relativ zu /static zurückgeben
-        return photo_path.replace('static/', '/static/')
+        if not new_config:
+            return jsonify({
+                "status": "error", 
+                "message": "Leere Konfigurationsdaten empfangen"
+            }), 400
+        
+        # Konfigurationsdaten ausgeben für Debugging
+        logger.debug(f"Empfangene Konfiguration: {json.dumps(new_config, indent=2)}")
+        
+        # Rekursive Aktualisierung der Konfiguration
+        def recursive_update(target, source):
+            for key, value in source.items():
+                if isinstance(value, dict) and key in target and isinstance(target[key], dict):
+                    recursive_update(target[key], value)
+                else:
+                    target[key] = value
+        
+        # Kopie der aktuellen Konfiguration erstellen
+        merged_config = config_manager.config.copy()
+        
+        # Neue Konfiguration rekursiv zusammenführen
+        recursive_update(merged_config, new_config)
+        
+        # Versuchen, die Konfiguration zu speichern
+        config_save_success = config_manager.save_config(merged_config)
+        
+        if config_save_success:
+            logger.info(f"Konfiguration erfolgreich gespeichert: {config_manager.config_path}")
+            return jsonify({
+                "status": "success", 
+                "message": "Konfiguration erfolgreich gespeichert",
+                "config": merged_config
+            })
+        else:
+            return jsonify({
+                "status": "error", 
+                "message": "Fehler beim Speichern der Konfiguration"
+            }), 500
+            
     except Exception as e:
-        logger.error(f"Fehler beim Testen des Webcam-Simulators: {e}")
+        logger.error(f"Allgemeiner Fehler beim Speichern der Konfiguration: {e}")
         return jsonify({
             "status": "error", 
-            "message": str(e)
+            "message": f"Allgemeiner Fehler: {str(e)}"
         }), 500
 
 
@@ -12113,7 +14871,7 @@ window.addEventListener('error', (event) => {
 });
 
 
---- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/static/js/settings.js ---
+--- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/static/js/settings.js-original ---
 // Camera Resolution Preset Handling
 const cameraWidthInput = document.getElementById('camera-width');
 const cameraHeightInput = document.getElementById('camera-height');
@@ -12452,6 +15210,355 @@ document.getElementById('settings-form').addEventListener('submit', async (e) =>
         if (!document.querySelector('.save-status-msg')) {
             document.getElementById('settings-form').appendChild(statusMsg);
         }
+    }
+});
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/static/js/settings.js ---
+// Camera Resolution Preset Handling
+const cameraWidthInput = document.getElementById('camera-width');
+const cameraHeightInput = document.getElementById('camera-height');
+const cameraResolutionPreset = document.getElementById('camera-resolution-preset');
+const simulatorOnBtn = document.getElementById('simulator-on');
+const simulatorOffBtn = document.getElementById('simulator-off');
+
+// Resolution preset change handler
+cameraResolutionPreset.addEventListener('change', (e) => {
+    const preset = e.target.value;
+    
+    switch(preset) {
+        case '640x480':
+            cameraWidthInput.value = 640;
+            cameraHeightInput.value = 480;
+            break;
+        case '1280x720':
+            cameraWidthInput.value = 1280;
+            cameraHeightInput.value = 720;
+            break;
+        case '1920x1080':
+            cameraWidthInput.value = 1920;
+            cameraHeightInput.value = 1080;
+            break;
+        case '2560x1440':
+            cameraWidthInput.value = 2560;
+            cameraHeightInput.value = 1440;
+            break;
+        case '3840x2160':
+            cameraWidthInput.value = 3840;
+            cameraHeightInput.value = 2160;
+            break;
+        case 'custom':
+            // Clear inputs or keep current values
+            break;
+    }
+});
+
+// Geräteliste laden
+async function loadDevices() {
+    try {
+        const response = await fetch('/api/devices');
+        const devices = await response.json();
+        
+        updateDeviceUI(devices);
+    } catch (error) {
+        console.error('Fehler beim Laden der Geräte:', error);
+    }
+}
+
+
+async function loadConfig() {
+    try {
+        // Ändern Sie die URL von '/get_config' zu '/settings/get_config'
+        const response = await fetch('/settings/get_config');
+        const config = await response.json();
+        console.log('Geladene Konfiguration:', config);
+        
+        // Konfiguration ausfüllen
+        document.getElementById('camera-device-path').value = config.camera.device_path;
+        document.getElementById('camera-type').value = config.camera.type;
+        document.getElementById('camera-width').value = config.camera.resolution.width;
+        document.getElementById('camera-height').value = config.camera.resolution.height;
+        
+        document.getElementById('arduino-port').value = config.arduino.port;
+        document.getElementById('arduino-baudrate').value = config.arduino.baudrate;
+        
+        document.getElementById('rotation-degrees').value = config.rotation.default_degrees;
+        document.getElementById('rotation-interval').value = config.rotation.default_interval;
+        
+        if (config.simulator.enabled) {
+            document.getElementById('simulator-on').checked = true;
+        } else {
+            document.getElementById('simulator-off').checked = true;
+        }
+    } catch (error) {
+        console.error('Fehler beim Laden der Konfiguration:', error);
+    }
+}
+
+// Laden Sie die Konfiguration, wenn die Seite geladen wird
+document.addEventListener('DOMContentLoaded', loadConfig);
+
+
+
+
+
+
+// Geräte-UI aktualisieren
+function updateDeviceUI(devices) {
+    // Bestehende Listen entfernen (um Duplikate zu vermeiden)
+    document.querySelectorAll('.device-list').forEach(el => el.remove());
+    
+    // Webcams anzeigen
+    const webcamList = document.createElement('div');
+    webcamList.className = 'mt-2 small device-list';
+    
+    if (devices.cameras.webcams.length > 0) {
+        devices.cameras.webcams.forEach(webcam => {
+            const option = document.createElement('div');
+            option.className = 'form-text text-primary clickable-device';
+            option.innerHTML = `<i class="bi bi-camera-video"></i> ${webcam}`;
+            option.addEventListener('click', () => {
+                document.getElementById('camera-device-path').value = webcam;
+            });
+            webcamList.appendChild(option);
+        });
+    } else {
+        webcamList.innerHTML = '<div class="form-text text-muted">Keine Webcams gefunden</div>';
+    }
+    
+    // Nach dem Kamera-Device-Pfad einfügen
+    const cameraInput = document.getElementById('camera-device-path');
+    cameraInput.parentNode.appendChild(webcamList);
+    
+    // gPhoto2-Kameras anzeigen
+    const gphotoList = document.createElement('div');
+    gphotoList.className = 'mt-2 small device-list';
+    
+    if (devices.cameras.gphoto2.length > 0) {
+        devices.cameras.gphoto2.forEach(camera => {
+            const option = document.createElement('div');
+            option.className = 'form-text text-primary';
+            option.innerHTML = `<i class="bi bi-camera"></i> ${camera}`;
+            gphotoList.appendChild(option);
+        });
+    } else {
+        gphotoList.innerHTML = '<div class="form-text text-muted">Keine gphoto2-Kameras gefunden</div>';
+    }
+    
+    // Nach dem Kameratyp einfügen
+    const cameraType = document.getElementById('camera-type');
+    cameraType.parentNode.appendChild(gphotoList);
+    
+    // Arduino-Geräte anzeigen
+    const arduinoList = document.createElement('div');
+    arduinoList.className = 'mt-2 small device-list';
+    
+    if (devices.arduinos.length > 0) {
+        devices.arduinos.forEach(arduino => {
+            const option = document.createElement('div');
+            option.className = 'form-text text-primary clickable-device';
+            option.innerHTML = `<i class="bi bi-cpu"></i> ${arduino.port} - ${arduino.description}`;
+            option.addEventListener('click', () => {
+                document.getElementById('arduino-port').value = arduino.port;
+            });
+            arduinoList.appendChild(option);
+        });
+    } else {
+        arduinoList.innerHTML = '<div class="form-text text-muted">Keine Arduino-Geräte gefunden</div>';
+    }
+    
+    // Nach dem Arduino-Port einfügen
+    const arduinoInput = document.getElementById('arduino-port');
+    arduinoInput.parentNode.appendChild(arduinoList);
+}
+
+// Add existing code from previous settings.js here...
+document.addEventListener('DOMContentLoaded', () => {
+    // Geräteliste laden
+    loadDevices();
+    
+    // Konfiguration vom Server laden
+    fetch('/get_config')
+        .then(response => response.json())
+        .then(config => {
+            console.log('Geladene Konfiguration:', config);
+            
+            // Kamera-Einstellungen
+            if (config.camera) {
+                document.getElementById('camera-device-path').value = config.camera.device_path || '';
+                document.getElementById('camera-type').value = config.camera.type || 'webcam';
+                
+                // Kamera-Auflösung setzen
+                const cameraWidth = config.camera.resolution?.width;
+                const cameraHeight = config.camera.resolution?.height;
+                
+                if (cameraWidth && cameraHeight) {
+                    cameraWidthInput.value = cameraWidth;
+                    cameraHeightInput.value = cameraHeight;
+                    
+                    // Set preset dropdown
+                    const presetValue = `${cameraWidth}x${cameraHeight}`;
+                    const presetOption = Array.from(cameraResolutionPreset.options)
+                        .find(option => option.value === presetValue);
+                    
+                    if (presetOption) {
+                        cameraResolutionPreset.value = presetValue;
+                    } else {
+                        cameraResolutionPreset.value = 'custom';
+                    }
+                }
+            }
+            
+            // Arduino-Einstellungen
+            if (config.arduino) {
+                document.getElementById('arduino-port').value = config.arduino.port || '';
+                document.getElementById('arduino-baudrate').value = config.arduino.baudrate || 9600;
+            }
+            
+            // Rotations-Einstellungen
+            if (config.rotation) {
+                document.getElementById('rotation-degrees').value = config.rotation.default_degrees || 15;
+                document.getElementById('rotation-interval').value = config.rotation.default_interval || 5;
+            }
+            
+            // Simulator-Einstellungen
+            if (config.simulator !== undefined) {
+                // Hier ist der Fehler - wir müssen den richtigen Radio-Button auswählen
+                if (config.simulator.enabled) {
+                    simulatorOnBtn.checked = true;
+                } else {
+                    simulatorOffBtn.checked = true;
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Fehler beim Laden der Konfiguration:', error);
+        });
+});
+
+// Aktualisierungsknopf für Geräteliste
+const deviceRefreshButton = document.createElement('button');
+deviceRefreshButton.type = 'button';
+deviceRefreshButton.className = 'btn btn-outline-secondary mt-3';
+deviceRefreshButton.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Geräte aktualisieren';
+deviceRefreshButton.addEventListener('click', loadDevices);
+
+// CSS für klickbare Geräte
+const style = document.createElement('style');
+style.textContent = `
+    .clickable-device {
+        cursor: pointer;
+        transition: color 0.2s;
+    }
+    .clickable-device:hover {
+        color: #0056b3 !important;
+        text-decoration: underline;
+    }
+`;
+document.head.appendChild(style);
+
+// Knopf zum Formular hinzufügen (nach dem Laden der Seite)
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('settings-form').insertBefore(
+        deviceRefreshButton,
+        document.querySelector('.d-grid.gap-2.d-md-flex')
+    );
+});
+
+// Debug-Button für Konfigurationstest hinzufügen
+const debugButton = document.createElement('button');
+debugButton.type = 'button';
+debugButton.className = 'btn btn-outline-info mt-3 ms-2';
+debugButton.innerHTML = '<i class="bi bi-bug"></i> Konfiguration testen';
+debugButton.addEventListener('click', async (e) => {
+    e.preventDefault();
+    
+    // Aktuelle Konfiguration abrufen und anzeigen
+    try {
+        const response = await fetch('/get_config');
+        const config = await response.json();
+        
+        // Config-Nachricht erstellen
+        const configMsg = document.createElement('div');
+        configMsg.className = 'alert alert-info mt-3';
+        configMsg.innerHTML = '<strong>Aktuelle Konfiguration:</strong><pre>' + 
+                             JSON.stringify(config, null, 2) + '</pre>';
+        
+        // Vorhandene Nachrichten entfernen
+        const existingMsg = document.querySelector('.debug-config-msg');
+        if (existingMsg) existingMsg.remove();
+        
+        // Nachricht zur Seite hinzufügen
+        configMsg.classList.add('debug-config-msg');
+        document.getElementById('settings-form').appendChild(configMsg);
+        
+        console.log('Aktuelle Konfiguration:', config);
+    } catch (error) {
+        console.error('Fehler beim Laden der Konfiguration:', error);
+        alert('Fehler beim Laden der Konfiguration: ' + error.message);
+    }
+});
+
+// Zum Formular hinzufügen, direkt nach dem Geräte-Aktualisierungsbutton
+document.addEventListener('DOMContentLoaded', () => {
+    const refreshButton = document.querySelector('[id="settings-form"] button[type="button"]');
+    if (refreshButton) {
+        refreshButton.parentNode.insertBefore(debugButton, refreshButton.nextSibling);
+    } else {
+        const formActions = document.querySelector('.d-grid.gap-2.d-md-flex');
+        formActions.parentNode.insertBefore(debugButton, formActions);
+    }
+});
+
+
+
+document.getElementById('settings-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    // Prepare configuration object
+    const config = {
+        camera: {
+            device_path: document.getElementById('camera-device-path').value,
+            type: document.getElementById('camera-type').value,
+            resolution: {
+                width: parseInt(document.getElementById('camera-width').value || 0),
+                height: parseInt(document.getElementById('camera-height').value || 0)
+            }
+        },
+        arduino: {
+            port: document.getElementById('arduino-port').value,
+            baudrate: parseInt(document.getElementById('arduino-baudrate').value)
+        },
+        rotation: {
+            default_degrees: parseInt(document.getElementById('rotation-degrees').value),
+            default_interval: parseInt(document.getElementById('rotation-interval').value)
+        },
+        simulator: {
+            enabled: document.getElementById('simulator-on').checked
+        }
+    };
+
+    try {
+        const response = await fetch('/settings/save_config', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(config)
+        });
+
+        const result = await response.json();
+
+        if (result.status === 'success') {
+            alert('Einstellungen erfolgreich gespeichert!');
+            // Optional: Weiterleitung zur Startseite
+            window.location.href = '/';
+        } else {
+            alert(`Fehler: ${result.message}`);
+        }
+    } catch (error) {
+        console.error('Fehler:', error);
+        alert('Fehler beim Speichern der Einstellungen');
     }
 });
 
@@ -13750,38 +16857,8 @@ const api = {
 export default api;
 
 
---- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/static/sample_images/sample_image_8.jpg ---
-Fehler beim Lesen der Datei: 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte
-
---- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/static/sample_images/sample_image_1.jpg ---
-Fehler beim Lesen der Datei: 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte
-
 --- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/static/sample_images/.gitkeep ---
 
-
---- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/static/sample_images/sample_image_7.jpg ---
-Fehler beim Lesen der Datei: 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte
-
---- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/static/sample_images/sample_image_9.jpg ---
-Fehler beim Lesen der Datei: 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte
-
---- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/static/sample_images/sample_image_6.jpg ---
-Fehler beim Lesen der Datei: 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte
-
---- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/static/sample_images/sample_image_3.jpg ---
-Fehler beim Lesen der Datei: 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte
-
---- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/static/sample_images/sample_image_0.jpg ---
-Fehler beim Lesen der Datei: 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte
-
---- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/static/sample_images/sample_image_4.jpg ---
-Fehler beim Lesen der Datei: 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte
-
---- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/static/sample_images/sample_image_5.jpg ---
-Fehler beim Lesen der Datei: 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte
-
---- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/static/sample_images/sample_image_2.jpg ---
-Fehler beim Lesen der Datei: 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte
 
 --- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/static/css/index.css ---
 /* static/css/index.css */

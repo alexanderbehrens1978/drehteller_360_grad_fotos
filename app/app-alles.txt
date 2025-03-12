@@ -36,6 +36,7 @@ def create_app(config_name=None):
     """
     app = Flask(__name__, 
                 static_folder="../static",
+                static_url_path='/static',
                 template_folder="../templates")
     
     # Konfiguration laden
@@ -63,6 +64,10 @@ def create_directories():
     """Stellt sicher, dass alle erforderlichen Verzeichnisse existieren"""
     path_manager.ensure_directories()
 
+
+
+
+
 def initialize_controllers():
     """Initialisiert die gemeinsam genutzten Controller"""
     global arduino_controller, camera_controller, turntable_controller
@@ -77,13 +82,19 @@ def initialize_controllers():
         # Kamera Controller
         camera_type = config_manager.get('camera.type', 'webcam')
         camera_device = config_manager.get('camera.device_path', '/dev/video0')
-        camera_controller = CameraController(camera_type, camera_device)
+        resolution = config_manager.get('camera.resolution')
+        camera_controller = CameraController(camera_type, camera_device, resolution)
         
         # Drehteller Controller (nutzt den Arduino Controller)
         turntable_controller = TurntableController(arduino_controller, 
                                                  config_manager.get('rotation.default_degrees', 15))
     except Exception as e:
         logging.error(f"Fehler bei der Controller-Initialisierung: {str(e)}")
+
+
+
+
+
 
 def configure_logging(app):
     """Konfiguriert das Logging für die App"""
@@ -128,7 +139,7 @@ def register_blueprints(app):
     app.register_blueprint(projects_bp, url_prefix='/projects')
 
 
---- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/app/alles.txt ---
+--- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/app/app-alles.txt ---
 
 
 --- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/app/config.py ---
@@ -235,6 +246,357 @@ verzeichnis_pfad = "/home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehtell
 #verzeichnis_pfad = "/home/alex/Dokumente/drehteller_360_grad_fotos"  # Hier den gewünschten Pfad angeben
 zeige_dateien_und_inhalt(verzeichnis_pfad)
 
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/app/init.py-original ---
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+app/__init__.py
+Initialisiert die Flask-Anwendung und registriert alle Blueprints.
+"""
+
+import os
+import logging
+from flask import Flask
+from app.utils.config_manager import config_manager
+from app.controllers.arduino_controller import ArduinoController
+from app.controllers.camera_controller import CameraController
+from app.controllers.turntable_controller import TurntableController
+from app.utils.path_manager import PathManager
+
+# Gemeinsam genutzte Controller-Instanzen
+arduino_controller = None
+camera_controller = None
+turntable_controller = None
+
+# Gemeinsam genutzte Hilfsprogramme
+path_manager = PathManager()
+
+def create_app(config_name=None):
+    """
+    Erstellt und konfiguriert die Flask-Anwendung
+    
+    Args:
+        config_name: Name der Konfiguration ('development', 'production', 'testing')
+    
+    Returns:
+        Flask-App-Instanz
+    """
+    app = Flask(__name__, 
+                static_folder="../static",
+                template_folder="../templates")
+    
+    # Konfiguration laden
+    app.config.from_object('app.config.DevelopmentConfig')
+    if config_name == 'production':
+        app.config.from_object('app.config.ProductionConfig')
+    elif config_name == 'testing':
+        app.config.from_object('app.config.TestingConfig')
+    
+    # Stelle sicher, dass Verzeichnisse existieren
+    create_directories()
+    
+    # Controller initialisieren
+    initialize_controllers()
+    
+    # Logging konfigurieren
+    configure_logging(app)
+    
+    # Blueprints registrieren
+    register_blueprints(app)
+    
+    return app
+
+def create_directories():
+    """Stellt sicher, dass alle erforderlichen Verzeichnisse existieren"""
+    path_manager.ensure_directories()
+
+
+
+
+
+def initialize_controllers():
+    """Initialisiert die gemeinsam genutzten Controller"""
+    global arduino_controller, camera_controller, turntable_controller
+    
+    try:
+        # Arduino Controller
+        port = config_manager.get('arduino.port')
+        baudrate = config_manager.get('arduino.baudrate', 9600)
+        if port:
+            arduino_controller = ArduinoController(port, baudrate)
+        
+        # Kamera Controller
+        camera_type = config_manager.get('camera.type', 'webcam')
+        camera_device = config_manager.get('camera.device_path', '/dev/video0')
+        resolution = config_manager.get('camera.resolution')
+        camera_controller = CameraController(camera_type, camera_device, resolution)
+        
+        # Drehteller Controller (nutzt den Arduino Controller)
+        turntable_controller = TurntableController(arduino_controller, 
+                                                 config_manager.get('rotation.default_degrees', 15))
+    except Exception as e:
+        logging.error(f"Fehler bei der Controller-Initialisierung: {str(e)}")
+
+
+
+
+
+
+def configure_logging(app):
+    """Konfiguriert das Logging für die App"""
+    log_level = logging.DEBUG if app.config['DEBUG'] else logging.INFO
+    log_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    
+    # File Handler
+    file_handler = logging.FileHandler('drehteller360.log')
+    file_handler.setLevel(log_level)
+    file_handler.setFormatter(log_formatter)
+    
+    # Console Handler
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(log_level)
+    console_handler.setFormatter(log_formatter)
+    
+    # Root Logger konfigurieren
+    root_logger = logging.getLogger()
+    root_logger.setLevel(log_level)
+    root_logger.addHandler(file_handler)
+    root_logger.addHandler(console_handler)
+    
+    # App Logger konfigurieren
+    app.logger.setLevel(log_level)
+
+def register_blueprints(app):
+    """Registriert alle Blueprints bei der App"""
+    # Blueprint für Hauptseiten
+    from app.blueprints.main import main_bp
+    app.register_blueprint(main_bp)
+    
+    # Blueprint für API-Endpunkte
+    from app.blueprints.api import api_bp
+    app.register_blueprint(api_bp, url_prefix='/api')
+    
+    # Blueprint für Einstellungen
+    from app.blueprints.settings import settings_bp
+    app.register_blueprint(settings_bp, url_prefix='/settings')
+    
+    # Blueprint für Projektverwaltung
+    from app.blueprints.projects import projects_bp
+    app.register_blueprint(projects_bp, url_prefix='/projects')
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/app/utils/config_manager.py-original ---
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+app/utils/config_manager.py
+Verwaltet die Benutzerkonfiguration
+"""
+
+import os
+import json
+import logging
+
+class ConfigManager:
+    """Klasse zur Verwaltung der Benutzerkonfiguration"""
+    
+    DEFAULT_CONFIG = {
+        'camera': {
+            'device_path': '/dev/video0',
+            'type': 'webcam',
+            'resolution': {
+                'width': 1280,
+                'height': 720
+            }
+        },
+        'arduino': {
+            'port': '/dev/ttyACM0',
+            'baudrate': 9600
+        },
+        'rotation': {
+            'default_degrees': 15,
+            'default_interval': 5
+        },
+        'simulator': {
+            'enabled': True
+        }
+    }
+
+    def __init__(self, config_path=None):
+        """
+        Initialisiert die Konfigurationsverwaltung
+        
+        Args:
+            config_path: Pfad zur Konfigurationsdatei (optional)
+        """
+        # Logger einrichten
+        self.logger = logging.getLogger(__name__)
+        
+        # Projektverzeichnis bestimmen
+        self.project_dir = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
+        # Konfigurationspfad festlegen
+        if config_path is None:
+            config_path = os.path.join(self.project_dir, 'config.json')
+        self.config_path = config_path
+        
+        # Konfiguration laden
+        self.config = self.load_config()
+        self.logger.debug(f"ConfigManager initialisiert mit Konfigurationspfad: {self.config_path}")
+
+    def load_config(self):
+        """
+        Lädt die Konfiguration aus der Datei oder erstellt die Standardkonfiguration
+        
+        Returns:
+            Konfiguration als Dictionary
+        """
+        try:
+            # Stelle sicher, dass das Verzeichnis existiert
+            os.makedirs(os.path.dirname(self.config_path), exist_ok=True)
+
+            # Versuche, bestehende Konfiguration zu laden
+            if os.path.exists(self.config_path):
+                with open(self.config_path, 'r') as f:
+                    config = json.load(f)
+                    # Mit Standardkonfiguration zusammenführen, um sicherzustellen,
+                    # dass alle Schlüssel existieren
+                    merged_config = self._merge_configs(self.DEFAULT_CONFIG, config)
+                    self.logger.debug("Konfiguration aus Datei geladen und zusammengeführt")
+                    return merged_config
+            else:
+                # Standardkonfiguration erstellen
+                config = self.DEFAULT_CONFIG.copy()
+                self.save_config(config)
+                self.logger.info("Standardkonfiguration erstellt und gespeichert")
+                return config
+        except Exception as e:
+            self.logger.error(f"Fehler beim Laden der Konfiguration: {str(e)}")
+            # Bei Fehlern Standardkonfiguration verwenden
+            try:
+                self.save_config(self.DEFAULT_CONFIG)
+            except Exception as save_error:
+                self.logger.error(f"Fehler beim Speichern der Standardkonfiguration: {str(save_error)}")
+            return self.DEFAULT_CONFIG.copy()
+
+    def save_config(self, new_config=None):
+        """
+        Speichert die Konfiguration in der Datei
+        
+        Args:
+            new_config: Neue Konfiguration (optional)
+            
+        Returns:
+            True bei Erfolg, False bei Fehler
+        """
+        try:
+            # Verwende die angegebene Konfiguration oder die aktuelle
+            config_to_save = new_config if new_config is not None else self.config
+
+            # Stelle sicher, dass das Verzeichnis existiert
+            os.makedirs(os.path.dirname(self.config_path), exist_ok=True)
+
+            # Konfiguration speichern
+            with open(self.config_path, 'w') as f:
+                json.dump(config_to_save, f, indent=4)
+
+            # Aktuelle Konfiguration aktualisieren
+            if new_config is not None:
+                self.config = new_config.copy()
+                
+            self.logger.debug("Konfiguration erfolgreich gespeichert")
+            return True
+        except Exception as e:
+            self.logger.error(f"Fehler beim Speichern der Konfiguration: {str(e)}")
+            return False
+
+    def get(self, key, default=None):
+        """
+        Gibt einen Konfigurationswert zurück
+        
+        Args:
+            key: Durch Punkte getrennter Schlüssel (z.B. 'camera.device_path')
+            default: Standardwert, falls Schlüssel nicht gefunden (optional)
+            
+        Returns:
+            Konfigurationswert oder Standardwert
+        """
+        try:
+            # Schlüssel in Teile aufteilen
+            parts = key.split('.')
+
+            # Durch verschachteltes Dictionary navigieren
+            value = self.config
+            for part in parts:
+                if part in value:
+                    value = value[part]
+                else:
+                    return default
+
+            return value
+        except Exception as e:
+            self.logger.error(f"Fehler beim Abrufen des Konfigurationswerts: {str(e)}")
+            return default
+
+    def set(self, key, value):
+        """
+        Setzt einen Konfigurationswert
+        
+        Args:
+            key: Durch Punkte getrennter Schlüssel (z.B. 'camera.device_path')
+            value: Zu setzender Wert
+            
+        Returns:
+            True bei Erfolg, False bei Fehler
+        """
+        try:
+            # Schlüssel in Teile aufteilen
+            parts = key.split('.')
+
+            # In der aktuellen Konfiguration navigieren
+            config = self.config
+            for i, part in enumerate(parts[:-1]):
+                if part not in config:
+                    config[part] = {}
+                config = config[part]
+
+            # Wert setzen
+            config[parts[-1]] = value
+
+            # Konfiguration speichern
+            return self.save_config()
+        except Exception as e:
+            self.logger.error(f"Fehler beim Setzen des Konfigurationswerts: {str(e)}")
+            return False
+
+    def _merge_configs(self, default_config, user_config):
+        """
+        Führt zwei Konfigurationen zusammen
+        
+        Args:
+            default_config: Standardkonfiguration
+            user_config: Benutzerkonfiguration
+            
+        Returns:
+            Zusammengeführte Konfiguration
+        """
+        result = default_config.copy()
+        
+        for key, value in user_config.items():
+            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+                # Rekursiv zusammenführen, wenn beide Werte Dictionaries sind
+                result[key] = self._merge_configs(result[key], value)
+            else:
+                # Sonst den Wert aus der Benutzerkonfiguration übernehmen
+                result[key] = value
+                
+        return result
+
+
+# Globale Instanz des ConfigManager erstellen
+config_manager = ConfigManager()
 
 
 --- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/app/utils/__init__.py ---
@@ -1065,6 +1427,29 @@ class ConfigManager:
         self.config = self.load_config()
         self.logger.debug(f"ConfigManager initialisiert mit Konfigurationspfad: {self.config_path}")
 
+    def _merge_configs(self, default_config, user_config):
+        """
+        Führt zwei Konfigurationen zusammen
+        
+        Args:
+            default_config: Standardkonfiguration
+            user_config: Benutzerkonfiguration
+            
+        Returns:
+            Zusammengeführte Konfiguration
+        """
+        result = default_config.copy()
+        
+        for key, value in user_config.items():
+            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+                # Rekursiv zusammenführen, wenn beide Werte Dictionaries sind
+                result[key] = self._merge_configs(result[key], value)
+            else:
+                # Sonst den Wert aus der Benutzerkonfiguration übernehmen
+                result[key] = value
+                
+        return result
+
     def load_config(self):
         """
         Lädt die Konfiguration aus der Datei oder erstellt die Standardkonfiguration
@@ -1158,60 +1543,6 @@ class ConfigManager:
         except Exception as e:
             self.logger.error(f"Fehler beim Abrufen des Konfigurationswerts: {str(e)}")
             return default
-
-    def set(self, key, value):
-        """
-        Setzt einen Konfigurationswert
-        
-        Args:
-            key: Durch Punkte getrennter Schlüssel (z.B. 'camera.device_path')
-            value: Zu setzender Wert
-            
-        Returns:
-            True bei Erfolg, False bei Fehler
-        """
-        try:
-            # Schlüssel in Teile aufteilen
-            parts = key.split('.')
-
-            # In der aktuellen Konfiguration navigieren
-            config = self.config
-            for i, part in enumerate(parts[:-1]):
-                if part not in config:
-                    config[part] = {}
-                config = config[part]
-
-            # Wert setzen
-            config[parts[-1]] = value
-
-            # Konfiguration speichern
-            return self.save_config()
-        except Exception as e:
-            self.logger.error(f"Fehler beim Setzen des Konfigurationswerts: {str(e)}")
-            return False
-
-    def _merge_configs(self, default_config, user_config):
-        """
-        Führt zwei Konfigurationen zusammen
-        
-        Args:
-            default_config: Standardkonfiguration
-            user_config: Benutzerkonfiguration
-            
-        Returns:
-            Zusammengeführte Konfiguration
-        """
-        result = default_config.copy()
-        
-        for key, value in user_config.items():
-            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
-                # Rekursiv zusammenführen, wenn beide Werte Dictionaries sind
-                result[key] = self._merge_configs(result[key], value)
-            else:
-                # Sonst den Wert aus der Benutzerkonfiguration übernehmen
-                result[key] = value
-                
-        return result
 
 
 # Globale Instanz des ConfigManager erstellen
@@ -3023,6 +3354,12 @@ def serve_photo(filename):
     """Liefert ein aufgenommenes Foto aus"""
     return send_from_directory('static/photos', filename)
 
+@main_bp.route('/get_config')
+def get_config():
+    """Gibt die aktuelle Konfiguration zurück"""
+    from app.utils.config_manager import config_manager
+    return jsonify(config_manager.config)
+
 
 --- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/app/blueprints/projects/__init__.py ---
 #!/usr/bin/env python3
@@ -3326,21 +3663,13 @@ settings_bp = Blueprint('settings', __name__)
 from app.blueprints.settings import routes
 
 
---- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/app/blueprints/settings/routes.py ---
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-app/blueprints/settings/routes.py
-Enthält die Routen für die Einstellungsseite
-"""
-
+--- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/app/blueprints/settings/routes.py-original ---
+# app/blueprints/settings/routes.py
 import json
 import logging
 from flask import render_template, request, jsonify, redirect, url_for
 from app.blueprints.settings import settings_bp
 from app.utils.config_manager import config_manager
-from app.utils.webcam_simulator import WebcamCaptureSimulator
-from app.utils.sample_images_generator import SampleImagesGenerator
 
 # Logger einrichten
 logger = logging.getLogger(__name__)
@@ -3378,10 +3707,30 @@ def save_config():
         # Konfigurationsdaten ausgeben für Debugging
         logger.debug(f"Empfangene Konfiguration: {json.dumps(new_config, indent=2)}")
         
+        # Rekursive Aktualisierung der Konfiguration
+        def recursive_update(target, source):
+            for key, value in source.items():
+                if isinstance(value, dict) and key in target and isinstance(target[key], dict):
+                    recursive_update(target[key], value)
+                else:
+                    target[key] = value
+        
+        # Kopie der aktuellen Konfiguration erstellen
+        merged_config = config_manager.config.copy()
+        
+        # Neue Konfiguration rekursiv zusammenführen
+        recursive_update(merged_config, new_config)
+        
         # Versuchen, die Konfiguration zu speichern
-        if config_manager.save_config(new_config):
-            logger.info(f"Konfiguration gespeichert: {config_manager.config_path}")
-            return jsonify({"status": "success"})
+        config_save_success = config_manager.save_config(merged_config)
+        
+        if config_save_success:
+            logger.info(f"Konfiguration erfolgreich gespeichert: {config_manager.config_path}")
+            return jsonify({
+                "status": "success", 
+                "message": "Konfiguration erfolgreich gespeichert",
+                "config": merged_config
+            })
         else:
             return jsonify({
                 "status": "error", 
@@ -3395,47 +3744,167 @@ def save_config():
             "message": f"Allgemeiner Fehler: {str(e)}"
         }), 500
 
-@settings_bp.route('/generate_sample_images', methods=['POST'])
-def generate_sample_images():
-    """Generiert Beispielbilder für den Simulator"""
+
+--- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/app/blueprints/settings/routes.py-original-11-03-2025_21-44 ---
+# app/blueprints/settings/routes.py
+import json
+import logging
+from flask import render_template, request, jsonify, redirect, url_for
+from app.blueprints.settings import settings_bp
+from app.utils.config_manager import config_manager
+
+# Logger einrichten
+logger = logging.getLogger(__name__)
+
+@settings_bp.route('/')
+def settings():
+    """Zeigt die Einstellungsseite an"""
+    return render_template('settings.html')
+
+@settings_bp.route('/get_config')
+def get_config():
+    """Gibt die aktuelle Konfiguration zurück"""
+    return jsonify(config_manager.config)
+
+@settings_bp.route('/save_config', methods=['POST'])
+def save_config():
+    """Speichert die Konfiguration"""
     try:
-        # Beispielbilder-Generator erstellen
-        image_generator = SampleImagesGenerator()
+        # Prüfen, ob JSON-Daten empfangen wurden
+        if not request.is_json:
+            return jsonify({
+                "status": "error", 
+                "message": "Keine JSON-Daten empfangen. Content-Type muss application/json sein."
+            }), 400
         
-        # Anzahl der zu generierenden Bilder aus der Anfrage holen (Standardwert: 10)
-        count = int(request.form.get('count', 10))
+        # JSON-Daten abrufen
+        new_config = request.json
         
-        # Beispielbilder generieren
-        generated_images = image_generator.generate_sample_images(count)
+        if not new_config:
+            return jsonify({
+                "status": "error", 
+                "message": "Leere Konfigurationsdaten empfangen"
+            }), 400
         
-        return jsonify({
-            "status": "success", 
-            "message": f"{len(generated_images)} Beispielbilder generiert",
-            "images": generated_images
-        })
+        # Konfigurationsdaten ausgeben für Debugging
+        logger.debug(f"Empfangene Konfiguration: {json.dumps(new_config, indent=2)}")
+        
+        # Rekursive Aktualisierung der Konfiguration
+        def recursive_update(target, source):
+            for key, value in source.items():
+                if isinstance(value, dict) and key in target and isinstance(target[key], dict):
+                    recursive_update(target[key], value)
+                else:
+                    target[key] = value
+        
+        # Kopie der aktuellen Konfiguration erstellen
+        merged_config = config_manager.config.copy()
+        
+        # Neue Konfiguration rekursiv zusammenführen
+        recursive_update(merged_config, new_config)
+        
+        # Versuchen, die Konfiguration zu speichern
+        config_save_success = config_manager.save_config(merged_config)
+        
+        if config_save_success:
+            logger.info(f"Konfiguration erfolgreich gespeichert: {config_manager.config_path}")
+            return jsonify({
+                "status": "success", 
+                "message": "Konfiguration erfolgreich gespeichert",
+                "config": merged_config
+            })
+        else:
+            return jsonify({
+                "status": "error", 
+                "message": "Fehler beim Speichern der Konfiguration"
+            }), 500
+            
     except Exception as e:
-        logger.error(f"Fehler beim Generieren von Beispielbildern: {e}")
+        logger.error(f"Allgemeiner Fehler beim Speichern der Konfiguration: {e}")
         return jsonify({
             "status": "error", 
-            "message": str(e)
+            "message": f"Allgemeiner Fehler: {str(e)}"
         }), 500
 
-@settings_bp.route('/test_webcam_simulator', methods=['POST'])
-def test_webcam_simulator():
-    """Testet den Webcam-Simulator durch Aufnahme eines Beispielbilds"""
+
+--- Datei: /home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/app/blueprints/settings/routes.py ---
+# app/blueprints/settings/routes.py
+import json
+import logging
+from flask import render_template, request, jsonify, redirect, url_for
+from app.blueprints.settings import settings_bp
+from app.utils.config_manager import config_manager
+
+# Logger einrichten
+logger = logging.getLogger(__name__)
+
+@settings_bp.route('/')
+def settings():
+    """Zeigt die Einstellungsseite an"""
+    return render_template('settings.html')
+
+@settings_bp.route('/get_config')
+def get_config():
+    """Gibt die aktuelle Konfiguration zurück"""
+    return jsonify(config_manager.config)
+
+@settings_bp.route('/save_config', methods=['POST'])
+def save_config():
+    """Speichert die Konfiguration"""
     try:
-        # Webcam-Simulator erstellen
-        webcam_simulator = WebcamCaptureSimulator()
+        # Prüfen, ob JSON-Daten empfangen wurden
+        if not request.is_json:
+            return jsonify({
+                "status": "error", 
+                "message": "Keine JSON-Daten empfangen. Content-Type muss application/json sein."
+            }), 400
         
-        # Testbild aufnehmen
-        photo_path = webcam_simulator.capture_photo('test_simulator.jpg')
+        # JSON-Daten abrufen
+        new_config = request.json
         
-        # Bildpfad relativ zu /static zurückgeben
-        return photo_path.replace('static/', '/static/')
+        if not new_config:
+            return jsonify({
+                "status": "error", 
+                "message": "Leere Konfigurationsdaten empfangen"
+            }), 400
+        
+        # Konfigurationsdaten ausgeben für Debugging
+        logger.debug(f"Empfangene Konfiguration: {json.dumps(new_config, indent=2)}")
+        
+        # Rekursive Aktualisierung der Konfiguration
+        def recursive_update(target, source):
+            for key, value in source.items():
+                if isinstance(value, dict) and key in target and isinstance(target[key], dict):
+                    recursive_update(target[key], value)
+                else:
+                    target[key] = value
+        
+        # Kopie der aktuellen Konfiguration erstellen
+        merged_config = config_manager.config.copy()
+        
+        # Neue Konfiguration rekursiv zusammenführen
+        recursive_update(merged_config, new_config)
+        
+        # Versuchen, die Konfiguration zu speichern
+        config_save_success = config_manager.save_config(merged_config)
+        
+        if config_save_success:
+            logger.info(f"Konfiguration erfolgreich gespeichert: {config_manager.config_path}")
+            return jsonify({
+                "status": "success", 
+                "message": "Konfiguration erfolgreich gespeichert",
+                "config": merged_config
+            })
+        else:
+            return jsonify({
+                "status": "error", 
+                "message": "Fehler beim Speichern der Konfiguration"
+            }), 500
+            
     except Exception as e:
-        logger.error(f"Fehler beim Testen des Webcam-Simulators: {e}")
+        logger.error(f"Allgemeiner Fehler beim Speichern der Konfiguration: {e}")
         return jsonify({
             "status": "error", 
-            "message": str(e)
+            "message": f"Allgemeiner Fehler: {str(e)}"
         }), 500
 
