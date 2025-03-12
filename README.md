@@ -2,6 +2,22 @@
 
 Diese Anwendung steuert einen Arduino-basierten Drehteller für 360°-Produktfotografie und stellt einen Webserver für die Steuerung und Anzeige der Fotos bereit.
 
+![image](https://github.com/user-attachments/assets/1002e8a1-6501-4488-9037-c9bfe3c2c7c6)
+
+![image](https://github.com/user-attachments/assets/d2a3dae9-8e4d-444b-9fe7-907211f177e2)
+
+![image](https://github.com/user-attachments/assets/fcafca37-3fb7-457c-8c0b-c64b37069317)
+
+
+![image](https://github.com/user-attachments/assets/c8f313df-cc5c-426d-af77-736d7288b2d2)
+
+
+![image](https://github.com/user-attachments/assets/7e92aaea-9f27-4d29-991c-b5b144baa529)
+
+![image](https://github.com/user-attachments/assets/65078908-9dc8-42e0-b8f6-60e6c0e90d1f)
+
+
+
 ## Neue Blueprint-Struktur
 
 Die Anwendung wurde auf eine Blueprint-basierte Struktur umgestellt, um die Wartbarkeit und Skalierbarkeit zu verbessern.
