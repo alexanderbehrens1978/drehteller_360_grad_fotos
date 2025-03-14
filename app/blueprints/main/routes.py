@@ -104,26 +104,6 @@ def rotate():
         logger.error(f"Fehler bei der Rotation/Fotoaufnahme: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 @main_bp.route('/static/photos/<filename>')
 def serve_photo(filename):
     """Liefert ein aufgenommenes Foto aus"""
