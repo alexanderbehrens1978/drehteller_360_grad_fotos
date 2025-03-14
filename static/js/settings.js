@@ -69,52 +69,65 @@ function saveConfig(event) {
     const formData = new FormData(event.target);
     const configData = {};
     
-    // FormData in verschachtelte Objekte umwandeln
-    formData.forEach((value, key) => {
-        // Checkbox-Werte in boolesche Werte umwandeln
-        if (key === 'simulator.enabled') {
-            value = document.getElementById('simulatorEnabled').checked;
-        }
-        
-        // Zahlen in numerische Werte umwandeln
-        if (key.includes('resolution') || key.includes('degrees') || key.includes('interval') || key.includes('baudrate')) {
-            value = Number(value);
-        }
-        
-        // Punkt-Notation in verschachtelte Objekte umwandeln
-        const keys = key.split('.');
-        let current = configData;
-        
-        for (let i = 0; i < keys.length - 1; i++) {
-            if (!current[keys[i]]) {
-                current[keys[i]] = {};
+    // FormData in JSON umwandeln mit besserer Fehlerbehandlung
+    try {
+        // FormData in verschachtelte Objekte umwandeln
+        formData.forEach((value, key) => {
+            // Checkbox-Werte in boolesche Werte umwandeln
+            if (key === 'simulator.enabled') {
+                value = document.getElementById('simulatorEnabled').checked;
             }
-            current = current[keys[i]];
-        }
+            
+            // Zahlen in numerische Werte umwandeln
+            if (key.includes('resolution') || key.includes('degrees') || key.includes('interval') || key.includes('baudrate')) {
+                value = Number(value);
+            }
+            
+            // Punkt-Notation in verschachtelte Objekte umwandeln
+            const keys = key.split('.');
+            let current = configData;
+            
+            for (let i = 0; i < keys.length - 1; i++) {
+                if (!current[keys[i]]) {
+                    current[keys[i]] = {};
+                }
+                current = current[keys[i]];
+            }
+            
+            current[keys[keys.length - 1]] = value;
+        });
         
-        current[keys[keys.length - 1]] = value;
-    });
-    
-    // Konfiguration speichern
-    fetch('/save_config', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(configData)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            showStatus('Einstellungen erfolgreich gespeichert!', 'success');
-        } else {
-            showStatus('Fehler beim Speichern der Einstellungen: ' + (data.message || 'Unbekannter Fehler'), 'error');
-        }
-    })
-    .catch(error => {
-        console.error('Fehler beim Speichern der Konfiguration:', error);
-        showStatus('Fehler beim Speichern der Konfiguration. Bitte versuchen Sie es später erneut.', 'error');
-    });
+        console.log('Konfiguration zum Speichern:', JSON.stringify(configData, null, 2));
+        
+        // Konfiguration speichern
+        fetch('/settings/save_config', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(configData)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.status === 'success') {
+                showStatus('Einstellungen erfolgreich gespeichert!', 'success');
+            } else {
+                showStatus('Fehler beim Speichern der Einstellungen: ' + (data.message || 'Unbekannter Fehler'), 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Fehler beim Speichern der Konfiguration:', error);
+            showStatus('Fehler beim Speichern der Konfiguration. Bitte versuchen Sie es später erneut.', 'error');
+        });
+    } catch (e) {
+        console.error('Fehler beim Erstellen der Konfigurationsdaten:', e);
+        showStatus('Fehler beim Erstellen der Konfigurationsdaten: ' + e.message, 'error');
+    }
 }
 
 // Statusmeldung anzeigen

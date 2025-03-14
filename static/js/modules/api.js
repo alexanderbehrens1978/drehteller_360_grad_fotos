@@ -78,7 +78,7 @@ const api = {
     // Konfiguration speichern
     saveConfig: async function(config) {
         try {
-            const response = await fetch('/save_config', {
+            const response = await fetch('/settings/save_config', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

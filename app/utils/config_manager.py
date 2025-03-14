@@ -1,21 +1,12 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-app/utils/config_manager.py
-Verwaltet die Benutzerkonfiguration
-"""
-
 import os
 import json
 import logging
 
 class ConfigManager:
-    """Klasse zur Verwaltung der Benutzerkonfiguration"""
-    
     DEFAULT_CONFIG = {
         'camera': {
             'device_path': '/dev/video0',
-            'type': 'webcam',
+            'type': 'webcam',  # or 'gphoto2'
             'resolution': {
                 'width': 1280,
                 'height': 720
@@ -35,30 +26,25 @@ class ConfigManager:
     }
 
     def __init__(self, config_path=None):
-        """
-        Initialisiert die Konfigurationsverwaltung
+        """Initialize configuration manager
         
-        Args:
-            config_path: Pfad zur Konfigurationsdatei (optional)
+        :param config_path: Path to the configuration file
         """
-        # Logger einrichten
         self.logger = logging.getLogger(__name__)
         
-        # Projektverzeichnis bestimmen
-        self.project_dir = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+        # Determine the project directory
+        self.project_dir = os.path.dirname(os.path.abspath(__file__))
 
-        # Konfigurationspfad festlegen
+        # If no config path provided, use a default in the project directory
         if config_path is None:
             config_path = os.path.join(self.project_dir, 'config.json')
+
         self.config_path = config_path
-        
-        # Konfiguration laden
         self.config = self.load_config()
         self.logger.debug(f"ConfigManager initialisiert mit Konfigurationspfad: {self.config_path}")
 
     def _merge_configs(self, default_config, user_config):
-        """
-        Führt zwei Konfigurationen zusammen
+        """Führt zwei Konfigurationen zusammen
         
         Args:
             default_config: Standardkonfiguration
@@ -80,8 +66,7 @@ class ConfigManager:
         return result
 
     def load_config(self):
-        """
-        Lädt die Konfiguration aus der Datei oder erstellt die Standardkonfiguration
+        """Lädt die Konfiguration aus der Datei oder erstellt die Standardkonfiguration
         
         Returns:
             Konfiguration als Dictionary
@@ -115,8 +100,7 @@ class ConfigManager:
             return self.DEFAULT_CONFIG.copy()
 
     def save_config(self, new_config=None):
-        """
-        Speichert die Konfiguration in der Datei
+        """Speichert die Konfiguration in der Datei
         
         Args:
             new_config: Neue Konfiguration (optional)
@@ -146,8 +130,7 @@ class ConfigManager:
             return False
 
     def get(self, key, default=None):
-        """
-        Gibt einen Konfigurationswert zurück
+        """Gibt einen Konfigurationswert zurück
         
         Args:
             key: Durch Punkte getrennter Schlüssel (z.B. 'camera.device_path')
