@@ -1,0 +1,17 @@
+{
+    "id": "e586d67f-5532-4a6a-9d12-e29843605e7b",
+    "name": "VSF T300",
+    "description": "",
+    "angle_step": 15,
+    "created_at": 1741970390.380213,
+    "updated_at": 1741970421.1533303,
+    "sessions": [],
+    "path": "/home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/static/projects/e586d67f-5532-4a6a-9d12-e29843605e7b",
+    "images": [
+        {
+            "path": "images/photo_1741970411_15.jpg",
+            "timestamp": 1741970411,
+            "angle": 15
+        }
+    ]
+}
