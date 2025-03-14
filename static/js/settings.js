@@ -100,7 +100,7 @@ function saveConfig(event) {
         console.log('Konfiguration zum Speichern:', JSON.stringify(configData, null, 2));
         
         // Konfiguration speichern
-        fetch('/save_config', {
+        fetch('/settings/save_config', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
