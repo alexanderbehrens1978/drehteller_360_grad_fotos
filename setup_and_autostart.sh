@@ -227,7 +227,7 @@ After=network.target
 [Service]
 User=${REAL_USER}
 WorkingDirectory=${PROJECT_DIR}
-ExecStart=${PROJECT_DIR}/myenv/bin/python ${PROJECT_DIR}/web.py
+ExecStart=${PROJECT_DIR}/myenv/bin/python ${PROJECT_DIR}/run.py
 Restart=always
 Environment="PATH=${PROJECT_DIR}/myenv/bin:/usr/local/bin:/usr/bin:/bin"
 Environment="PYTHONPATH=${PROJECT_DIR}"
