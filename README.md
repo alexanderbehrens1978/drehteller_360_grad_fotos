@@ -160,3 +160,8 @@ Die Anwendung unterstützt:
 - Webcams über OpenCV
 - DSLR-Kameras über gphoto2
 
+### Befehle zum suchen von Strings in Dateien und Unterverzeichnissen
+
+```bash
+grep -rnw "360° Drehteller Steuerung" .
+```
