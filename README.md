@@ -48,11 +48,9 @@ Die Anwendung wurde auf eine Blueprint-basierte Struktur umgestellt, um die Wart
    cd drehteller_360_grad_fotos
    ```
 
-2. Erstelle eine virtuelle Umgebung und installiere die Abhängigkeiten:
+2. Setup Tool starten
    ```bash
-   python -m venv myenv
-   source myenv/bin/activate  # Unter Windows: myenv\Scripts\activate
-   pip install -r requirements.txt
+   sudo ./setup_and_autostart.sh
    ```
 
 3. Lade den Arduino-Sketch hoch:
