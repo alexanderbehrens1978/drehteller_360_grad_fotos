@@ -44,7 +44,7 @@ Die Anwendung wurde auf eine Blueprint-basierte Struktur umgestellt, um die Wart
 
 1. Klone das Repository:
    ```bash
-   git clone https://github.com/yourusername/drehteller_360_grad_fotos.git
+   git clone https://github.com/alexanderbehrens1978/drehteller_360_grad_fotos.git
    cd drehteller_360_grad_fotos
    ```
 
