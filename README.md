@@ -162,9 +162,3 @@ Die Anwendung unterstützt:
 - Webcams über OpenCV
 - DSLR-Kameras über gphoto2
 
-### Problemlösung
-
-- Überprüfen ob die Kamera eingeschaltet ist
-- überprüfen ob die USB Stecker alle richtig sitzen.
-- Hat die Box Strom
-
