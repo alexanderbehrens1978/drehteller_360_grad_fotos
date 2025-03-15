@@ -168,6 +168,12 @@ Die Anwendung unterstützt:
 grep -rnw "360° Drehteller Steuerung" .
 ```
 
+### Wenn Fotos erstellt werden, aber der Ardunio sich nicht dreht bzw. einmal dreht.
+
+```bash
+sudo lsof /dev/ttyACM0
+```
+
 ### Problemlösung
 
 - Überprüfen ob die Kamera eingeschaltet ist
