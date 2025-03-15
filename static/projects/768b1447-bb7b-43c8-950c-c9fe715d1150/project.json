@@ -1,0 +1,132 @@
+{
+    "id": "768b1447-bb7b-43c8-950c-c9fe715d1150",
+    "name": "VSF T300",
+    "description": "",
+    "angle_step": 1,
+    "created_at": 1742070760.7709181,
+    "updated_at": 1742071152.4241,
+    "sessions": [],
+    "path": "/home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/static/projects/768b1447-bb7b-43c8-950c-c9fe715d1150",
+    "images": [
+        {
+            "path": "images/photo_1742070763_1.jpg",
+            "timestamp": 1742070763,
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1742070796_1.jpg",
+            "timestamp": 1742070796,
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1742070812_1.jpg",
+            "timestamp": 1742070812,
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1742070828_1.jpg",
+            "timestamp": 1742070828,
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1742070845_1.jpg",
+            "timestamp": 1742070845,
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1742070861_1.jpg",
+            "timestamp": 1742070861,
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1742070878_1.jpg",
+            "timestamp": 1742070878,
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1742070893_1.jpg",
+            "timestamp": 1742070893,
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1742070908_1.jpg",
+            "timestamp": 1742070908,
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1742070924_1.jpg",
+            "timestamp": 1742070924,
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1742070940_1.jpg",
+            "timestamp": 1742070940,
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1742070955_1.jpg",
+            "timestamp": 1742070955,
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1742070971_1.jpg",
+            "timestamp": 1742070971,
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1742070987_1.jpg",
+            "timestamp": 1742070987,
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1742071002_1.jpg",
+            "timestamp": 1742071002,
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1742071018_1.jpg",
+            "timestamp": 1742071018,
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1742071033_1.jpg",
+            "timestamp": 1742071033,
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1742071049_1.jpg",
+            "timestamp": 1742071049,
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1742071065_1.jpg",
+            "timestamp": 1742071065,
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1742071080_1.jpg",
+            "timestamp": 1742071080,
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1742071096_1.jpg",
+            "timestamp": 1742071096,
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1742071111_1.jpg",
+            "timestamp": 1742071111,
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1742071127_1.jpg",
+            "timestamp": 1742071127,
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1742071143_1.jpg",
+            "timestamp": 1742071143,
+            "angle": 1
+        }
+    ]
+}

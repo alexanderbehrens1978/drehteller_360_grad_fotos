@@ -103,6 +103,9 @@ class ArduinoController:
             # Auf Antwort warten
             response = self.serial.readline().decode().strip()
             self.logger.debug(f"Arduino-Antwort: {response}")
+            # Zur Sicherheit eine kleine Pause einbauen
+            # time.sleep(0.1)
+            # scheint auch ohne zu gehen
 
             return response == "OK"
         except Exception as e:

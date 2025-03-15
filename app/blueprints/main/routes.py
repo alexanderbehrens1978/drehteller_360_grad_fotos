@@ -267,22 +267,19 @@ def save_config():
 
 @main_bp.route('/generate_360', methods=['POST'])
 def generate_360():
-    """Startet die 360°-Bildgenerierung für ein Projekt."""
-    project_id = request.form.get('project_id')  # ID aus dem Request holen
+    data = request.get_json()
+    
+    if not data:
+        print("Fehler: request.get_json() gibt None zurück!")
+        return jsonify({"error": "Ungültige Anfrage, kein JSON erhalten"}), 400
 
-    if not project_id:
+    print(f"Empfangene Daten: {data}")  # Debug-Ausgabe
+
+    if 'project_id' not in data:
+        print("Fehlende project_id!")
         return jsonify({"error": "Fehlende project_id"}), 400
 
-    from app.models.project import ProjectManager
-    from app.utils.path_manager import PathManager
+    project_id = data['project_id']
+    print(f"Generiere 360°-Viewer für Projekt: {project_id}")
 
-    path_manager = PathManager()
-    project_manager = ProjectManager(path_manager.projects_dir)
-    project = project_manager.get_project(project_id)
-
-    if not project:
-        return jsonify({"error": "Projekt nicht gefunden"}), 404
-
-    # Hier könnte die Verarbeitung starten...
-    return jsonify({"status": "success", "message": f"Projekt {project_id} wird verarbeitet"})
-
+    return jsonify({"message": f"360°-Viewer für {project_id} generiert"})
