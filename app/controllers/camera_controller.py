@@ -9,6 +9,7 @@ import os
 import time
 import logging
 import subprocess
+import json
 import cv2
 from pathlib import Path
 
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 class CameraController:
     """Controller für die Kamerasteuerung (Webcam und gphoto2-Kameras)"""
 
-    def __init__(self, camera_type='webcam', device='/dev/video0', resolution=None):
+    def __init__(self, camera_type='webcam', device='/dev/video0', resolution=None, camera_settings=None):
         """
         Initialisiert den Kamera-Controller
         
@@ -26,10 +27,12 @@ class CameraController:
             camera_type: Kameratyp ('webcam' oder 'gphoto2') (optional)
             device: Gerätepfad (optional)
             resolution: Auflösung als Tupel (Breite, Höhe) oder String 'BreitexHöhe' (optional)
+            camera_settings: Spezifische Kameraeinstellungen für gphoto2 (optional)
         """
         self.logger = logging.getLogger(__name__)
         self.camera_type = camera_type
         self.device = device
+        self.camera_settings = camera_settings or {}
 
         # Auflösung als Tupel (Breite, Höhe)
         if isinstance(resolution, str) and 'x' in resolution:
@@ -63,6 +66,166 @@ class CameraController:
         except Exception as e:
             self.logger.warning(f"Konnte gphoto2 nicht überprüfen: {str(e)}")
             return False
+    
+    def detect_cameras(self):
+        """
+        Erkennt verfügbare Kameras (gphoto2 und Webcams)
+        
+        Returns:
+            Dictionary mit erkannten Kameras
+        """
+        cameras = {
+            'webcams': [],
+            'gphoto2': []
+        }
+        
+        # Webcams erkennen
+        try:
+            from app.utils.webcam_detection_helper import find_working_webcam
+            
+            # Linux: Nach /dev/video* Geräten suchen
+            import glob
+            video_devices = glob.glob('/dev/video*')
+            
+            # Teste jedes Gerät
+            for device in video_devices:
+                try:
+                    cap = cv2.VideoCapture(device)
+                    if cap.isOpened():
+                        ret, frame = cap.read()
+                        if ret:
+                            cameras['webcams'].append({
+                                'device': device,
+                                'name': f"Webcam an {device}",
+                                'model': 'Generic Webcam',
+                                'status': 'working'
+                            })
+                        else:
+                            cameras['webcams'].append({
+                                'device': device,
+                                'name': f"Webcam an {device}",
+                                'model': 'Generic Webcam',
+                                'status': 'error'
+                            })
+                    cap.release()
+                except Exception as e:
+                    self.logger.debug(f"Fehler beim Testen von {device}: {str(e)}")
+        except Exception as e:
+            self.logger.error(f"Fehler bei der Webcam-Erkennung: {str(e)}")
+        
+        # gphoto2-Kameras erkennen
+        if self.gphoto2_available:
+            try:
+                result = subprocess.run(['gphoto2', '--auto-detect'],
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.PIPE,
+                                        text=True)
+                
+                if result.returncode == 0:
+                    lines = result.stdout.strip().split('\n')
+                    
+                    # Die ersten beiden Zeilen sind Header
+                    if len(lines) > 2:
+                        for line in lines[2:]:
+                            if line.strip():
+                                try:
+                                    model, port = line.strip().split("usb:")
+                                    model = model.strip()
+                                    port = "usb:" + port.strip()
+                                    
+                                    cameras['gphoto2'].append({
+                                        'device': port,
+                                        'name': model,
+                                        'model': model,
+                                        'status': 'available'
+                                    })
+                                except Exception as e:
+                                    self.logger.debug(f"Fehler beim Parsen der Kamerazeile: {line}, {str(e)}")
+            except Exception as e:
+                self.logger.error(f"Fehler bei der gphoto2-Kameraerkennung: {str(e)}")
+                
+        return cameras
+        
+    def get_camera_capabilities(self, device, camera_type='gphoto2'):
+        """
+        Ruft die Fähigkeiten einer Kamera ab
+        
+        Args:
+            device: Gerätepfad
+            camera_type: Kameratyp ('webcam' oder 'gphoto2')
+            
+        Returns:
+            Dictionary mit den Fähigkeiten der Kamera
+        """
+        capabilities = {}
+        
+        if camera_type == 'gphoto2' and self.gphoto2_available:
+            try:
+                # Geräteoptionen ausgeben
+                result = subprocess.run(['gphoto2', '--port', device, '--list-config'],
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE,
+                                       text=True)
+                
+                if result.returncode == 0:
+                    configs = result.stdout.strip().split('\n')
+                    capabilities['configs'] = configs
+                    
+                    # Kameraeinstellungen
+                    settings = {}
+                    
+                    # Wichtige Einstellungen ausgeben
+                    for config in configs:
+                        if any(key in config for key in ['shutterspeed', 'iso', 'aperture', 'imageformat']):
+                            try:
+                                value_result = subprocess.run(['gphoto2', '--port', device, '--get-config', config],
+                                                            stdout=subprocess.PIPE,
+                                                            stderr=subprocess.PIPE,
+                                                            text=True)
+                                
+                                if value_result.returncode == 0:
+                                    values = {}
+                                    for line in value_result.stdout.strip().split('\n'):
+                                        if ':' in line:
+                                            key, value = line.split(':', 1)
+                                            values[key.strip()] = value.strip()
+                                    
+                                    settings[config] = values
+                            except Exception as e:
+                                self.logger.debug(f"Fehler beim Abrufen der Konfiguration {config}: {str(e)}")
+                    
+                    capabilities['settings'] = settings
+                    
+                    # Kameramodell hinzufügen
+                    try:
+                        summary_result = subprocess.run(['gphoto2', '--port', device, '--summary'],
+                                                    stdout=subprocess.PIPE,
+                                                    stderr=subprocess.PIPE,
+                                                    text=True)
+                        
+                        if summary_result.returncode == 0:
+                            summary = summary_result.stdout
+                            capabilities['summary'] = summary
+                            
+                            # Modell aus Summary extrahieren
+                            for line in summary.split('\n'):
+                                if 'Model:' in line:
+                                    capabilities['model'] = line.split('Model:', 1)[1].strip()
+                                    break
+                    except Exception as e:
+                        self.logger.debug(f"Fehler beim Abrufen der Kamerazusammenfassung: {str(e)}")
+            except Exception as e:
+                self.logger.error(f"Fehler beim Abrufen der gphoto2-Fähigkeiten: {str(e)}")
+        
+        elif camera_type == 'webcam':
+            try:
+                from app.utils.webcam_detection_helper import get_camera_capabilities
+                webcam_caps = get_camera_capabilities(device)
+                capabilities.update(webcam_caps)
+            except Exception as e:
+                self.logger.error(f"Fehler beim Abrufen der Webcam-Fähigkeiten: {str(e)}")
+                
+        return capabilities
 
     def _setup_webcam(self):
         """
@@ -74,7 +237,7 @@ class CameraController:
         if self.webcam is None:
             try:
                 # cv2.VideoCapture mit Nummer (0, 1, ...) oder Pfad (/dev/video0, ...)
-                if str(self.device).isdigit():
+                if self.device.isdigit():
                     device_id = int(self.device)
                 else:
                     device_id = self.device
@@ -119,7 +282,7 @@ class CameraController:
             return False
 
         try:
-            # Stellen Sie sicher, dass das Verzeichnis existiert
+            # Stelle sicher, dass das Verzeichnis existiert
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
             # Mehrere Frames lesen, um sicherzustellen, dass die Kamera sich angepasst hat
@@ -161,10 +324,10 @@ class CameraController:
             return False
 
         try:
-            # Stellen Sie sicher, dass das Verzeichnis existiert
+            # Stelle sicher, dass das Verzeichnis existiert
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-            # Zusammengesetzter gphoto2-Befehl
+            # Basis-Befehl für gphoto2
             cmd = [
                 'gphoto2',
                 '--capture-image-and-download',
@@ -174,6 +337,11 @@ class CameraController:
             # Wenn eine bestimmte Kamera ausgewählt wurde (Port)
             if self.device and self.device != 'auto':
                 cmd.extend(['--port', self.device])
+            
+            # Kamera-spezifische Einstellungen hinzufügen, falls vorhanden
+            for setting, value in self.camera_settings.items():
+                if setting.startswith('/') and value:  # gphoto2 Konfigurationen beginnen mit /
+                    cmd.extend(['--set-config', f"{setting}={value}"])
 
             # gphoto2-Befehl ausführen
             self.logger.debug(f"gphoto2-Befehl: {' '.join(cmd)}")

@@ -12,6 +12,28 @@ class ConfigManager:
                 'height': 720
             }
         },
+        'gphoto2_profiles': {
+            # Format: "Kameramodell": {Einstellungen}
+            "Canon EOS 1200D": {
+                "name": "Canon EOS 1200D",
+                "settings": {
+                    "/main/capturesettings/shutterspeed": "1/60",
+                    "/main/imgsettings/imageformat": "Large Fine JPEG",
+                    "/main/capturesettings/drivemode": "Single",
+                    "/main/capturesettings/focusmode": "AI Focus",
+                    "/main/capturesettings/autoexposuremode": "P"
+                }
+            },
+            "Nikon D5600": {
+                "name": "Nikon D5600",
+                "settings": {
+                    "/main/capturesettings/shutterspeed": "1/60",
+                    "/main/imgsettings/imageformat": "JPEG Fine",
+                    "/main/capturesettings/exposurecompensation": "0",
+                    "/main/capturesettings/f-number": "8"
+                }
+            }
+        },
         'arduino': {
             'port': '/dev/ttyACM0',
             'baudrate': 9600
@@ -19,9 +41,6 @@ class ConfigManager:
         'rotation': {
             'default_degrees': 15,
             'default_interval': 5
-        },
-        'simulator': {
-            'enabled': True
         }
     }
 

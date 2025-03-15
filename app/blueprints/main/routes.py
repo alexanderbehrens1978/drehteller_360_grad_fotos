@@ -43,6 +43,8 @@ def view_360():
 
 @main_bp.route('/rotate', methods=['POST'])
 def rotate():
+    global arduino_controller
+    global camera_controller
     """Dreht den Teller und nimmt ein Foto auf"""
     try:
         # Parameter validieren
@@ -78,29 +80,112 @@ def rotate():
         if not project:
             return jsonify({"error": "Projekt nicht gefunden"}), 404
         
-        # Drehteller rotieren
-        rotate_teller(degrees)
+        # Drehteller rotieren - Stellen Sie sicher, dass turntable_controller korrekt initialisiert ist
+        if not arduino_controller or not arduino_controller.is_connected():
+            # Versuche, die Arduino-Verbindung herzustellen
+            from app.utils.config_manager import config_manager
+            arduino_port = config_manager.get('arduino.port', '/dev/ttyACM0')
+            arduino_baudrate = config_manager.get('arduino.baudrate', 9600)
+            
+            # Controller neu initialisieren und verbinden
+            from app.controllers.arduino_controller import ArduinoController
+            arduino_controller = ArduinoController(arduino_port, arduino_baudrate)
+            
+            # Wenn die Verbindung jetzt immer noch nicht hergestellt werden kann, Fehler melden
+            if not arduino_controller.is_connected():
+                return jsonify({
+                    "status": "warning",
+                    "error": "Arduino nicht verbunden. Foto wird aufgenommen, aber der Teller wird nicht gedreht.",
+                    "suggestion": "Überprüfen Sie die Arduino-Verbindung in den Einstellungen."
+                })
+        
+        # Drehteller drehen
+        try:
+            rotate_teller(degrees)
+        except Exception as e:
+            logger.error(f"Fehler beim Drehen des Tellers: {str(e)}")
+            return jsonify({
+                "status": "warning",
+                "error": f"Fehler beim Drehen des Tellers: {str(e)}",
+                "suggestion": "Überprüfen Sie die Arduino-Verbindung und die Stromversorgung des Drehtellers."
+            })
         
         # Foto mit Zeitstempel aufnehmen
         timestamp = int(time.time())
         filename = f'photo_{timestamp}_{degrees}.jpg'
-        photo_path = take_photo(project_id, filename)
         
-        if not photo_path:
-            return jsonify({"error": "Fehler beim Aufnehmen des Fotos"}), 500
+        # Stelle sicher, dass der Kamera-Controller korrekt initialisiert ist
+        if not camera_controller:
+            from app.utils.config_manager import config_manager
+            from app.controllers.camera_controller import CameraController
             
-        # Foto zum Projekt hinzufügen mit dem korrekten Winkel
-        project.add_image(photo_path, angle=degrees, timestamp=timestamp)
+            camera_type = config_manager.get('camera.type', 'webcam')
+            camera_device = config_manager.get('camera.device_path', '/dev/video0')
+            resolution = config_manager.get('camera.resolution', {'width': 1280, 'height': 720})
+            
+            # Kamera-Profil für gphoto2 laden, falls es sich um eine gphoto2-Kamera handelt
+            camera_settings = {}
+            if camera_type == 'gphoto2':
+                # Kameramodell ermitteln
+                try:
+                    result = subprocess.run(['gphoto2', '--port', camera_device, '--summary'],
+                                          stdout=subprocess.PIPE,
+                                          stderr=subprocess.PIPE,
+                                          text=True)
+                    
+                    if result.returncode == 0:
+                        camera_model = None
+                        for line in result.stdout.split('\n'):
+                            if 'Model:' in line:
+                                camera_model = line.split('Model:', 1)[1].strip()
+                                break
+                        
+                        if camera_model:
+                            # Passendes Profil suchen
+                            profiles = config_manager.get('camera.gphoto2_profiles', {})
+                            if camera_model in profiles:
+                                camera_settings = profiles[camera_model].get('settings', {})
+                except Exception as e:
+                    logger.error(f"Fehler beim Ermitteln des Kameramodells: {str(e)}")
+            
+            # Controller initialisieren
+            camera_controller = CameraController(camera_type, camera_device, resolution, camera_settings)
         
-        # Relativen Pfad für die Antwort erstellen
-        from pathlib import Path
-        rel_path = '/' + str(Path(photo_path).relative_to(path_manager.base_dir)).replace('\\', '/')
-        
-        return jsonify({
-            "status": "success",
-            "photo": rel_path,
-            "angle": degrees  # Winkel in der Antwort zurückgeben
-        })
+        # Bild aufnehmen
+        try:
+            # Verzeichnis für das Projekt erstellen, falls noch nicht vorhanden
+            project_images_dir = os.path.join(project.path, 'images')
+            os.makedirs(project_images_dir, exist_ok=True)
+            
+            # Vollständiger Pfad für das Bild
+            photo_path = os.path.join(project_images_dir, filename)
+            
+            # Foto aufnehmen
+            success = camera_controller.capture_photo(photo_path)
+            
+            if not success:
+                raise Exception("Kamera konnte kein Foto aufnehmen.")
+                
+            # Bild zum Projekt hinzufügen mit dem korrekten Winkel
+            project.add_image(photo_path, angle=degrees, timestamp=timestamp)
+            
+            # Relativen Pfad für die Antwort erstellen
+            rel_path = os.path.join('/projects/image', project_id, 'images', filename)
+            
+            return jsonify({
+                "status": "success",
+                "photo": rel_path,
+                "angle": degrees  # Winkel in der Antwort zurückgeben
+            })
+            
+        except Exception as e:
+            logger.error(f"Fehler beim Aufnehmen des Fotos: {str(e)}")
+            return jsonify({
+                "status": "error",
+                "error": f"Fehler beim Aufnehmen des Fotos: {str(e)}",
+                "suggestion": "Überprüfen Sie die Kamera-Verbindung und -Einstellungen."
+            })
+            
     except Exception as e:
         logger.error(f"Fehler bei der Rotation/Fotoaufnahme: {str(e)}")
         return jsonify({"error": str(e)}), 500

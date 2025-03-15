@@ -173,27 +173,6 @@ def get_devices():
         logger.error(f"Fehler beim Abrufen der Geräte: {e}")
         return jsonify({"error": "Fehler beim Abrufen der Geräte", "message": str(e)}), 500
 
-@api_bp.route('/camera_capabilities', methods=['GET'])
-def camera_capabilities():
-    """Gibt die Fähigkeiten der Kamera zurück"""
-    try:
-        # Kamera-Gerät aus der Konfiguration holen
-        camera_device = config_manager.get('camera.device_path', '/dev/video0')
-        
-        # Kamera-Fähigkeiten abrufen
-        capabilities = get_camera_capabilities(camera_device)
-        
-        return jsonify({
-            "status": "success",
-            "capabilities": capabilities
-        })
-    except Exception as e:
-        logger.error(f"Fehler beim Abrufen der Kamera-Fähigkeiten: {e}")
-        return jsonify({
-            "status": "error", 
-            "message": str(e)
-        }), 500
-
 @api_bp.route('/status/arduino')
 def api_arduino_status():
     """API-Endpunkt zum Abrufen des Arduino-Status"""
@@ -239,3 +218,95 @@ def api_camera_status():
         'device': camera_device,
         'resolution': resolution
     })
+
+@api_bp.route('/test/camera', methods=['POST'])
+def test_camera():
+    """
+    Testet eine Kamera mit den angegebenen Einstellungen
+    """
+    try:
+        data = request.json
+        
+        if not data:
+            return jsonify({"status": "error", "message": "Keine Daten empfangen"}), 400
+            
+        camera_type = data.get('type', 'webcam')
+        device = data.get('device')
+        resolution = data.get('resolution')
+        profile = data.get('profile')
+        
+        if not device:
+            return jsonify({"status": "error", "message": "Kein Gerät angegeben"}), 400
+            
+        # Auflösung verarbeiten
+        if isinstance(resolution, str) and 'x' in resolution:
+            width, height = map(int, resolution.split('x'))
+            resolution = (width, height)
+        
+        # Kameraprofil laden, falls angegeben
+        camera_settings = {}
+        if camera_type == 'gphoto2' and profile:
+            profiles = config_manager.get('camera.gphoto2_profiles', {})
+            if profile in profiles:
+                camera_settings = profiles[profile].get('settings', {})
+        
+        # Temporären Ordner für das Testfoto erstellen
+        static_dir = os.path.abspath(os.path.join(current_app.root_path, '..', 'static'))
+        temp_dir = os.path.join(static_dir, 'temp')
+        os.makedirs(temp_dir, exist_ok=True)
+        
+        # Dateiname für das Testfoto
+        timestamp = int(time.time())
+        filename = f'camera_test_{timestamp}.jpg'
+        photo_path = os.path.join(temp_dir, filename)
+        
+        # Kamera initialisieren und Testfoto aufnehmen
+        from app.controllers.camera_controller import CameraController
+        camera = CameraController(camera_type, device, resolution, camera_settings)
+        
+        success = camera.capture_photo(photo_path)
+        
+        if success:
+            # Bildpfad für die Antwort
+            image_url = f'/static/temp/{filename}'
+            
+            return jsonify({
+                "status": "success",
+                "message": "Testfoto erfolgreich aufgenommen",
+                "image_url": image_url
+            })
+        else:
+            return jsonify({
+                "status": "error",
+                "message": "Konnte kein Foto aufnehmen. Überprüfen Sie die Kameraverbindung und -einstellungen."
+            }), 500
+    except Exception as e:
+        logger.error(f"Fehler beim Kameratest: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@api_bp.route('/camera_capabilities')
+def camera_capabilities():
+    """Gibt die Fähigkeiten der Kamera zurück"""
+    try:
+        # Parameter abrufen
+        device = request.args.get('device')
+        camera_type = request.args.get('type', 'webcam')
+        
+        if not device:
+            return jsonify({
+                "status": "error", 
+                "message": "Kein Gerät angegeben"
+            }), 400
+            
+        # Kamera-Controller verwenden, um Fähigkeiten abzurufen
+        from app.controllers.camera_controller import CameraController
+        camera = CameraController(camera_type, device)
+        
+        capabilities = camera.get_camera_capabilities(device, camera_type)
+        
+        return jsonify({
+            "status": "success",
+            "capabilities": capabilities
+        })
+    except Exception as e:
+        logger.error(f"Fehler beim Abrufen der Kamera-Fähigkeiten")

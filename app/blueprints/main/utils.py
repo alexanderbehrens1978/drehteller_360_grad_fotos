@@ -24,13 +24,6 @@ def rotate_teller(degrees):
     Args:
         degrees: Drehwinkel in Grad
     """
-    # Prüfen, ob Simulator aktiviert ist
-    USE_SIMULATOR = config_manager.get('simulator.enabled', True)
-    
-    if USE_SIMULATOR:
-        logger.info(f"Simulierte Rotation: {degrees} Grad")
-        return
-    
     if arduino_controller is None or not arduino_controller.is_connected():
         logger.error("Arduino nicht verbunden!")
         return
