@@ -173,9 +173,3 @@ grep -rnw "360° Drehteller Steuerung" .
 - Überprüfen ob die Kamera eingeschaltet ist
 - überprüfen ob die USB Stecker alle richtig sitzen.
 - Hat die Box Strom
-
-### Befehle zum suchen von Strings in Dateien und Unterverzeichnissen
-
-```bash
-grep -rnw "360° Drehteller Steuerung" .
-```
