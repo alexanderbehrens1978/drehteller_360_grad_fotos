@@ -4,8 +4,14 @@
     "description": "",
     "angle_step": 15,
     "created_at": 1742022734.824857,
-    "updated_at": 1742022734.824857,
+    "updated_at": 1742022965.891183,
     "sessions": [],
     "path": "/home/alex/drehteller_360_grad_fotos_vom_05_03_2025/drehteller_360_grad_fotos/static/projects/370e48eb-3b5f-44e5-a395-bb6d0d514a63",
-    "images": []
+    "images": [
+        {
+            "path": "images/photo_1742022949_15.jpg",
+            "timestamp": 1742022949,
+            "angle": 15
+        }
+    ]
 }
