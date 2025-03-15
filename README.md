@@ -95,9 +95,6 @@ Alternativ kann die Konfigurationsdatei `config.json` manuell bearbeitet werden:
     "rotation": {
         "default_degrees": 15,
         "default_interval": 5
-    },
-    "simulator": {
-        "enabled": true
     }
 }
 ```
@@ -111,9 +108,6 @@ Alternativ kann die Konfigurationsdatei `config.json` manuell bearbeitet werden:
 3. **360°-Aufnahmen erstellen**: Nehme Fotos in bestimmten Winkelschritten auf.
 4. **360°-Viewer anzeigen**: Betrachte die erstellten 360°-Ansichten interaktiv.
 
-### Simulatormodus
-
-Wenn kein Arduino oder keine Kamera verfügbar ist, kann der Simulatormodus aktiviert werden, um die Anwendung zu testen.
 
 ## Projektstruktur
 
@@ -131,8 +125,7 @@ drehteller_360_grad_fotos/
 ├── static/                     # CSS, JS, Bilder
 │   ├── css/
 │   ├── js/
-│   ├── photos/                # Aufgenommene Fotos
-│   └── sample_images/         # Beispielbilder für Simulator
+│   └── photos/                 # aufgenommene Bilder 
 ├── run.py                      # Start-Skript
 └── requirements.txt            # Python-Abhängigkeiten
 ```

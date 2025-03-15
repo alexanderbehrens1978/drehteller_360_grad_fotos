@@ -95,6 +95,7 @@ function loadProjects() {
         })
         .catch(error => {
             console.error('Fehler beim Laden der Projekte:', error);
+            alert(`Fehler beim Aufnehmen des Fotos: ${error.message}`);
             if (projectSelect) {
                 projectSelect.innerHTML = '<option value="">Fehler beim Laden der Projekte</option>';
             }
@@ -209,7 +210,7 @@ function singleRotation() {
     })
     .catch(error => {
         console.error('Netzwerkfehler:', error);
-        alert('Netzwerkfehler beim Drehen des Tellers.');
+        alert('Netzwerkfehler beim Drehen des Tellers. ${error.message}');
         
         // Statusmeldung aktualisieren
         if (rotationStatus) {
@@ -336,7 +337,7 @@ function startRotation() {
         })
         .catch(error => {
             console.error('Netzwerkfehler:', error);
-            alert('Netzwerkfehler beim Drehen des Tellers.');
+            alert('Netzwerkfehler beim Drehen des Tellers ${error.message}');
             stopRotation();
         });
     }
@@ -411,6 +412,6 @@ function generateViewer() {
     })
     .catch(error => {
         console.error('Netzwerkfehler:', error);
-        alert('Netzwerkfehler beim Generieren des 360°-Viewers.');
+        alert('Netzwerkfehler beim Generieren des 360°-Viewers. ${error.message}');
     });
 }

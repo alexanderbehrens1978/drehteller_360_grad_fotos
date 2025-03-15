@@ -52,7 +52,7 @@ class ConfigManager:
         self.logger = logging.getLogger(__name__)
         
         # Determine the project directory
-        self.project_dir = os.path.dirname(os.path.abspath(__file__))
+        self.project_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
         # If no config path provided, use a default in the project directory
         if config_path is None:

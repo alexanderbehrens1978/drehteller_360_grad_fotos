@@ -1,0 +1,67 @@
+{
+    "id": "8c297fc9-8e91-4856-9670-e5888b3d0b5a",
+    "name": "VSF T300",
+    "description": "",
+    "angle_step": 1,
+    "created_at": 1742030803.3168046,
+    "updated_at": 1742030975.3993647,
+    "sessions": [],
+    "path": "/home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/static/projects/8c297fc9-8e91-4856-9670-e5888b3d0b5a",
+    "images": [
+        {
+            "path": "images/photo_1742030807_1.jpg",
+            "timestamp": 1742030807,
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1742030822_1.jpg",
+            "timestamp": 1742030822,
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1742030838_1.jpg",
+            "timestamp": 1742030838,
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1742030854_1.jpg",
+            "timestamp": 1742030854,
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1742030870_1.jpg",
+            "timestamp": 1742030870,
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1742030886_1.jpg",
+            "timestamp": 1742030886,
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1742030901_1.jpg",
+            "timestamp": 1742030901,
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1742030918_1.jpg",
+            "timestamp": 1742030918,
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1742030934_1.jpg",
+            "timestamp": 1742030934,
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1742030950_1.jpg",
+            "timestamp": 1742030950,
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1742030966_1.jpg",
+            "timestamp": 1742030966,
+            "angle": 1
+        }
+    ]
+}

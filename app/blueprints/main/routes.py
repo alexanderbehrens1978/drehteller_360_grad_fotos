@@ -198,8 +198,12 @@ def serve_photo(filename):
 @main_bp.route('/get_config')
 def get_config():
     """Gibt die aktuelle Konfiguration zurück"""
-    from app.utils.config_manager import config_manager
-    return jsonify(config_manager.config)
+    try:
+        from app.utils.config_manager import config_manager
+        return jsonify(config_manager.config)
+    except Exception as e:
+        logger.error(f"Fehler beim Abrufen der Konfiguration: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 @main_bp.route('/save_config', methods=['POST'])
 def save_config():

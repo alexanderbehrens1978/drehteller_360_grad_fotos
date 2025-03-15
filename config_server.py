@@ -60,9 +60,6 @@ def load_config():
                 'rotation': {
                     'default_degrees': 15,
                     'default_interval': 5
-                },
-                'simulator': {
-                    'enabled': True
                 }
             }
             
