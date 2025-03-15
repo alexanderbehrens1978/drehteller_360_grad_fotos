@@ -19,6 +19,14 @@ arduino_controller = None
 camera_controller = None
 turntable_controller = None
 
+logging.basicConfig(
+    filename='/home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/logs/app.log',
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
+
+
 # Gemeinsam genutzte Hilfsprogramme
 path_manager = PathManager()
 
@@ -31,6 +39,7 @@ def create_app(config_name=None):
     
     Returns:
         Flask-App-Instanz
+    static_folder="../static"
     """
     app = Flask(__name__, 
                 static_folder="../static",
