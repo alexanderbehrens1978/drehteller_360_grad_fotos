@@ -264,3 +264,19 @@ def save_config():
             "status": "error", 
             "message": f"Allgemeiner Fehler: {str(e)}"
         }), 500
+
+@main_bp.route('/generate_360', methods=['POST'])
+def generate_360():
+    """Startet den 360°-Drehvorgang und nimmt Bilder auf"""
+    try:
+        data = request.get_json()
+        project_id = data.get("project_id")
+        
+        if not project_id:
+            return jsonify({"error": "Kein Projekt-ID angegeben"}), 400
+
+        # Hier kommt dein Logik-Code für das 360°-Shooting rein.
+        return jsonify({"status": "success", "message": "360°-Shooting gestartet"}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
