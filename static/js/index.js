@@ -365,19 +365,30 @@ function completeRotation() {
     }
 }
 
-// 360°-Viewer generieren
 function generateViewer() {
-    // Überprüfe, ob genügend Fotos vorhanden sind
+    console.log("Captured Photos:", capturedPhotos);
+    
     if (capturedPhotos.length < 4) {
         alert('Es werden mindestens 4 Fotos für einen 360°-Viewer benötigt.');
         return;
     }
 
-    // Anfrage zum Generieren des Viewers senden
+    // Prüfe die aktuelle Projekt-ID
+    console.log("Aktuelle Projekt-ID:", currentProjectId);
+
+    if (!currentProjectId) {
+        alert("Fehler: Keine Projekt-ID gefunden!");
+        console.error("Fehler: currentProjectId ist null oder undefined!");
+        return;
+    }
+
+    // Anfrage-Daten zusammenstellen
     const requestData = {
         project_id: currentProjectId,
         photos: capturedPhotos.map(photo => photo.path)
     };
+
+    console.log("Sende Anfrage mit Daten:", requestData);
 
     fetch('/generate_360', {
         method: 'POST',
@@ -386,11 +397,14 @@ function generateViewer() {
         },
         body: JSON.stringify(requestData)
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log("Serverantwort Status:", response.status);
+        return response.json();
+    })
     .then(data => {
+        console.log("Antwort vom Server:", data);
         if (data.status === 'success') {
             alert(`360°-Viewer erfolgreich erstellt! Sie werden weitergeleitet.`);
-            // Zur Viewer-Seite weiterleiten
             window.location.href = data.url;
         } else {
             console.error('Fehler beim Generieren des Viewers:', data.error);
@@ -402,3 +416,4 @@ function generateViewer() {
         alert(`Netzwerkfehler beim Generieren des 360°-Viewers: ${error.message}`);
     });
 }
+
