@@ -1,20 +1,26 @@
 import os
 
-def zeige_dateien_und_inhalt(verzeichnis):
-    # Durchlaufe rekursiv alle Unterverzeichnisse und Dateien
+def zeige_dateien_und_inhalt(verzeichnis, excluded_files=None):
+    """
+    Durchsucht rekursiv ein Verzeichnis und gibt den Inhalt aller Dateien aus, 
+    außer denjenigen, die in den ausgeschlossenen Verzeichnissen oder Dateien enthalten sind.
+    
+    :param verzeichnis: Pfad zum zu durchsuchenden Verzeichnis
+    :param excluded_files: Liste von Dateinamen, die ausgeschlossen werden sollen
+    """
+    if excluded_files is None:
+        excluded_files = []
+
+    excluded_dirs = {'.git', 'bin', '__pycache__', '.idea', 'myenv', 'photos','doc','static/css'}
+
     for root, dirs, files in os.walk(verzeichnis):
-        # Entferne .git aus der Liste der zu durchsuchenden Verzeichnisse
-        if '.git' in dirs:
-            dirs.remove('.git')
-        if 'bin' in dirs:
-            dirs.remove('bin')
-        if '__pycache__' in dirs:
-            dirs.remove('__pycache__')
-        if '.idea' in dirs: 
-            dirs.remove('.idea')
-        if 'myenv' in dirs:
-            dirs.remove('myenv')
+        # Entferne ausgeschlossene Verzeichnisse aus der Liste
+        dirs[:] = [d for d in dirs if d not in excluded_dirs]
+        
         for file in files:
+            if file in excluded_files:
+                continue  # Überspringe ausgeschlossene Dateien
+            
             dateipfad = os.path.join(root, file)
             print(f"\n--- Datei: {dateipfad} ---")
             try:
@@ -25,8 +31,9 @@ def zeige_dateien_und_inhalt(verzeichnis):
             except Exception as e:
                 print(f"Fehler beim Lesen der Datei: {e}")
 
-# Beispielnutzung
+# Beispielnutzung mit ausgeschlossenen Dateien
 verzeichnis_pfad = "/home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos"
-#verzeichnis_pfad = "/home/alex/Dokumente/drehteller_360_grad_fotos"  # Hier den gewünschten Pfad angeben
-zeige_dateien_und_inhalt(verzeichnis_pfad)
+excluded_files = ['README.md','*.log', '.gitignore']
+
+zeige_dateien_und_inhalt(verzeichnis_pfad, excluded_files)
 
