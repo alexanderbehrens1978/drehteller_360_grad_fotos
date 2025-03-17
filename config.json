@@ -3,8 +3,29 @@
         "device_path": "/dev/video0",
         "type": "gphoto2",
         "resolution": {
-            "width": 3840,
-            "height": 2160
+            "width": 1280,
+            "height": 720
+        }
+    },
+    "gphoto2_profiles": {
+        "Canon EOS 1200D": {
+            "name": "Canon EOS 1200D",
+            "settings": {
+                "/main/capturesettings/shutterspeed": "1/60",
+                "/main/imgsettings/imageformat": "Large Fine JPEG",
+                "/main/capturesettings/drivemode": "Single",
+                "/main/capturesettings/focusmode": "AI Focus",
+                "/main/capturesettings/autoexposuremode": "P"
+            }
+        },
+        "Nikon D5600": {
+            "name": "Nikon D5600",
+            "settings": {
+                "/main/capturesettings/shutterspeed": "1/60",
+                "/main/imgsettings/imageformat": "JPEG Fine",
+                "/main/capturesettings/exposurecompensation": "0",
+                "/main/capturesettings/f-number": "8"
+            }
         }
     },
     "arduino": {
@@ -14,8 +35,5 @@
     "rotation": {
         "default_degrees": 15,
         "default_interval": 5
-    },
-    "simulator": {
-        "enabled": false
     }
 }

@@ -334,13 +334,49 @@ function generateViewer() {
         photos: capturedPhotos.map(photo => photo.path)
     };
     
-    fetch('/api/generate_360', {
-        method: 'POST',
+
+
+
+
+//    fetch('/api/generate_360', {
+ //       method: 'POST',
+  //      headers: {
+//            'Content-Type': 'application/json'
+ //       },
+   //     body: JSON.stringify(requestData)
+  //  })
+
+// Hole die project_id aus der aktuellen URL oder einem Eingabefeld
+const project_id = new URLSearchParams(window.location.search).get("project_id");
+
+if (!project_id) {
+    console.error("Fehler: project_id fehlt!");
+    alert("Fehler: Keine Projekt-ID gefunden!");
+} else {
+    fetch('/generate_360', {
+        method: "POST",
         headers: {
-            'Content-Type': 'application/json'
+            "Content-Type": "application/json"
         },
-        body: JSON.stringify(requestData)
+        body: JSON.stringify({ project_id: project_id }) // Projekt-ID korrekt übergeben
     })
+    .then(response => response.json())
+    .then(data => {
+        console.log("Antwort vom Server:", data);
+        if (data.message) {
+            alert(data.message); // Erfolgsmeldung
+            window.location.href = `/viewer?project_id=${project_id}`; // Weiterleitung zum Viewer
+        }
+    })
+    .catch(error => console.error("Fehler beim Generieren:", error));
+}
+
+
+
+
+
+
+
     .then(response => response.json())
     .then(data => {
         if (data.status === 'success') {

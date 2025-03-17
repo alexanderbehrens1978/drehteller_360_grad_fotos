@@ -140,20 +140,20 @@ def delete_project(project_id):
     """Löscht ein Projekt"""
     try:
         # Projekt-ID validieren
+        from app.models.project import ProjectManager
+        from app.utils.path_manager import PathManager
         from app.utils.secure_path import validate_project_id
+
         if not validate_project_id(project_id):
             logger.warning(f"Ungültige Projekt-ID: {project_id}")
             return render_template('error.html', message="Ungültige Projekt-ID"), 400
-            
+
         # Projekt löschen
-        from app.models.project import ProjectManager
-        from app.utils.path_manager import PathManager
-        
         path_manager = PathManager()
         project_manager = ProjectManager(path_manager.projects_dir)
-        
+
         success = project_manager.delete_project(project_id)
-        
+
         if success:
             logger.info(f"Projekt {project_id} gelöscht")
             return redirect(url_for('projects.projects_page'))

@@ -198,8 +198,12 @@ def serve_photo(filename):
 @main_bp.route('/get_config')
 def get_config():
     """Gibt die aktuelle Konfiguration zurück"""
-    from app.utils.config_manager import config_manager
-    return jsonify(config_manager.config)
+    try:
+        from app.utils.config_manager import config_manager
+        return jsonify(config_manager.config)
+    except Exception as e:
+        logger.error(f"Fehler beim Abrufen der Konfiguration: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 @main_bp.route('/save_config', methods=['POST'])
 def save_config():
@@ -260,3 +264,22 @@ def save_config():
             "status": "error", 
             "message": f"Allgemeiner Fehler: {str(e)}"
         }), 500
+
+@main_bp.route('/generate_360', methods=['POST'])
+def generate_360():
+    data = request.get_json()
+    
+    if not data:
+        print("Fehler: request.get_json() gibt None zurück!")
+        return jsonify({"error": "Ungültige Anfrage, kein JSON erhalten"}), 400
+
+    print(f"Empfangene Daten: {data}")  # Debug-Ausgabe
+
+    if 'project_id' not in data:
+        print("Fehlende project_id!")
+        return jsonify({"error": "Fehlende project_id"}), 400
+
+    project_id = data['project_id']
+    print(f"Generiere 360°-Viewer für Projekt: {project_id}")
+
+    return jsonify({"message": f"360°-Viewer für {project_id} generiert"})

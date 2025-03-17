@@ -20,7 +20,7 @@
         <div class="settings-container">
             <h1>Einstellungen</h1>
             
-            <div id="statusMessage" class="status-message"></div>
+            <div id="statusMessage" class="status-message" style="display: none;"></div>
             
             <form id="settingsForm">
 
@@ -133,7 +133,6 @@
                     document.getElementById('defaultDegrees').value = config?.rotation?.default_degrees || 15;
                     document.getElementById('defaultInterval').value = config?.rotation?.default_interval || 5;
                     
-                    document.getElementById('simulatorEnabled').checked = config?.simulator?.enabled || false;
                 })
                 .catch(error => {
                     console.error('Fehler beim Laden der Konfiguration:', error);
@@ -151,9 +150,6 @@
                 // FormData in verschachtelte Objekte umwandeln
                 formData.forEach((value, key) => {
                     // Checkbox-Werte in boolesche Werte umwandeln
-                    if (key === 'simulator.enabled') {
-                        value = document.getElementById('simulatorEnabled').checked;
-                    }
                     
                     // Zahlen in numerische Werte umwandeln
                     if (key.includes('resolution') || key.includes('degrees') || key.includes('interval') || key.includes('baudrate')) {

@@ -49,8 +49,6 @@ def take_photo(project_id, filename=None):
     Returns:
         Pfad zum gespeicherten Foto
     """
-    # Prüfen, ob Simulator aktiviert ist
-    USE_SIMULATOR = config_manager.get('simulator.enabled', True)
     
     try:
         # Stelle sicher, dass nur der Dateiname verwendet wird
@@ -74,13 +72,6 @@ def take_photo(project_id, filename=None):
         
         # Vollständiger Pfad zum Foto
         full_path = os.path.join(images_dir, filename)
-        
-        if USE_SIMULATOR:
-            # Webcam-Simulator verwenden
-            from app.utils.webcam_simulator import webcam_simulator
-            photo_path = webcam_simulator.capture_photo(full_path)
-            logger.info(f"Simuliertes Foto aufgenommen und als {photo_path} gespeichert.")
-            return photo_path
         
         # Reale Kamera verwenden
         if camera_controller:

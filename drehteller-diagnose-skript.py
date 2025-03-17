@@ -155,7 +155,7 @@ class Drehteller360Diagnose:
             return
         
         # Erforderliche Konfigurationsabschnitte prüfen
-        required_sections = ["camera", "arduino", "rotation", "simulator"]
+        required_sections = ["camera", "arduino", "rotation"]
         for section in required_sections:
             if section not in self.config:
                 logger.warning(f"Konfigurationsabschnitt fehlt: {section}")
@@ -206,9 +206,6 @@ class Drehteller360Diagnose:
             "rotation": {
                 "default_degrees": 15,
                 "default_interval": 5
-            },
-            "simulator": {
-                "enabled": True
             }
         }
         

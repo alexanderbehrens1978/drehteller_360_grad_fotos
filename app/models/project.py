@@ -369,26 +369,29 @@ class ProjectManager:
             return False
 
     def delete_project(self, project_id):
-        """
-        Löscht ein Projekt
-        
-        Args:
-            project_id: Projekt-ID
-            
-        Returns:
-            True bei Erfolg, False bei Fehler
-        """
-        # Sichere Pfadverarbeitung
         if not project_id or '..' in project_id or '/' in project_id or '\\' in project_id:
             return False
-            
+
         project_path = secure_join(self.projects_dir, project_id)
 
         if os.path.isdir(project_path):
             try:
-                shutil.rmtree(project_path)
+                # Warte kurz, um sicherzustellen, dass keine offenen Datei-Handles blockieren
+                time.sleep(1)
+
+                # Versuche, das Verzeichnis mehrfach zu löschen
+                for _ in range(3):
+                    shutil.rmtree(project_path, ignore_errors=True)
+                    time.sleep(0.5)
+                    if not os.path.exists(project_path):
+                        break
+
+                if os.path.exists(project_path):
+                    raise Exception("Projektverzeichnis konnte nicht gelöscht werden")
+
                 self.logger.info(f"Projekt {project_id} gelöscht")
                 return True
+
             except Exception as e:
                 self.logger.error(f"Fehler beim Löschen des Projekts {project_id}: {str(e)}")
 
