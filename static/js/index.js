@@ -226,14 +226,29 @@ function singleRotation() {
 function displayImage(imagePath, angle) {
     if (!imagePreview) return;
 
+    console.log("Zeige Bild an: " + imagePath);
+
     // Bisherige Vorschau löschen
     imagePreview.innerHTML = '';
 
     // Bild-Element erstellen
     const img = document.createElement('img');
+    
+    // Stellen sicher, dass der Pfad korrekt ist
+    if (!imagePath.startsWith('/')) {
+        imagePath = '/' + imagePath;
+    }
+    
     img.src = imagePath;
     img.alt = `Foto bei ${angle}°`;
     img.className = 'captured-image';
+    
+    // Fehlerbehandlung für Bilder
+    img.onerror = function() {
+        console.error("Fehler beim Laden des Bildes: " + imagePath);
+        this.src = '/static/img/error.jpg'; // Fallback-Bild
+        this.alt = 'Fehler beim Laden des Bildes';
+    };
 
     // Winkel-Anzeige erstellen
     const angleLabel = document.createElement('div');

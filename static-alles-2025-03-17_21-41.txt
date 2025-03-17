@@ -1,0 +1,5749 @@
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/static/js/viewer-app.js ---
+// viewer-app.js - Hauptskript für die Viewer-Seite
+import viewer from './modules/viewer.js';
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Projekt-ID aus URL-Parametern holen
+    const urlParams = new URLSearchParams(window.location.search);
+    const projectId = urlParams.get('project');
+    
+    if (!projectId) {
+        viewer.showError('Keine Projekt-ID angegeben');
+        return;
+    }
+    
+    // Viewer initialisieren
+    viewer.init('product-viewer', projectId)
+        .then(success => {
+            if (success) {
+                console.log('Viewer erfolgreich initialisiert');
+            }
+        })
+        .catch(error => {
+            console.error('Fehler beim Initialisieren des Viewers:', error);
+        });
+    
+    // Vollbild-Button
+    const fullscreenButton = document.getElementById('fullscreen-btn');
+    if (fullscreenButton) {
+        fullscreenButton.addEventListener('click', () => {
+            const container = document.querySelector('.container');
+            
+            if (container.classList.contains('fullscreen')) {
+                // Vollbild beenden
+                document.exitFullscreen()
+                    .catch(err => console.error('Fehler beim Beenden des Vollbildmodus:', err));
+                
+                container.classList.remove('fullscreen');
+                fullscreenButton.innerHTML = '<i class="bi bi-fullscreen"></i>';
+            } else {
+                // Vollbild starten
+                container.requestFullscreen()
+                    .catch(err => console.error('Fehler beim Starten des Vollbildmodus:', err));
+                
+                container.classList.add('fullscreen');
+                fullscreenButton.innerHTML = '<i class="bi bi-fullscreen-exit"></i>';
+            }
+        });
+    }
+});
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/static/js/pannellum-viewer.js ---
+/**
+ * pannellum-viewer.js
+ * Integration von Pannellum für die 360-Grad-Ansicht
+ */
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Projekt-ID aus URL-Parameter holen
+    const urlParams = new URLSearchParams(window.location.search);
+    const projectId = urlParams.get('project');
+    
+    if (!projectId) {
+        console.error('Keine Projekt-ID in der URL gefunden.');
+        showError('Keine Projekt-ID angegeben');
+        return;
+    }
+    
+    // Viewer-Element und Spinner
+    const viewerContainer = document.getElementById('pannellum-viewer');
+    const spinner = document.getElementById('spinner');
+    const projectNameElement = document.querySelector('#project-name span');
+    const imageCountElement = document.querySelector('#image-count span');
+    
+    // Lade Projektdaten
+    loadProject(projectId)
+        .then(setupViewer)
+        .catch(error => {
+            console.error('Fehler beim Laden des Projekts:', error);
+            showError(error.message);
+        });
+    
+    /**
+     * Lädt die Projektdaten vom Server
+     */
+    async function loadProject(projectId) {
+        if (spinner) spinner.style.display = 'block';
+        
+        try {
+            const response = await fetch(`/api/project/${projectId}`);
+            
+            if (!response.ok) {
+                throw new Error(`Projekt konnte nicht geladen werden: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            // Prüfen, ob Bilder vorhanden sind
+            if (!data.images || data.images.length === 0) {
+                throw new Error('Keine Bilder im Projekt gefunden.');
+            }
+            
+            // Projektinformationen anzeigen
+            if (projectNameElement) projectNameElement.textContent = data.name || projectId;
+            if (imageCountElement) imageCountElement.textContent = data.images.length;
+            
+            return data;
+        } catch (error) {
+            throw error;
+        } finally {
+            if (spinner) spinner.style.display = 'none';
+        }
+    }
+    
+    /**
+     * Zeigt eine Fehlermeldung an
+     */
+    function showError(message) {
+        if (spinner) spinner.style.display = 'none';
+        
+        if (viewerContainer) {
+            viewerContainer.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    ${message || 'Ein Fehler ist aufgetreten.'}
+                </div>
+            `;
+        }
+    }
+    
+    /**
+     * Richtet den Pannellum-Viewer ein
+     */
+    function setupViewer(data) {
+        // Bereite die Bilder für Pannellum vor
+        const images = data.images.map(img => `/static/projects/${projectId}/${img}`);
+        
+        // Erstelle die Multi-Bild-Konfiguration für Pannellum
+        // Wir erstellen eine equirectangular-ähnliche Ansicht mit mehreren Bildern
+        const config = {
+            type: "equirectangular",
+            panorama: images[0], // Erstes Bild als Startbild
+            autoLoad: true,
+            showControls: false, // Wir steuern die Bedienelemente selbst
+            compass: false,
+            hotSpots: []
+        };
+        
+        // Pannellum initialisieren
+        const viewer = pannellum.viewer(viewerContainer.id, config);
+        
+        // Variable für den aktuellen Bildindex
+        let currentIndex = 0;
+        
+        // Funktion zum Ändern des Bildes
+        function changeImage(index) {
+            if (index < 0) index = images.length - 1;
+            if (index >= images.length) index = 0;
+            
+            currentIndex = index;
+            viewer.loadScene('scene' + index, null, null, null);
+        }
+        
+        // Szenen für jedes Bild erstellen
+        images.forEach((image, index) => {
+            viewer.addScene('scene' + index, {
+                panorama: image,
+                type: "equirectangular",
+            });
+        });
+        
+        // Event-Listener für die Steuerung
+        const prevButton = document.getElementById('prev-btn');
+        const nextButton = document.getElementById('next-btn');
+        const playButton = document.getElementById('play-btn');
+        
+        if (prevButton) {
+            prevButton.addEventListener('click', () => {
+                changeImage(currentIndex - 1);
+            });
+        }
+        
+        if (nextButton) {
+            nextButton.addEventListener('click', () => {
+                changeImage(currentIndex + 1);
+            });
+        }
+        
+        // Auto-Rotation
+        let autoRotateInterval = null;
+        
+        function startAutoRotate() {
+            if (autoRotateInterval) return;
+            
+            autoRotateInterval = setInterval(() => {
+                changeImage(currentIndex + 1);
+            }, 1000); // Alle 1 Sekunde
+            
+            if (playButton) {
+                playButton.innerHTML = '<i class="bi bi-pause-fill"></i> Pause';
+                playButton.dataset.playing = 'true';
+            }
+        }
+        
+        function stopAutoRotate() {
+            if (autoRotateInterval) {
+                clearInterval(autoRotateInterval);
+                autoRotateInterval = null;
+                
+                if (playButton) {
+                    playButton.innerHTML = '<i class="bi bi-play-fill"></i> Auto-Rotation';
+                    playButton.dataset.playing = 'false';
+                }
+            }
+        }
+        
+        if (playButton) {
+            playButton.addEventListener('click', () => {
+                if (playButton.dataset.playing === 'true') {
+                    stopAutoRotate();
+                } else {
+                    startAutoRotate();
+                }
+            });
+        }
+        
+        // Mausrad-Handler für Zoom
+        viewerContainer.addEventListener('wheel', (e) => {
+            // Standardverhalten verhindern (Scrollen der Seite)
+            e.preventDefault();
+            
+            // Zoom-Level bestimmen
+            const hfov = viewer.getHfov();
+            if (e.deltaY < 0) {
+                // Rein-Zoomen
+                viewer.setHfov(hfov - 5);
+            } else {
+                // Raus-Zoomen
+                viewer.setHfov(hfov + 5);
+            }
+        });
+        
+        // Hotkeys für die Tastatursteuerung
+        document.addEventListener('keydown', (e) => {
+            switch (e.key) {
+                case 'ArrowLeft':
+                    changeImage(currentIndex - 1);
+                    break;
+                case 'ArrowRight':
+                    changeImage(currentIndex + 1);
+                    break;
+                case ' ': // Leertaste
+                    if (autoRotateInterval) {
+                        stopAutoRotate();
+                    } else {
+                        startAutoRotate();
+                    }
+                    break;
+            }
+        });
+        
+        // Auto-Rotation standardmäßig starten
+        startAutoRotate();
+    }
+});
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/static/js/project_create.js ---
+/**
+ * project_create.js
+ * JavaScript für die Projekterstellung
+ */
+
+document.addEventListener('DOMContentLoaded', function() {
+    const projectForm = document.getElementById('projectForm');
+    
+    if (projectForm) {
+        projectForm.addEventListener('submit', function(e) {
+            const nameInput = document.getElementById('name');
+            const angleStepInput = document.getElementById('angle_step');
+            
+            // Name validieren
+            if (!nameInput.value.trim()) {
+                e.preventDefault();
+                alert('Bitte geben Sie einen Projektnamen ein.');
+                nameInput.focus();
+                return false;
+            }
+            
+            // Winkelschritt validieren
+            const angleStep = parseInt(angleStepInput.value);
+            if (isNaN(angleStep) || angleStep <= 0 || angleStep > 90) {
+                e.preventDefault();
+                alert('Bitte geben Sie einen gültigen Winkelschritt zwischen 1 und 90 ein.');
+                angleStepInput.focus();
+                return false;
+            }
+            
+            // Formular absenden
+            return true;
+        });
+    }
+});
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/static/js/simple-viewer.js ---
+// Ein vereinfachter 360° Viewer
+document.addEventListener('DOMContentLoaded', function() {
+    // Prüfen, ob wir auf der Viewer-Seite sind
+    const urlParams = new URLSearchParams(window.location.search);
+    const projectId = urlParams.get('project');
+    
+    if (!projectId) {
+        console.error('Keine Projekt-ID in der URL gefunden');
+        return;
+    }
+    
+    console.log('Lade Projekt mit ID:', projectId);
+    
+    // Viewer-Container
+    const viewerContainer = document.getElementById('product-viewer');
+    if (!viewerContainer) {
+        console.error('Viewer-Container nicht gefunden');
+        return;
+    }
+    
+    // Spinner anzeigen
+    const spinner = document.getElementById('spinner');
+    
+    // Lade Projektdaten
+    fetch(`/api/project/${projectId}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Projekt konnte nicht geladen werden (Status: ${response.status})`);
+            }
+            return response.json();
+        })
+        .then(projectData => {
+            console.log('Projektdaten geladen:', projectData);
+            
+            // Projektinformationen anzeigen
+            document.querySelector('#project-name span').textContent = projectData.name || projectId;
+            document.querySelector('#image-count span').textContent = projectData.images.length;
+            
+            // Bilder laden
+            if (!projectData.images || projectData.images.length === 0) {
+                throw new Error('Keine Bilder im Projekt gefunden');
+            }
+            
+            // Spinner ausblenden
+            spinner.style.display = 'none';
+            
+            // Bilder in den Viewer laden
+            const images = projectData.images.map(img => `/static/projects/${projectId}/${img}`);
+            console.log('Bildpfade:', images);
+            
+            // Erstelle Bilder-Container
+            viewerContainer.innerHTML = '';
+            
+            // Erstes Bild anzeigen
+            const mainImage = document.createElement('img');
+            mainImage.src = images[0];
+            mainImage.alt = 'Projekbild';
+            mainImage.className = 'img-fluid main-image';
+            mainImage.style.maxHeight = '400px';
+            mainImage.style.margin = '0 auto';
+            mainImage.style.display = 'block';
+            
+            viewerContainer.appendChild(mainImage);
+            
+            // Bilder-Auswahl erstellen
+            const imageSelector = document.createElement('div');
+            imageSelector.className = 'image-selector mt-3 d-flex flex-wrap justify-content-center';
+            
+            images.forEach((img, index) => {
+                const thumbContainer = document.createElement('div');
+                thumbContainer.className = 'thumb-container m-1';
+                thumbContainer.style.width = '60px';
+                thumbContainer.style.height = '60px';
+                thumbContainer.style.overflow = 'hidden';
+                thumbContainer.style.border = '1px solid #ddd';
+                thumbContainer.style.borderRadius = '4px';
+                thumbContainer.style.cursor = 'pointer';
+                
+                const thumbImg = document.createElement('img');
+                thumbImg.src = img;
+                thumbImg.alt = `Ansicht ${index + 1}`;
+                thumbImg.className = 'img-fluid';
+                thumbImg.style.width = '100%';
+                thumbImg.style.height = '100%';
+                thumbImg.style.objectFit = 'cover';
+                
+                thumbContainer.appendChild(thumbImg);
+                
+                // Beim Klick großes Bild wechseln
+                thumbContainer.addEventListener('click', () => {
+                    mainImage.src = img;
+                });
+                
+                imageSelector.appendChild(thumbContainer);
+            });
+            
+            viewerContainer.appendChild(imageSelector);
+            
+            // Mausrad-Navigation für das Hauptbild
+            let currentIndex = 0;
+            mainImage.addEventListener('wheel', (event) => {
+                event.preventDefault();
+                if (event.deltaY > 0) {
+                    // Nach unten = nächstes Bild
+                    currentIndex = (currentIndex + 1) % images.length;
+                } else {
+                    // Nach oben = vorheriges Bild
+                    currentIndex = (currentIndex - 1 + images.length) % images.length;
+                }
+                mainImage.src = images[currentIndex];
+            });
+            
+            // Maus-Drag-Navigation
+            let isDragging = false;
+            let startX = 0;
+            
+            mainImage.addEventListener('mousedown', (event) => {
+                isDragging = true;
+                startX = event.clientX;
+                mainImage.style.cursor = 'grabbing';
+            });
+            
+            document.addEventListener('mousemove', (event) => {
+                if (!isDragging) return;
+                
+                const deltaX = event.clientX - startX;
+                
+                if (Math.abs(deltaX) > 30) {
+                    // Genug Bewegung für Bildwechsel
+                    if (deltaX > 0) {
+                        // Nach rechts = vorheriges Bild
+                        currentIndex = (currentIndex - 1 + images.length) % images.length;
+                    } else {
+                        // Nach links = nächstes Bild
+                        currentIndex = (currentIndex + 1) % images.length;
+                    }
+                    mainImage.src = images[currentIndex];
+                    startX = event.clientX;
+                }
+            });
+            
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+                mainImage.style.cursor = 'grab';
+            });
+            
+            // Touch-Events für mobile Geräte
+            mainImage.addEventListener('touchstart', (event) => {
+                isDragging = true;
+                startX = event.touches[0].clientX;
+            });
+            
+            document.addEventListener('touchmove', (event) => {
+                if (!isDragging) return;
+                
+                const deltaX = event.touches[0].clientX - startX;
+                
+                if (Math.abs(deltaX) > 30) {
+                    if (deltaX > 0) {
+                        currentIndex = (currentIndex - 1 + images.length) % images.length;
+                    } else {
+                        currentIndex = (currentIndex + 1) % images.length;
+                    }
+                    mainImage.src = images[currentIndex];
+                    startX = event.touches[0].clientX;
+                }
+            });
+            
+            document.addEventListener('touchend', () => {
+                isDragging = false;
+            });
+        })
+        .catch(error => {
+            console.error('Fehler beim Laden des Projekts:', error);
+            spinner.style.display = 'none';
+            
+            // Fehlermeldung anzeigen
+            viewerContainer.innerHTML = `
+                <div class="alert alert-danger m-3">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    ${error.message || 'Fehler beim Laden des Projekts'}
+                </div>
+            `;
+        });
+    
+    // Play-Button-Funktionalität
+    const playBtn = document.getElementById('play-btn');
+    if (playBtn) {
+        let isPlaying = false;
+        let playInterval = null;
+        
+        playBtn.addEventListener('click', () => {
+            if (isPlaying) {
+                // Animation stoppen
+                clearInterval(playInterval);
+                playBtn.innerHTML = '<i class="bi bi-play-fill"></i> Auto-Rotation';
+                isPlaying = false;
+            } else {
+                // Animation starten
+                let currentIndex = 0;
+                const mainImage = document.querySelector('.main-image');
+                if (!mainImage) return;
+                
+                playInterval = setInterval(() => {
+                    fetch(`/api/project/${projectId}`)
+                        .then(response => response.json())
+                        .then(projectData => {
+                            const images = projectData.images.map(img => `/static/projects/${projectId}/${img}`);
+                            currentIndex = (currentIndex + 1) % images.length;
+                            mainImage.src = images[currentIndex];
+                        });
+                }, 500);
+                
+                playBtn.innerHTML = '<i class="bi bi-pause-fill"></i> Pause';
+                isPlaying = true;
+            }
+        });
+    }
+});
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/static/js/interactive-viewer.js ---
+/**
+ * interactive-viewer.js
+ * Interaktiver 360° Produkt-Viewer mit Maus-Steuerung
+ */
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Projekt-ID aus URL-Parameter holen
+    const urlParams = new URLSearchParams(window.location.search);
+    const projectId = urlParams.get('project');
+    
+    if (!projectId) {
+        console.error('Keine Projekt-ID in der URL gefunden.');
+        return;
+    }
+    
+    // Viewer-Elemente
+    const viewer = document.getElementById('product-viewer');
+    const spinner = document.getElementById('spinner');
+    
+    // Viewer-Status
+    let images = [];
+    let currentIndex = 0;
+    let isDragging = false;
+    let startX = 0;
+    let autoRotateTimer = null;
+    let isAutoRotating = false;
+    
+    // Hilfsfunktionen
+    function showSpinner() {
+        if (spinner) spinner.style.display = 'block';
+    }
+    
+    function hideSpinner() {
+        if (spinner) spinner.style.display = 'none';
+    }
+    
+    function showError(message) {
+        hideSpinner();
+        if (viewer) {
+            viewer.innerHTML = `
+                <div class="alert alert-danger m-3">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    ${message || 'Ein Fehler ist aufgetreten.'}
+                </div>
+            `;
+        }
+    }
+    
+    // Lade Projektdaten und Bilder
+    async function loadProject() {
+        showSpinner();
+        
+        try {
+            const response = await fetch(`/api/project/${projectId}`);
+            
+            if (!response.ok) {
+                throw new Error(`Projekt konnte nicht geladen werden: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            // Prüfen, ob Bilder vorhanden sind
+            if (!data.images || data.images.length === 0) {
+                throw new Error('Keine Bilder im Projekt gefunden.');
+            }
+            
+            // Projektinformationen anzeigen
+            document.querySelector('#project-name span').textContent = data.name || projectId;
+            document.querySelector('#image-count span').textContent = data.images.length;
+            
+            // Bilder vorbereiten
+            images = data.images.map(img => `/static/projects/${projectId}/${img}`);
+            
+            // Viewer initialisieren
+            initViewer();
+            
+        } catch (error) {
+            console.error('Fehler beim Laden des Projekts:', error);
+            showError(error.message);
+        }
+    }
+    
+    // Viewer initialisieren
+    function initViewer() {
+        hideSpinner();
+        
+        // Viewer-Container leeren
+        viewer.innerHTML = '';
+        
+        // Alle Bilder vorladen
+        const preloadPromises = images.map(src => {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = resolve;
+                img.onerror = reject;
+                img.src = src;
+                img.alt = `Produktansicht`;
+                img.className = 'product-image';
+                img.style.display = 'none';
+                img.draggable = false;
+                viewer.appendChild(img);
+            });
+        });
+        
+        // Wenn alle Bilder geladen sind, erstes Bild anzeigen
+        Promise.all(preloadPromises)
+            .then(() => {
+                console.log('Alle Bilder geladen');
+                showImage(0);
+                setupEvents();
+                startAutoRotate();
+            })
+            .catch(error => {
+                console.error('Fehler beim Vorladen der Bilder:', error);
+            });
+    }
+    
+    // Bild anzeigen
+    function showImage(index) {
+        if (index < 0 || index >= images.length) return;
+        
+        // Aktuelles Bild ausblenden
+        const currentImage = viewer.querySelector('.active');
+        if (currentImage) {
+            currentImage.classList.remove('active');
+        }
+        
+        // Neues Bild anzeigen
+        const viewerImages = viewer.querySelectorAll('img');
+        if (viewerImages.length > 0) {
+            viewerImages[index].classList.add('active');
+            currentIndex = index;
+        }
+    }
+    
+    // Event-Listener einrichten
+    function setupEvents() {
+        // Maus-Events
+        viewer.addEventListener('mousedown', startDrag);
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('mouseup', endDrag);
+        
+        // Touch-Events für mobile Geräte
+        viewer.addEventListener('touchstart', startDrag);
+        document.addEventListener('touchmove', drag);
+        document.addEventListener('touchend', endDrag);
+        
+        // Steuerungs-Buttons
+        const playButton = document.getElementById('play-btn');
+        if (playButton) {
+            playButton.addEventListener('click', toggleAutoRotate);
+        }
+        
+        const resetButton = document.getElementById('reset-btn');
+        if (resetButton) {
+            resetButton.addEventListener('click', resetViewer);
+        }
+        
+        // Zoom-Buttons
+        const zoomInButton = document.getElementById('zoom-in-btn');
+        if (zoomInButton) {
+            zoomInButton.addEventListener('click', zoomIn);
+        }
+        
+        const zoomOutButton = document.getElementById('zoom-out-btn');
+        if (zoomOutButton) {
+            zoomOutButton.addEventListener('click', zoomOut);
+        }
+        
+        // Vollbild-Button
+        const fullscreenButton = document.getElementById('fullscreen-btn');
+        if (fullscreenButton) {
+            fullscreenButton.addEventListener('click', toggleFullscreen);
+        }
+    }
+    
+    // Drag-Funktionen
+    function startDrag(event) {
+        event.preventDefault();
+        
+        isDragging = true;
+        viewer.style.cursor = 'grabbing';
+        
+        // Auto-Rotation stoppen
+        stopAutoRotate();
+        
+        // Startposition speichern
+        if (event.type === 'touchstart') {
+            startX = event.touches[0].clientX;
+        } else {
+            startX = event.clientX;
+        }
+    }
+    
+    function drag(event) {
+        if (!isDragging) return;
+        
+        event.preventDefault();
+        
+        let currentX;
+        if (event.type === 'touchmove') {
+            currentX = event.touches[0].clientX;
+        } else {
+            currentX = event.clientX;
+        }
+        
+        // Bewegungsrichtung ermitteln
+        const deltaX = currentX - startX;
+        startX = currentX;
+        
+        // Nur bei ausreichender Bewegung reagieren
+        if (Math.abs(deltaX) > 5) {
+            // Richtung bestimmen: nach rechts ziehen = nach links drehen
+            const direction = Math.sign(deltaX);
+            const newIndex = (currentIndex - direction + images.length) % images.length;
+            
+            showImage(newIndex);
+        }
+    }
+    
+    function endDrag() {
+        isDragging = false;
+        if (viewer) {
+            viewer.style.cursor = 'grab';
+        }
+    }
+    
+    // Auto-Rotation
+    function startAutoRotate() {
+        if (autoRotateTimer) return;
+        
+        isAutoRotating = true;
+        
+        if (playButton) {
+            playButton.innerHTML = '<i class="bi bi-pause-fill"></i> Pause';
+        }
+        
+        autoRotateTimer = setInterval(() => {
+            const newIndex = (currentIndex + 1) % images.length;
+            showImage(newIndex);
+        }, 100);
+    }
+    
+    function stopAutoRotate() {
+        if (!autoRotateTimer) return;
+        
+        clearInterval(autoRotateTimer);
+        autoRotateTimer = null;
+        isAutoRotating = false;
+        
+        if (playButton) {
+            playButton.innerHTML = '<i class="bi bi-play-fill"></i> Auto-Rotation';
+        }
+    }
+    
+    function toggleAutoRotate() {
+        if (isAutoRotating) {
+            stopAutoRotate();
+        } else {
+            startAutoRotate();
+        }
+    }
+    
+    // Zoom-Funktionen
+    function zoomIn() {
+        const images = viewer.querySelectorAll('img');
+        images.forEach(img => {
+            const currentScale = parseFloat(img.style.transform.replace('scale(', '').replace(')', '') || 1);
+            img.style.transform = `scale(${currentScale + 0.1})`;
+        });
+    }
+    
+    function zoomOut() {
+        const images = viewer.querySelectorAll('img');
+        images.forEach(img => {
+            const currentScale = parseFloat(img.style.transform.replace('scale(', '').replace(')', '') || 1);
+            const newScale = Math.max(0.5, currentScale - 0.1);
+            img.style.transform = `scale(${newScale})`;
+        });
+    }
+    
+    // Viewer zurücksetzen
+    function resetViewer() {
+        // Zoom zurücksetzen
+        const images = viewer.querySelectorAll('img');
+        images.forEach(img => {
+            img.style.transform = '';
+        });
+        
+        // Erstes Bild anzeigen
+        showImage(0);
+        
+        // Auto-Rotation stoppen
+        stopAutoRotate();
+    }
+    
+    // Vollbild-Modus
+    function toggleFullscreen() {
+        const container = document.querySelector('.container');
+        
+        if (container.classList.contains('fullscreen')) {
+            // Vollbild beenden
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+            container.classList.remove('fullscreen');
+            fullscreenButton.innerHTML = '<i class="bi bi-fullscreen"></i>';
+        } else {
+            // Vollbild starten
+            if (container.requestFullscreen) {
+                container.requestFullscreen();
+            }
+            container.classList.add('fullscreen');
+            fullscreenButton.innerHTML = '<i class="bi bi-fullscreen-exit"></i>';
+        }
+    }
+    
+    // Projekt laden, wenn vorhanden
+    if (projectId) {
+        loadProject();
+    }
+});
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/static/js/index.js ---
+/**
+ * index.js
+ * JavaScript für die Startseite und Drehteller-Steuerung
+ */
+
+// Globale Variablen
+let currentProjectId = null;
+let capturedPhotos = [];
+let isRotating = false;
+
+// DOM-Elemente
+const projectSelect = document.getElementById('projectSelect');
+const startBtn = document.getElementById('startBtn');
+const stopBtn = document.getElementById('stopBtn');
+const rotateBtn = document.getElementById('rotateBtn');
+const imagePreview = document.getElementById('imagePreview');
+const angleInput = document.getElementById('angleInput');
+const intervalInput = document.getElementById('intervalInput');
+const rotationStatus = document.getElementById('rotationStatus');
+const projectModal = document.getElementById('projectModal');
+const projectForm = document.getElementById('projectForm');
+const cancelProjectBtn = document.getElementById('cancelProject');
+
+// Initialisierung
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialisiere die Projekt-ID aus den Datenelementen
+    currentProjectId = document.body.getAttribute('data-project-id') || '';
+
+    // Projekte laden, wenn kein Projekt ausgewählt ist
+    if (!currentProjectId && projectSelect) {
+        loadProjects();
+
+        // Event-Listener für Projekt-Auswahl
+        projectSelect.addEventListener('change', function() {
+            if (this.value) {
+                if (this.value === 'new') {
+                    showProjectModal();
+                } else {
+                    window.location.href = '/?project_id=' + this.value;
+                }
+            }
+        });
+    }
+
+    // Event-Listener für Buttons
+    if (startBtn) startBtn.addEventListener('click', startRotation);
+    if (stopBtn) stopBtn.addEventListener('click', stopRotation);
+    if (rotateBtn) rotateBtn.addEventListener('click', singleRotation);
+
+    // Event-Listener für das Projektformular
+    if (projectForm) {
+        projectForm.addEventListener('submit', createProject);
+    }
+
+    // Event-Listener für den Abbrechen-Button im Modal
+    if (cancelProjectBtn) {
+        cancelProjectBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            hideProjectModal();
+        });
+    }
+
+    // Wenn kein Projekt ausgewählt ist, Modal anzeigen
+    if (!currentProjectId && !projectSelect && projectModal) {
+        showProjectModal();
+    }
+});
+
+// Projekte laden
+function loadProjects() {
+    fetch('/api/projects')
+        .then(response => response.json())
+        .then(projects => {
+            if (!projectSelect) return;
+
+            projectSelect.innerHTML = '<option value="">Bitte wählen...</option>';
+            projectSelect.innerHTML += '<option value="new">+ Neues Projekt erstellen</option>';
+
+            if (projects.length === 0) {
+                return;
+            }
+
+            // Projekte zum Dropdown hinzufügen
+            projects.forEach(project => {
+                const option = document.createElement('option');
+                option.value = project.id;
+                option.textContent = project.name;
+                projectSelect.appendChild(option);
+            });
+
+            // Wenn eine Projekt-ID vorhanden ist, diese auswählen
+            if (currentProjectId && projectSelect.querySelector(`option[value="${currentProjectId}"]`)) {
+                projectSelect.value = currentProjectId;
+            }
+        })
+        .catch(error => {
+            console.error('Fehler beim Laden der Projekte:', error);
+            if (projectSelect) {
+                projectSelect.innerHTML = '<option value="">Fehler beim Laden der Projekte</option>';
+            }
+        });
+}
+
+// Projekt-Modal anzeigen
+function showProjectModal() {
+    if (projectModal) {
+        projectModal.style.display = 'flex';
+    }
+}
+
+// Projekt-Modal ausblenden
+function hideProjectModal() {
+    if (projectModal) {
+        projectModal.style.display = 'none';
+
+        // Select zurücksetzen
+        if (projectSelect) {
+            projectSelect.value = currentProjectId || '';
+        }
+    }
+}
+
+// Neues Projekt erstellen
+function createProject(e) {
+    e.preventDefault();
+
+    const formData = new FormData(projectForm);
+
+    fetch('/projects/create', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (response.redirected) {
+            window.location.href = response.url;
+        } else {
+            return response.json().then(data => {
+                throw new Error(data.error || 'Unbekannter Fehler');
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Fehler beim Erstellen des Projekts:', error);
+        alert('Fehler beim Erstellen des Projekts: ' + error.message);
+    });
+}
+
+// Einzelne Rotation und Fotoaufnahme
+function singleRotation() {
+    if (isRotating) return;
+
+    // Überprüfen, ob ein Projekt ausgewählt wurde
+    if (!currentProjectId) {
+        alert('Bitte wählen Sie zuerst ein Projekt aus.');
+        return;
+    }
+
+    const angle = parseInt(angleInput.value) || 15;
+
+    isRotating = true;
+    if (rotateBtn) rotateBtn.disabled = true;
+
+    // Statusmeldung anzeigen
+    if (rotationStatus) {
+        rotationStatus.textContent = "Drehe und nehme Foto auf...";
+        rotationStatus.style.display = "block";
+    }
+
+    // Formular-Daten vorbereiten
+    const formData = new FormData();
+    formData.append('degrees', angle);
+    formData.append('project_id', currentProjectId);
+
+    // Rotation und Fotoaufnahme starten
+    fetch('/rotate', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // Foto zur Liste hinzufügen
+            capturedPhotos.push({
+                path: data.photo,
+                angle: data.angle
+            });
+
+            // Bild anzeigen
+            displayImage(data.photo, angle);  // Hier wird jetzt der tatsächliche Winkel verwendet
+
+            // Statusmeldung aktualisieren
+            if (rotationStatus) {
+                rotationStatus.textContent = `Foto aufgenommen bei ${angle}°`;
+                setTimeout(() => {
+                    rotationStatus.style.display = "none";
+                }, 3000);
+            }
+
+            console.log(`Erfolgreich gedreht und Foto aufgenommen: ${data.photo}`);
+        } else {
+            console.error('Fehler:', data.error);
+            alert(`Fehler bei der Rotation: ${data.error}`);
+
+            // Statusmeldung aktualisieren
+            if (rotationStatus) {
+                rotationStatus.textContent = `Fehler: ${data.error}`;
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Netzwerkfehler:', error);
+        alert(`Netzwerkfehler beim Drehen des Tellers: ${error.message}`);
+
+        // Statusmeldung aktualisieren
+        if (rotationStatus) {
+            rotationStatus.textContent = `Netzwerkfehler: ${error.message}`;
+        }
+    })
+    .finally(() => {
+        isRotating = false;
+        if (rotateBtn) rotateBtn.disabled = false;
+    });
+}
+
+// Zeigt ein Bild in der Vorschau an
+function displayImage(imagePath, angle) {
+    if (!imagePreview) return;
+
+    console.log("Zeige Bild an: " + imagePath);
+
+    // Bisherige Vorschau löschen
+    imagePreview.innerHTML = '';
+
+    // Bild-Element erstellen
+    const img = document.createElement('img');
+    
+    // Stellen sicher, dass der Pfad korrekt ist
+    if (!imagePath.startsWith('/')) {
+        imagePath = '/' + imagePath;
+    }
+    
+    img.src = imagePath;
+    img.alt = `Foto bei ${angle}°`;
+    img.className = 'captured-image';
+    
+    // Fehlerbehandlung für Bilder
+    img.onerror = function() {
+        console.error("Fehler beim Laden des Bildes: " + imagePath);
+        this.src = '/static/img/error.jpg'; // Fallback-Bild
+        this.alt = 'Fehler beim Laden des Bildes';
+    };
+
+    // Winkel-Anzeige erstellen
+    const angleLabel = document.createElement('div');
+    angleLabel.className = 'angle-label';
+    angleLabel.textContent = `${angle}°`;
+
+    // Container erstellen und Elemente hinzufügen
+    const container = document.createElement('div');
+    container.className = 'image-container';
+    container.appendChild(img);
+    container.appendChild(angleLabel);
+
+    // Container zur Vorschau hinzufügen
+    imagePreview.appendChild(container);
+}
+
+// Automatische Rotation und Fotoaufnahme
+function startRotation() {
+    if (isRotating) return;
+
+    // Überprüfen, ob ein Projekt ausgewählt wurde
+    if (!currentProjectId) {
+        alert('Bitte wählen Sie zuerst ein Projekt aus.');
+        return;
+    }
+
+    const angle = parseInt(angleInput.value) || 15;
+    const interval = parseInt(intervalInput.value) || 5;
+    const totalSteps = Math.floor(360 / angle);
+
+    if (startBtn) startBtn.disabled = true;
+    if (stopBtn) stopBtn.disabled = false;
+    isRotating = true;
+
+    // Statusmeldung anzeigen
+    if (rotationStatus) {
+        rotationStatus.textContent = `Rotation gestartet: 0/${totalSteps} Schritte`;
+        rotationStatus.style.display = "block";
+    }
+
+    // Startwert für den Fortschritt
+    let currentStep = 0;
+
+    // Funktion für jeden Rotationsschritt
+    function rotateStep() {
+        if (!isRotating) return;
+
+        currentStep++;
+
+        // Statusmeldung aktualisieren
+        if (rotationStatus) {
+            rotationStatus.textContent = `Rotation: ${currentStep}/${totalSteps} Schritte`;
+        }
+
+        // Formular-Daten vorbereiten
+        const formData = new FormData();
+        formData.append('degrees', angle);
+        formData.append('project_id', currentProjectId);
+
+        // Rotation und Fotoaufnahme durchführen
+        fetch('/rotate', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+             if (data.status === 'success') {
+                // Foto zur Liste hinzufügen
+                capturedPhotos.push({
+                    path: data.photo,
+                    angle: currentStep * angle
+                });
+
+                // Bild anzeigen
+                displayImage(data.photo, currentStep * angle);
+
+                // Nächsten Schritt planen, wenn nicht fertig
+                if (currentStep < totalSteps && isRotating) {
+                    setTimeout(rotateStep, interval * 1000);
+                } else {
+                    completeRotation();
+                }
+            } else {
+                console.error('Fehler:', data.error);
+                alert(`Fehler bei der Rotation: ${data.error}`);
+                stopRotation();
+            }
+        })
+        .catch(error => {
+            console.error('Netzwerkfehler:', error);
+            alert(`Netzwerkfehler beim Drehen des Tellers: ${error.message}`);
+            stopRotation();
+        });
+    }
+
+    // Starte den ersten Schritt
+    rotateStep();
+}
+
+// Beende die Rotation
+function stopRotation() {
+    isRotating = false;
+
+    if (startBtn) startBtn.disabled = false;
+    if (stopBtn) stopBtn.disabled = true;
+
+    if (rotationStatus) {
+        rotationStatus.textContent = 'Rotation gestoppt';
+        setTimeout(() => {
+            rotationStatus.style.display = "none";
+        }, 3000);
+    }
+}
+
+// Rotation abschließen
+function completeRotation() {
+    stopRotation();
+
+    if (rotationStatus) {
+        rotationStatus.textContent = 'Rotation abgeschlossen!';
+        setTimeout(() => {
+            rotationStatus.style.display = "none";
+        }, 3000);
+    }
+
+    // Nachfragen, ob ein 360°-Viewer erstellt werden soll
+    if (confirm('Rotation abgeschlossen! Möchten Sie einen 360°-Viewer aus den aufgenommenen Fotos erstellen?')) {
+        generateViewer();
+    }
+}
+
+function generateViewer() {
+    console.log("Captured Photos:", capturedPhotos);
+    
+    if (capturedPhotos.length < 4) {
+        alert('Es werden mindestens 4 Fotos für einen 360°-Viewer benötigt.');
+        return;
+    }
+
+    // Prüfe die aktuelle Projekt-ID
+    console.log("Aktuelle Projekt-ID:", currentProjectId);
+
+    if (!currentProjectId) {
+        alert("Fehler: Keine Projekt-ID gefunden!");
+        console.error("Fehler: currentProjectId ist null oder undefined!");
+        return;
+    }
+
+    // Anfrage-Daten zusammenstellen
+    const requestData = {
+        project_id: currentProjectId,
+        photos: capturedPhotos.map(photo => photo.path)
+    };
+
+    console.log("Sende Anfrage mit Daten:", requestData);
+
+    fetch('/generate_360', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData)
+    })
+    .then(response => {
+        console.log("Serverantwort Status:", response.status);
+        return response.json();
+    })
+    .then(data => {
+        console.log("Antwort vom Server:", data);
+        if (data.status === 'success') {
+            alert(`360°-Viewer erfolgreich erstellt! Sie werden weitergeleitet.`);
+            window.location.href = data.url;
+        } else {
+            console.error('Fehler beim Generieren des Viewers:', data.error);
+            alert(`Fehler beim Generieren des 360°-Viewers: ${data.error}`);
+        }
+    })
+    .catch(error => {
+        console.error('Netzwerkfehler:', error);
+        alert(`Netzwerkfehler beim Generieren des 360°-Viewers: ${error.message}`);
+    });
+}
+
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/static/js/turntable.js ---
+/**
+ * turntable.js
+ * JavaScript für die Drehtellersteuerung und Fotoaufnahme
+ */
+
+// Globale Variablen
+let currentProjectId = null;
+let capturedPhotos = [];
+let isRotating = false;
+
+// DOM-Elemente
+const startBtn = document.getElementById('startBtn');
+const stopBtn = document.getElementById('stopBtn');
+const rotateBtn = document.getElementById('rotateBtn');
+const imagePreview = document.getElementById('imagePreview');
+const angleInput = document.getElementById('angleInput');
+const intervalInput = document.getElementById('intervalInput');
+const projectSelect = document.getElementById('projectSelect');
+
+// Initialisierung
+document.addEventListener('DOMContentLoaded', function() {
+    // Projekte laden
+    loadProjects();
+    
+    // Event-Listener für Buttons
+    if (startBtn) startBtn.addEventListener('click', startRotation);
+    if (stopBtn) stopBtn.addEventListener('click', stopRotation);
+    if (rotateBtn) rotateBtn.addEventListener('click', singleRotation);
+    
+    // Projekt-ID aus URL-Parameter lesen, falls vorhanden
+    const urlParams = new URLSearchParams(window.location.search);
+    const projectIdParam = urlParams.get('project_id');
+    if (projectIdParam) {
+        currentProjectId = projectIdParam;
+        if (projectSelect) projectSelect.value = projectIdParam;
+    }
+});
+
+/**
+ * Lädt verfügbare Projekte und füllt das Dropdown-Menü
+ */
+function loadProjects() {
+    if (!projectSelect) return;
+    
+    fetch('/api/projects')
+        .then(response => response.json())
+        .then(data => {
+            projectSelect.innerHTML = '<option value="">Bitte wählen...</option>';
+            data.forEach(project => {
+                const option = document.createElement('option');
+                option.value = project.id;
+                option.textContent = project.name;
+                projectSelect.appendChild(option);
+            });
+            
+            // Wenn bereits ein Projekt ausgewählt wurde, setze es im Dropdown
+            if (currentProjectId) {
+                projectSelect.value = currentProjectId;
+            }
+        })
+        .catch(error => {
+            console.error('Fehler beim Laden der Projekte:', error);
+            alert('Fehler beim Laden der Projekte. Bitte versuchen Sie es später erneut.');
+        });
+        
+    // Event-Listener für Projekt-Auswahl
+    projectSelect.addEventListener('change', function() {
+        currentProjectId = this.value;
+    });
+}
+
+/**
+ * Startet eine einzelne Rotation und nimmt ein Foto auf
+ */
+function singleRotation() {
+    if (isRotating) return;
+    
+    // Überprüfe, ob ein Projekt ausgewählt wurde
+    if (!currentProjectId) {
+        alert('Bitte wählen Sie zuerst ein Projekt aus.');
+        return;
+    }
+    
+    const angle = parseInt(angleInput.value) || 15;
+    
+    isRotating = true;
+    if (rotateBtn) rotateBtn.disabled = true;
+    
+    // Formular-Daten vorbereiten
+    const formData = new FormData();
+    formData.append('degrees', angle);
+    formData.append('project_id', currentProjectId);
+    
+    // Rotation und Fotoaufnahme starten
+    fetch('/rotate', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // Foto zur Liste hinzufügen
+            capturedPhotos.push({
+                path: data.photo,
+                angle: data.angle
+            });
+            
+            // Bild anzeigen
+            displayImage(data.photo, data.angle);
+            
+            console.log(`Erfolgreich gedreht und Foto aufgenommen: ${data.photo}`);
+        } else {
+            console.error('Fehler:', data.error);
+            alert(`Fehler bei der Rotation: ${data.error}`);
+        }
+    })
+    .catch(error => {
+        console.error('Netzwerkfehler:', error);
+        alert('Netzwerkfehler beim Drehen des Tellers.');
+    })
+    .finally(() => {
+        isRotating = false;
+        if (rotateBtn) rotateBtn.disabled = false;
+    });
+}
+
+/**
+ * Zeigt ein Bild in der Vorschau an
+ * @param {string} imagePath - Pfad zum Bild
+ * @param {number} angle - Winkel, bei dem das Bild aufgenommen wurde
+ */
+function displayImage(imagePath, angle) {
+    if (!imagePreview) return;
+    
+    // Bildpfad korrigieren, um sicherzustellen, dass er zum Projektverzeichnis führt
+    const imgUrl = getImageUrl(imagePath, currentProjectId);
+    
+    // Bisherige Vorschau löschen
+    imagePreview.innerHTML = '';
+    
+    // Bild-Container erstellen
+    const container = document.createElement('div');
+    container.className = 'image-container';
+    
+    // Bild-Element erstellen
+    const img = document.createElement('img');
+    img.src = imgUrl;
+    img.alt = `Foto bei ${angle}°`;
+    img.className = 'captured-image';
+    
+    // Winkelbeschriftung hinzufügen
+    const angleLabel = document.createElement('div');
+    angleLabel.className = 'angle-label';
+    angleLabel.textContent = `${angle}°`;
+    
+    // Elemente zum Container hinzufügen
+    container.appendChild(img);
+    container.appendChild(angleLabel);
+    
+    // Container zur Vorschau hinzufügen
+    imagePreview.appendChild(container);
+}
+
+/**
+ * Korrigiert Bildpfade für Projektbilder
+ * @param {string} imagePath - Der ursprüngliche Bildpfad
+ * @param {string} projectId - Die Projekt-ID
+ * @returns {string} Der korrigierte Bildpfad
+ */
+function getImageUrl(imagePath, projectId) {
+    // Falls der Pfad bereits mit "/projects" beginnt, nichts ändern
+    if (imagePath.startsWith('/projects/')) {
+        return imagePath;
+    }
+    
+    // Falls der Pfad bereits einen Projektpfad enthält
+    if (imagePath.includes('/project/')) {
+        return imagePath;
+    }
+    
+    // Bei relativen Pfaden den vollständigen Pfad erstellen
+    if (imagePath.startsWith('/')) {
+        // Bei absoluten Pfaden den Projektteil vorne anfügen
+        return `/projects/image/${projectId}${imagePath}`;
+    } else {
+        // Bei vollständig relativen Pfaden nur den Dateinamen verwenden
+        return `/projects/image/${projectId}/${imagePath.split('/').pop()}`;
+    }
+}
+
+/**
+ * Startet automatische Rotation und Fotoaufnahme
+ */
+function startRotation() {
+    if (isRotating) return;
+    
+    // Überprüfe, ob ein Projekt ausgewählt wurde
+    if (!currentProjectId) {
+        alert('Bitte wählen Sie zuerst ein Projekt aus.');
+        return;
+    }
+    
+    const angle = parseInt(angleInput.value) || 15;
+    const interval = parseInt(intervalInput.value) || 5;
+    const totalSteps = Math.floor(360 / angle);
+    
+    if (startBtn) startBtn.disabled = true;
+    if (stopBtn) stopBtn.disabled = false;
+    isRotating = true;
+    
+    // Status-Element erstellen
+    const statusEl = document.createElement('div');
+    statusEl.id = 'rotationStatus';
+    statusEl.className = 'status-message';
+    statusEl.textContent = `Rotation gestartet: 0/${totalSteps} Schritte`;
+    document.querySelector('.controls').appendChild(statusEl);
+    
+    // Startwert für den Fortschritt
+    let currentStep = 0;
+    
+    // Funktion für jeden Rotationsschritt
+    function rotateStep() {
+        if (!isRotating) return;
+        
+        currentStep++;
+        statusEl.textContent = `Rotation: ${currentStep}/${totalSteps} Schritte`;
+        
+        // Formular-Daten vorbereiten
+        const formData = new FormData();
+        formData.append('degrees', angle);
+        formData.append('project_id', currentProjectId);
+        
+        // Rotation und Fotoaufnahme durchführen
+        fetch('/rotate', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Foto zur Liste hinzufügen
+                capturedPhotos.push({
+                    path: data.photo,
+                    angle: currentStep * angle
+                });
+                
+                // Bild anzeigen
+                displayImage(data.photo, currentStep * angle);
+                
+                // Nächsten Schritt planen, wenn nicht fertig
+                if (currentStep < totalSteps && isRotating) {
+                    setTimeout(rotateStep, interval * 1000);
+                } else {
+                    completeRotation();
+                }
+            } else {
+                console.error('Fehler:', data.error);
+                alert(`Fehler bei der Rotation: ${data.error}`);
+                stopRotation();
+            }
+        })
+        .catch(error => {
+            console.error('Netzwerkfehler:', error);
+            alert('Netzwerkfehler beim Drehen des Tellers.');
+            stopRotation();
+        });
+    }
+    
+    // Starte den ersten Schritt
+    rotateStep();
+}
+
+/**
+ * Beendet die automatische Rotation
+ */
+function stopRotation() {
+    isRotating = false;
+    
+    if (startBtn) startBtn.disabled = false;
+    if (stopBtn) stopBtn.disabled = true;
+    
+    const statusEl = document.getElementById('rotationStatus');
+    if (statusEl) {
+        statusEl.textContent = 'Rotation gestoppt';
+        setTimeout(() => {
+            statusEl.remove();
+        }, 3000);
+    }
+}
+
+/**
+ * Schließt die Rotation ab und bietet die Generierung eines 360°-Viewers an
+ */
+function completeRotation() {
+    stopRotation();
+    
+    const statusEl = document.getElementById('rotationStatus');
+    if (statusEl) {
+        statusEl.textContent = 'Rotation abgeschlossen!';
+        statusEl.className = 'status-message success';
+    }
+    
+    // Option zum Generieren des 360°-Viewers anbieten
+    const createViewerBtn = document.createElement('button');
+    createViewerBtn.textContent = '360° Viewer generieren';
+    createViewerBtn.className = 'btn btn-primary mt-3';
+    createViewerBtn.addEventListener('click', () => {
+        generateViewer();
+    });
+    
+    document.querySelector('.controls').appendChild(createViewerBtn);
+}
+
+/**
+ * Generiert einen 360°-Viewer aus den aufgenommenen Fotos
+ */
+function generateViewer() {
+    // Überprüfe, ob genügend Fotos vorhanden sind
+    if (capturedPhotos.length < 4) {
+        alert('Es werden mindestens 4 Fotos für einen 360°-Viewer benötigt.');
+        return;
+    }
+    
+    // Projektname abfragen
+    const viewerName = prompt('Bitte geben Sie einen Namen für den 360°-Viewer ein:', 
+                            `Projekt ${currentProjectId} - ${new Date().toLocaleDateString()}`);
+    
+    if (!viewerName) return;
+    
+    // Anfrage zum Generieren des Viewers senden
+    const requestData = {
+        project_id: currentProjectId,
+        name: viewerName,
+        photos: capturedPhotos.map(photo => photo.path)
+    };
+    
+
+
+
+
+//    fetch('/api/generate_360', {
+ //       method: 'POST',
+  //      headers: {
+//            'Content-Type': 'application/json'
+ //       },
+   //     body: JSON.stringify(requestData)
+  //  })
+
+// Hole die project_id aus der aktuellen URL oder einem Eingabefeld
+const project_id = new URLSearchParams(window.location.search).get("project_id");
+
+if (!project_id) {
+    console.error("Fehler: project_id fehlt!");
+    alert("Fehler: Keine Projekt-ID gefunden!");
+} else {
+    fetch('/generate_360', {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ project_id: project_id }) // Projekt-ID korrekt übergeben
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log("Antwort vom Server:", data);
+        if (data.message) {
+            alert(data.message); // Erfolgsmeldung
+            window.location.href = `/viewer?project=${project_id}`; // GEÄNDERT: 'project' statt 'project_id'
+        }
+    })
+    .catch(error => console.error("Fehler beim Generieren:", error));
+}
+
+
+
+
+
+
+
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert(`360°-Viewer erfolgreich erstellt! Sie werden weitergeleitet.`);
+            // Zur Viewer-Seite weiterleiten
+            window.location.href = data.url;
+        } else {
+            console.error('Fehler beim Generieren des Viewers:', data.error);
+            alert(`Fehler beim Generieren des 360°-Viewers: ${data.error}`);
+        }
+    })
+    .catch(error => {
+        console.error('Netzwerkfehler:', error);
+        alert('Netzwerkfehler beim Generieren des 360°-Viewers.');
+    });
+}
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/static/js/main.js ---
+// Datei: static/js/main.js - Haupt-JavaScript für die Anwendung
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Datum-Formatierung für Flask-Jinja-Filter
+    if (typeof window.formatDate !== 'function') {
+        window.formatDate = function(timestamp, format = 'full') {
+            const date = new Date(timestamp * 1000);
+
+            if (format === 'short') {
+                return date.toLocaleDateString();
+            } else if (format === 'time') {
+                return date.toLocaleTimeString();
+            } else {
+                return date.toLocaleString();
+            }
+        };
+    }
+
+    // Globale Funktionen für Ajax-Anfragen
+    window.api = {
+        // GET-Anfrage
+        get: async function(url) {
+            try {
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+
+                return await response.json();
+            } catch (error) {
+                console.error("API GET error:", error);
+                return { error: error.message };
+            }
+        },
+
+        // POST-Anfrage
+        post: async function(url, data) {
+            try {
+                const formData = new FormData();
+
+                // FormData füllen
+                for (const key in data) {
+                    formData.append(key, data[key]);
+                }
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+
+                return await response.json();
+            } catch (error) {
+                console.error("API POST error:", error);
+                return { error: error.message };
+            }
+        }
+    };
+});
+
+// Datei: static/js/settings.js - JavaScript für die Einstellungsseite
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Kameratyp-Toggle
+    const cameraTypeSelect = document.getElementById('camera_type');
+    const webcamOptions = document.querySelectorAll('.webcam-option');
+    const gphotoOptions = document.querySelectorAll('.gphoto-option');
+
+    if (cameraTypeSelect) {
+        cameraTypeSelect.addEventListener('change', function() {
+            if (this.value === 'webcam') {
+                webcamOptions.forEach(el => el.style.display = 'block');
+                gphotoOptions.forEach(el => el.style.display = 'none');
+            } else if (this.value === 'gphoto2') {
+                webcamOptions.forEach(el => el.style.display = 'none');
+                gphotoOptions.forEach(el => el.style.display = 'block');
+            }
+        });
+    }
+
+    // Arduino testen
+    const testArduinoBtn = document.getElementById('test-arduino-btn');
+
+    if (testArduinoBtn) {
+        testArduinoBtn.addEventListener('click', async function() {
+            const arduinoPort = document.getElementById('arduino_port').value;
+            const arduinoBaudrate = document.getElementById('arduino_baudrate').value;
+
+            this.disabled = true;
+            this.textContent = 'Teste Arduino...';
+
+            try {
+                const response = await window.api.post('/api/test/arduino', {
+                    port: arduinoPort,
+                    baudrate: arduinoBaudrate
+                });
+
+                if (response.success) {
+                    alert('Arduino erfolgreich getestet!');
+                } else {
+                    alert('Arduino-Test fehlgeschlagen: ' + (response.error || 'Unbekannter Fehler'));
+                }
+            } catch (error) {
+                alert('Arduino-Test fehlgeschlagen: ' + error.message);
+            } finally {
+                this.disabled = false;
+                this.textContent = 'Arduino testen';
+            }
+        });
+    }
+
+    // Kamera testen
+    const testCameraBtn = document.getElementById('test-camera-btn');
+
+    if (testCameraBtn) {
+        testCameraBtn.addEventListener('click', async function() {
+            const cameraType = document.getElementById('camera_type').value;
+            const cameraDevice = cameraType === 'webcam'
+                ? document.getElementById('webcam_device').value
+                : document.getElementById('gphoto_device').value;
+            const cameraResolution = document.getElementById('camera_resolution').value;
+
+            this.disabled = true;
+            this.textContent = 'Teste Kamera...';
+
+            try {
+                const response = await window.api.post('/api/test/camera', {
+                    type: cameraType,
+                    device: cameraDevice,
+                    resolution: cameraResolution
+                });
+
+                if (response.success) {
+                    alert('Kamera erfolgreich getestet!');
+
+                    // Zeige Testbild, falls vorhanden
+                    if (response.image_url) {
+                        window.open(response.image_url, '_blank');
+                    }
+                } else {
+                    alert('Kamera-Test fehlgeschlagen: ' + (response.error || 'Unbekannter Fehler'));
+                }
+            } catch (error) {
+                alert('Kamera-Test fehlgeschlagen: ' + error.message);
+            } finally {
+                this.disabled = false;
+                this.textContent = 'Kamera testen';
+            }
+        });
+    }
+});
+
+// Datei: static/js/capture.js - JavaScript für die Aufnahmeseite
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Hardware-Status prüfen
+    const checkStatusBtn = document.getElementById('check-status-btn');
+    const arduinoStatus = document.getElementById('arduino-status').querySelector('.status-value');
+    const cameraStatus = document.getElementById('camera-status').querySelector('.status-value');
+
+    async function checkHardwareStatus() {
+        // Arduino-Status prüfen
+        arduinoStatus.textContent = 'Wird geprüft...';
+        arduinoStatus.className = 'status-value loading';
+
+        try {
+            const arduinoResponse = await window.api.get('/api/status/arduino');
+
+            if (arduinoResponse.connected) {
+                arduinoStatus.textContent = 'Verbunden';
+                arduinoStatus.className = 'status-value ok';
+            } else {
+                arduinoStatus.textContent = 'Nicht verbunden';
+                arduinoStatus.className = 'status-value error';
+            }
+        } catch (error) {
+            arduinoStatus.textContent = 'Fehler: ' + error.message;
+            arduinoStatus.className = 'status-value error';
+        }
+
+        // Kamera-Status prüfen
+        cameraStatus.textContent = 'Wird geprüft...';
+        cameraStatus.className = 'status-value loading';
+
+        try {
+            const cameraResponse = await window.api.get('/api/status/camera');
+
+            if (cameraResponse.available) {
+                cameraStatus.textContent = 'Verfügbar';
+                cameraStatus.className = 'status-value ok';
+            } else {
+                cameraStatus.textContent = 'Nicht verfügbar';
+                cameraStatus.className = 'status-value error';
+            }
+        } catch (error) {
+            cameraStatus.textContent = 'Fehler: ' + error.message;
+            cameraStatus.className = 'status-value error';
+        }
+    }
+
+    if (checkStatusBtn) {
+        // Initialer Check
+        checkHardwareStatus();
+
+        // Button-Event
+        checkStatusBtn.addEventListener('click', checkHardwareStatus);
+    }
+});
+
+// Datei: static/js/viewer.js - JavaScript für den 360° Viewer
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Prüfen, ob die Viewer-Seite aktiv ist
+    const viewer = document.getElementById('viewer360');
+    if (!viewer) return;
+
+    // Prüfen, ob sessionData verfügbar ist
+    if (typeof sessionData === 'undefined') {
+        console.error('Keine Session-Daten für den Viewer verfügbar');
+        return;
+    }
+
+    // Elemente
+    const currentImage = document.getElementById('currentImage');
+    const rotationSlider = document.getElementById('rotationSlider');
+    const playPauseBtn = document.getElementById('playPauseBtn');
+    const downloadBtn = document.getElementById('download-btn');
+
+    // Variablen
+    let currentFrame = 0;
+    let isPlaying = true;
+    let animationId = null;
+    let lastDragX = 0;
+    let isDragging = false;
+    let autoRotationSpeed = 0.2; // Frames pro Animation
+
+    // Photos sortieren und aufbereiten
+    const photos = [...sessionData.photos].sort((a, b) => a.angle - b.angle);
+
+    // Slider konfigurieren
+    rotationSlider.min = 0;
+    rotationSlider.max = photos.length - 1;
+    rotationSlider.value = 0;
+
+    // Bild laden
+    function loadFrame(frameIndex) {
+        currentFrame = frameIndex;
+        rotationSlider.value = frameIndex;
+        currentImage.src = photos[frameIndex].path;
+    }
+
+    // Animation starten/stoppen
+    function togglePlayPause() {
+        isPlaying = !isPlaying;
+        playPauseBtn.textContent = isPlaying ? 'Pause' : 'Play';
+
+        if (isPlaying) {
+            startAnimation();
+        } else {
+            stopAnimation();
+        }
+    }
+
+    // Animation starten
+    function startAnimation() {
+        if (animationId) return;
+
+        function animate() {
+            currentFrame = (currentFrame + autoRotationSpeed) % photos.length;
+            loadFrame(Math.floor(currentFrame));
+            animationId = requestAnimationFrame(animate);
+        }
+
+        animationId = requestAnimationFrame(animate);
+    }
+
+    // Animation stoppen
+    function stopAnimation() {
+        if (animationId) {
+            cancelAnimationFrame(animationId);
+            animationId = null;
+        }
+    }
+
+    // Export-Funktion
+    async function exportViewer() {
+        try {
+            const response = await window.api.post('/api/export/360', {
+                project_id: sessionData.project_id,
+                session_id: sessionData.session_id
+            });
+
+            if (response.success && response.export_url) {
+                window.open(response.export_url, '_blank');
+            } else {
+                alert('Export fehlgeschlagen: ' + (response.error || 'Unbekannter Fehler'));
+            }
+        } catch (error) {
+            alert('Export fehlgeschlagen: ' + error.message);
+        }
+    }
+
+    // Event-Listener
+    playPauseBtn.addEventListener('click', togglePlayPause);
+
+    rotationSlider.addEventListener('input', function() {
+        stopAnimation();
+        isPlaying = false;
+        playPauseBtn.textContent = 'Play';
+        loadFrame(parseInt(this.value));
+    });
+
+    if (downloadBtn) {
+        downloadBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            exportViewer();
+        });
+    }
+
+    // Touch/Maus-Steuerung
+    viewer.addEventListener('mousedown', handleDragStart);
+    viewer.addEventListener('touchstart', handleDragStart);
+
+    window.addEventListener('mousemove', handleDragMove);
+    window.addEventListener('touchmove', handleDragMove);
+
+    window.addEventListener('mouseup', handleDragEnd);
+    window.addEventListener('touchend', handleDragEnd);
+
+    function handleDragStart(event) {
+        event.preventDefault();
+        stopAnimation();
+        isPlaying = false;
+        playPauseBtn.textContent = 'Play';
+        isDragging = true;
+        lastDragX = event.clientX || event.touches[0].clientX;
+    }
+
+    function handleDragMove(event) {
+        if (!isDragging) return;
+        event.preventDefault();
+
+        const clientX = event.clientX || event.touches[0].clientX;
+        const deltaX = clientX - lastDragX;
+        lastDragX = clientX;
+
+        // Berechne die Anzahl der zu verschiebenden Frames
+        const framesToMove = -Math.sign(deltaX) * Math.ceil(Math.abs(deltaX) / 10);
+        const newFrame = Math.floor((currentFrame + framesToMove + photos.length) % photos.length);
+
+        loadFrame(newFrame);
+    }
+
+    function handleDragEnd() {
+        if (!isDragging) return;
+        isDragging = false;
+
+        // Automatische Rotation nach Mausinteraktion fortsetzen
+        if (!isPlaying) {
+            isPlaying = true;
+            playPauseBtn.textContent = 'Pause';
+            startAnimation();
+        }
+    }
+
+    // Initialisierung
+    loadFrame(0);
+    startAnimation();
+});
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/static/js/viewer.js ---
+/**
+ * 360° Produktansicht Viewer
+ * Interaktiver Viewer für 360-Grad-Produktansichten
+ */
+
+// DOM-Elemente
+const viewerContainer = document.getElementById('product-viewer');
+const spinner = document.getElementById('spinner');
+const playButton = document.getElementById('play-btn');
+const resetButton = document.getElementById('reset-btn');
+const zoomInButton = document.getElementById('zoom-in-btn');
+const zoomOutButton = document.getElementById('zoom-out-btn');
+const fullscreenButton = document.getElementById('fullscreen-btn');
+const projectNameElement = document.querySelector('#project-name span');
+const imageCountElement = document.querySelector('#image-count span');
+
+// Viewer-Konfiguration
+let config = {
+    images: [],            // Bildpfade
+    currentImageIndex: 0,  // Aktueller Bildindex
+    autoRotate: false,     // Automatische Rotation
+    autoRotateSpeed: 100,  // Rotationsgeschwindigkeit in ms
+    zoom: 1.0,             // Zoomstufe
+    maxZoom: 2.5,          // Maximale Zoomstufe
+    minZoom: 1.0,          // Minimale Zoomstufe
+    zoomStep: 0.1,         // Zoom-Schritt pro Klick
+    dragging: false,       // Maus/Touch-Status
+    lastX: 0,              // Letzte X-Position
+    autoRotateTimer: null  // Timer für Auto-Rotation
+};
+
+// Projekt-ID aus URL-Parametern holen
+const urlParams = new URLSearchParams(window.location.search);
+const projectId = urlParams.get('project');
+
+/**
+ * Lädt die Projektdaten vom Server
+ */
+async function loadProject() {
+    console.log("Lade Projekt mit ID:", projectId);
+    
+    if (!projectId) {
+        showError('Keine Projekt-ID angegeben');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/project/${projectId}`);
+        
+        if (!response.ok) {
+            throw new Error(`Projekt konnte nicht geladen werden (Status: ${response.status})`);
+        }
+        
+        const projectData = await response.json();
+        console.log("Projektdaten geladen:", projectData);
+        
+        // Projektdaten anzeigen
+        projectNameElement.textContent = projectData.name || projectId;
+        imageCountElement.textContent = projectData.image_count || projectData.images.length;
+        
+        // Bilder laden
+        config.images = projectData.images.map(img => `/static/projects/${projectId}/${img}`);
+        console.log("Bildpfade:", config.images);
+        
+        if (config.images.length > 0) {
+            initViewer();
+        } else {
+            showError('Keine Bilder im Projekt gefunden');
+        }
+    } catch (error) {
+        console.error('Fehler beim Laden des Projekts:', error);
+        showError(`Fehler beim Laden des Projekts: ${error.message}`);
+    }
+}
+
+/**
+ * Initialisiert den 360° Viewer
+ */
+function initViewer() {
+    console.log("Initialisiere Viewer mit", config.images.length, "Bildern");
+    
+    // Bilder vorladen
+    preloadImages().then(() => {
+        console.log("Alle Bilder vorgeladen");
+        
+        // Spinner ausblenden
+        spinner.style.display = 'none';
+        
+        // Erstes Bild anzeigen
+        showImage(0);
+        
+        // Event-Listener hinzufügen
+        setupEventListeners();
+        
+        // Automatische Rotation starten
+        startAutoRotate();
+    }).catch(error => {
+        console.error("Fehler beim Vorladen der Bilder:", error);
+        showError("Fehler beim Laden der Bilder. Bitte prüfen Sie die Browser-Konsole.");
+    });
+}
+
+/**
+ * Lädt alle Bilder vor
+ */
+async function preloadImages() {
+    console.log("Lade", config.images.length, "Bilder vor");
+    
+    // Zuerst alle vorhandenen Bilder entfernen
+    const existingImages = viewerContainer.querySelectorAll('img');
+    existingImages.forEach(img => img.remove());
+    
+    const preloadPromises = config.images.map((src, index) => {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            
+            img.onload = () => {
+                console.log(`Bild ${index + 1}/${config.images.length} geladen:`, src);
+                resolve();
+            };
+            
+            img.onerror = (err) => {
+                console.error(`Fehler beim Laden von Bild ${index + 1}/${config.images.length}:`, src, err);
+                // Trotz Fehler als geladen markieren, um die Anzeige nicht zu blockieren
+                resolve();
+            };
+            
+            img.src = src;
+            img.alt = `Ansicht ${index + 1}`;
+            img.className = 'product-image';
+            img.style.display = 'none';
+            img.draggable = false;
+            
+            viewerContainer.appendChild(img);
+        });
+    });
+    
+    return Promise.all(preloadPromises);
+}
+
+/**
+ * Zeigt das Bild mit dem angegebenen Index an
+ */
+function showImage(index) {
+    console.log("Zeige Bild", index + 1, "von", config.images.length);
+    
+    // Aktuelles Bild ausblenden
+    const currentImage = viewerContainer.querySelector('.active');
+    if (currentImage) {
+        currentImage.classList.remove('active');
+    }
+    
+    // Neues Bild anzeigen
+    const images = viewerContainer.querySelectorAll('img');
+    if (images.length > 0 && index >= 0 && index < images.length) {
+        images[index].classList.add('active');
+        config.currentImageIndex = index;
+    } else {
+        console.error("Ungültiger Bildindex:", index, "Verfügbare Bilder:", images.length);
+    }
+}
+
+/**
+ * Richtet Event-Listener für Maus/Touch-Interaktionen ein
+ */
+function setupEventListeners() {
+    // Maus-Events
+    viewerContainer.addEventListener('mousedown', startDrag);
+    document.addEventListener('mousemove', drag);
+    document.addEventListener('mouseup', endDrag);
+    
+    // Touch-Events
+    viewerContainer.addEventListener('touchstart', startDrag);
+    document.addEventListener('touchmove', drag);
+    document.addEventListener('touchend', endDrag);
+    
+    // Zoom-Events
+    zoomInButton.addEventListener('click', zoomIn);
+    zoomOutButton.addEventListener('click', zoomOut);
+    viewerContainer.addEventListener('wheel', handleWheel);
+    
+    // Steuerungs-Buttons
+    playButton.addEventListener('click', toggleAutoRotate);
+    resetButton.addEventListener('click', resetViewer);
+    fullscreenButton.addEventListener('click', toggleFullscreen);
+    
+    console.log("Event-Listener eingerichtet");
+}
+
+/**
+ * Startet den Drag-Vorgang
+ */
+function startDrag(event) {
+    event.preventDefault();
+    
+    config.dragging = true;
+    viewerContainer.style.cursor = 'grabbing';
+    
+    // Auto-Rotation stoppen
+    stopAutoRotate();
+    
+    // Letzte Position speichern
+    if (event.type === 'touchstart') {
+        config.lastX = event.touches[0].clientX;
+    } else {
+        config.lastX = event.clientX;
+    }
+}
+
+/**
+ * Verarbeitet Drag-Bewegung
+ */
+function drag(event) {
+    if (!config.dragging) return;
+    
+    event.preventDefault();
+    
+    let currentX;
+    if (event.type === 'touchmove') {
+        currentX = event.touches[0].clientX;
+    } else {
+        currentX = event.clientX;
+    }
+    
+    // Bewegungsrichtung und -stärke ermitteln
+    const deltaX = currentX - config.lastX;
+    config.lastX = currentX;
+    
+    // Anzahl der Bilder berücksichtigen
+    const imageCount = config.images.length;
+    const step = Math.sign(deltaX);
+    
+    if (Math.abs(deltaX) > 5) { // Mindestbewegung für Bildwechsel
+        let newIndex = config.currentImageIndex - step;
+        
+        // Grenzen beachten
+        if (newIndex < 0) newIndex = imageCount - 1;
+        if (newIndex >= imageCount) newIndex = 0;
+        
+        showImage(newIndex);
+    }
+}
+
+/**
+ * Beendet den Drag-Vorgang
+ */
+function endDrag() {
+    config.dragging = false;
+    viewerContainer.style.cursor = 'grab';
+}
+
+/**
+ * Startet die automatische Rotation
+ */
+function startAutoRotate() {
+    if (config.autoRotateTimer) return;
+    
+    config.autoRotate = true;
+    playButton.innerHTML = '<i class="bi bi-pause-fill"></i> Pause';
+    
+    config.autoRotateTimer = setInterval(() => {
+        let newIndex = (config.currentImageIndex + 1) % config.images.length;
+        showImage(newIndex);
+    }, config.autoRotateSpeed);
+    
+    console.log("Auto-Rotation gestartet");
+}
+
+/**
+ * Stoppt die automatische Rotation
+ */
+function stopAutoRotate() {
+    if (!config.autoRotateTimer) return;
+    
+    clearInterval(config.autoRotateTimer);
+    config.autoRotateTimer = null;
+    config.autoRotate = false;
+    playButton.innerHTML = '<i class="bi bi-play-fill"></i> Auto-Rotation';
+    
+    console.log("Auto-Rotation gestoppt");
+}
+
+/**
+ * Wechselt zwischen automatischer Rotation und Pause
+ */
+function toggleAutoRotate() {
+    if (config.autoRotate) {
+        stopAutoRotate();
+    } else {
+        startAutoRotate();
+    }
+}
+
+/**
+ * Vergrößert die Ansicht
+ */
+function zoomIn() {
+    if (config.zoom < config.maxZoom) {
+        config.zoom += config.zoomStep;
+        applyZoom();
+    }
+}
+
+/**
+ * Verkleinert die Ansicht
+ */
+function zoomOut() {
+    if (config.zoom > config.minZoom) {
+        config.zoom -= config.zoomStep;
+        applyZoom();
+    }
+}
+
+/**
+ * Wendet den aktuellen Zoom-Wert auf die Bilder an
+ */
+function applyZoom() {
+    const images = viewerContainer.querySelectorAll('img');
+    images.forEach(img => {
+        img.style.transform = `translate(-50%, -50%) scale(${config.zoom})`;
+    });
+    
+    console.log("Zoom angewendet:", config.zoom);
+}
+
+/**
+ * Behandelt Mausrad-Events für Zoom
+ */
+function handleWheel(event) {
+    event.preventDefault();
+    
+    if (event.deltaY < 0) {
+        zoomIn();
+    } else {
+        zoomOut();
+    }
+}
+
+/**
+ * Setzt den Viewer zurück
+ */
+function resetViewer() {
+    showImage(0);
+    config.zoom = 1.0;
+    applyZoom();
+    stopAutoRotate();
+    
+    console.log("Viewer zurückgesetzt");
+}
+
+/**
+ * Wechselt in den Vollbildmodus und zurück
+ */
+function toggleFullscreen() {
+    const container = document.querySelector('.container');
+    container.classList.toggle('fullscreen');
+    
+    if (container.classList.contains('fullscreen')) {
+        fullscreenButton.innerHTML = '<i class="bi bi-fullscreen-exit"></i>';
+    } else {
+        fullscreenButton.innerHTML = '<i class="bi bi-fullscreen"></i>';
+    }
+    
+    console.log("Vollbildmodus umgeschaltet");
+}
+
+/**
+ * Zeigt eine Fehlermeldung an
+ */
+function showError(message) {
+    console.error("Fehlermeldung:", message);
+    
+    // Spinner ausblenden, falls noch sichtbar
+    spinner.style.display = 'none';
+    
+    // Bestehende Fehlermeldungen entfernen
+    const existingErrors = viewerContainer.querySelectorAll('.alert');
+    existingErrors.forEach(error => error.remove());
+    
+    // Neue Fehlermeldung anzeigen
+    const errorElement = document.createElement('div');
+    errorElement.className = 'alert alert-danger m-3';
+    errorElement.textContent = message;
+    
+    viewerContainer.appendChild(errorElement);
+}
+
+// Projekt laden, wenn die Seite geladen ist
+document.addEventListener('DOMContentLoaded', loadProject);
+
+// Ein zusätzlicher Debug-Handler
+window.addEventListener('error', (event) => {
+    console.error('Globaler JavaScript-Fehler:', event.error);
+});
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/static/js/settings.js ---
+/**
+ * settings.js
+ * JavaScript für die Einstellungsseite - verbesserte Version
+ */
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Finde die wichtigen DOM-Elemente
+    const settingsForm = document.getElementById('settingsForm');
+    const statusMessage = document.getElementById('statusMessage');
+    
+    // Initialen Status ausblenden
+    if (statusMessage) {
+        statusMessage.style.display = 'none';
+    }
+    
+    // Aktuelle Konfiguration laden
+    console.log('Lade Konfiguration...');
+    loadConfig();
+    
+    // Formular absenden
+    if (settingsForm) {
+        settingsForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            saveConfig(this);
+        });
+    }
+});
+
+// Konfiguration laden
+function loadConfig() {
+    fetch('/get_config')
+        .then(response => {
+            console.log('Antwort erhalten, Status:', response.status);
+            return response.json();
+        })
+        .then(config => {
+            console.log('Konfiguration geladen:', config);
+            
+            if (config) {
+                // Formularwerte setzen
+                setFormValues(config);
+                return true;
+            }
+        })
+        .catch(error => {
+            console.error('Fehler beim Laden der Konfiguration:', error);
+            showStatus('Fehler beim Laden der Konfiguration. Bitte versuchen Sie es später erneut.', 'error');
+        });
+}
+
+// Formularwerte setzen
+function setFormValues(config) {
+    // Kamera-Einstellungen
+    setValue('cameraType', config?.camera?.type);
+    setValue('cameraPath', config?.camera?.device_path);
+    setValue('resolutionWidth', config?.camera?.resolution?.width);
+    setValue('resolutionHeight', config?.camera?.resolution?.height);
+    
+    // Arduino-Einstellungen
+    setValue('arduinoPort', config?.arduino?.port);
+    setValue('arduinoBaudrate', config?.arduino?.baudrate);
+    
+    // Drehteller-Einstellungen
+    setValue('defaultDegrees', config?.rotation?.default_degrees);
+    setValue('defaultInterval', config?.rotation?.default_interval);
+    
+    console.log('Formularwerte wurden gesetzt');
+}
+
+// Wert in einem Formularfeld setzen
+function setValue(id, value) {
+    const element = document.getElementById(id);
+    if (!element
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/static/js/projects.js ---
+/**
+ * projects.js
+ * JavaScript für die Projektverwaltungsseite
+ */
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Projekte laden
+    loadProjects();
+    
+    // Event-Listener für das Löschen von Projekten
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('delete-project-btn')) {
+            e.preventDefault();
+            deleteProject(e.target.dataset.projectId, e.target.dataset.projectName);
+        }
+    });
+});
+
+// Projekte laden
+function loadProjects() {
+    const projectsList = document.getElementById('projectsList');
+    if (!projectsList) return;
+    
+    const loadingIndicator = document.createElement('div');
+    loadingIndicator.className = 'loading-indicator';
+    loadingIndicator.textContent = 'Projekte werden geladen...';
+    projectsList.appendChild(loadingIndicator);
+    
+    fetch('/api/projects')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP-Fehler: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(projects => {
+            projectsList.innerHTML = '';
+            
+            if (!projects || projects.error) {
+                throw new Error(projects.error || 'Unbekannter Fehler');
+            }
+            
+            if (projects.length === 0) {
+                const noProjects = document.createElement('div');
+                noProjects.className = 'no-projects';
+                noProjects.textContent = 'Keine Projekte vorhanden. Erstellen Sie ein neues Projekt, um zu beginnen.';
+                projectsList.appendChild(noProjects);
+                return;
+            }
+            
+            // Projekte anzeigen
+            projects.forEach(project => {
+                // Sicherstellen, dass project definiert ist
+                if (!project) {
+                    console.error('Ungültiges Projekt in der Projektliste');
+                    return;
+                }
+                
+                const card = createProjectCard(project);
+                projectsList.appendChild(card);
+            });
+        })
+        .catch(error => {
+            console.error('Fehler beim Laden der Projekte:', error);
+            projectsList.innerHTML = `<div class="error">Fehler beim Laden der Projekte: ${error.message}</div>`;
+        });
+}
+
+// Projektkarte erstellen
+function createProjectCard(project) {
+    // Defensive Programmierung: Prüfe, ob das Projekt gültig ist
+    if (!project || typeof project !== 'object') {
+        console.error('Ungültiges Projektformat:', project);
+        return document.createElement('div'); // Leeres Element zurückgeben
+    }
+    
+    const card = document.createElement('div');
+    card.className = 'project-card';
+    
+    const title = document.createElement('h3');
+    title.textContent = project.name || `Projekt ${project.id || 'Unbekannt'}`;
+    
+    const meta = document.createElement('div');
+    meta.className = 'project-meta';
+    
+    if (project.description) {
+        const desc = document.createElement('p');
+        desc.textContent = project.description;
+        meta.appendChild(desc);
+    } else {
+        const noDesc = document.createElement('p');
+        noDesc.className = 'no-description';
+        noDesc.textContent = 'Keine Beschreibung';
+        meta.appendChild(noDesc);
+    }
+    
+    const date = document.createElement('p');
+    date.className = 'created-date';
+    const createdDate = new Date(project.created_at * 1000);
+    date.textContent = `Erstellt: ${createdDate.toLocaleDateString()} ${createdDate.toLocaleTimeString()}`;
+    meta.appendChild(date);
+    
+    const imageCount = document.createElement('p');
+    imageCount.className = 'image-count';
+    imageCount.textContent = `Bilder: ${project.images ? project.images.length : 0}`;
+    meta.appendChild(imageCount);
+    
+    const actions = document.createElement('div');
+    actions.className = 'project-actions';
+    
+    const viewLink = document.createElement('a');
+    viewLink.href = `/projects/${project.id}`;
+    viewLink.className = 'btn btn-secondary';
+    viewLink.textContent = 'Anzeigen';
+    actions.appendChild(viewLink);
+    
+    const captureLink = document.createElement('a');
+    captureLink.href = `/?project_id=${project.id}`;
+    captureLink.className = 'btn btn-primary';
+    captureLink.textContent = 'Bilder aufnehmen';
+    actions.appendChild(captureLink);
+    
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'btn btn-danger delete-project-btn';
+    deleteBtn.textContent = 'Löschen';
+    deleteBtn.dataset.projectId = project.id;
+    deleteBtn.dataset.projectName = project.name;
+    actions.appendChild(deleteBtn);
+    
+    card.appendChild(title);
+    card.appendChild(meta);
+    card.appendChild(actions);
+    
+    return card;
+}
+
+// Projekt löschen
+function deleteProject(projectId, projectName) {
+    if (!confirm(`Möchten Sie das Projekt "${projectName}" wirklich löschen?`)) {
+        return;
+    }
+    
+    fetch(`/projects/delete/${projectId}`, {
+        method: 'POST'
+    })
+    .then(response => {
+        if (response.ok) {
+            // Projekt erfolgreich gelöscht, Seite neu laden
+            window.location.reload();
+        } else {
+            return response.json();
+        }
+    })
+    .then(data => {
+        if (data && data.error) {
+            alert(`Fehler beim Löschen des Projekts: ${data.error}`);
+        }
+    })
+    .catch(error => {
+        console.error('Fehler beim Löschen des Projekts:', error);
+        alert('Fehler beim Löschen des Projekts');
+    });
+}
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/static/js/viewer360.js ---
+import React, { useState, useEffect, useRef } from 'react';
+
+const Viewer360 = () => {
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [images, setImages] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const viewerRef = useRef(null);
+
+  // Simuliere das Laden von Bildern (in der Praxis würden diese von deinem Server kommen)
+  useEffect(() => {
+    // In einer realen Implementierung würdest du hier deine Bilder vom Server laden
+    const loadImages = async () => {
+      setIsLoading(true);
+
+      // Hier würden normalerweise deine tatsächlichen Bilder geladen werden
+      // Für die Demo erstellen wir 36 Bildpfade (alle 10 Grad eine Aufnahme)
+      const demoImages = Array.from({ length: 36 }, (_, i) =>
+        `/static/sample_images/sample_image_${i % 10}.jpg`
+      );
+
+      setImages(demoImages);
+      setIsLoading(false);
+    };
+
+    loadImages();
+  }, []);
+
+  // Öffne den Viewer
+  const openViewer = () => {
+    setIsViewerOpen(true);
+    document.body.style.overflow = 'hidden'; // Verhindere Scrollen im Hintergrund
+  };
+
+  // Schließe den Viewer
+  const closeViewer = () => {
+    setIsViewerOpen(false);
+    document.body.style.overflow = 'auto'; // Erlaube Scrollen wieder
+  };
+
+  // Mauszieh-Ereignisse für die Rotation
+  const handleMouseDown = (e) => {
+    setIsDragging(true);
+    setStartX(e.clientX);
+  };
+
+  const handleTouchStart = (e) => {
+    setIsDragging(true);
+    setStartX(e.touches[0].clientX);
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDragging) return;
+
+    const deltaX = e.clientX - startX;
+
+    if (Math.abs(deltaX) > 5) { // Kleine Bewegungen ignorieren
+      // Berechne den Index basierend auf der Bewegungsrichtung
+      const direction = deltaX > 0 ? -1 : 1; // Nach rechts ziehen = nach links rotieren
+
+      // Berechne neuen Index und stelle sicher, dass er im gültigen Bereich liegt
+      const newIndex = (currentImageIndex + direction + images.length) % images.length;
+
+      setCurrentImageIndex(newIndex);
+      setStartX(e.clientX);
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (!isDragging) return;
+
+    const deltaX = e.touches[0].clientX - startX;
+
+    if (Math.abs(deltaX) > 5) {
+      const direction = deltaX > 0 ? -1 : 1;
+      const newIndex = (currentImageIndex + direction + images.length) % images.length;
+
+      setCurrentImageIndex(newIndex);
+      setStartX(e.touches[0].clientX);
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+  };
+
+  // Event-Listener für globale Maus- und Touch-Ereignisse hinzufügen/entfernen
+  useEffect(() => {
+    if (isViewerOpen) {
+      window.addEventListener('mouseup', handleMouseUp);
+      window.addEventListener('touchend', handleTouchEnd);
+
+      return () => {
+        window.removeEventListener('mouseup', handleMouseUp);
+        window.removeEventListener('touchend', handleTouchEnd);
+      };
+    }
+  }, [isViewerOpen, isDragging]);
+
+  return (
+    <div className="w-full">
+      {!isViewerOpen ? (
+        // Logo/Vorschau, die den Viewer öffnet
+        <div
+          className="cursor-pointer mx-auto text-center"
+          onClick={openViewer}
+        >
+          <div className="bg-blue-600 text-white rounded-lg p-4 shadow-lg inline-block">
+            <div className="text-4xl mb-2">360°</div>
+            <div className="text-sm">Klicken für 360° Ansicht</div>
+          </div>
+        </div>
+      ) : (
+        // Vollbild-Viewer
+        <div className="fixed inset-0 z-50 bg-black flex flex-col">
+          {/* Schließen-Button */}
+          <button
+            className="absolute top-4 right-4 z-10 text-white bg-red-600 rounded-full w-10 h-10 flex items-center justify-center"
+            onClick={closeViewer}
+          >
+            ✕
+          </button>
+
+          {/* Viewer Container */}
+          <div
+            ref={viewerRef}
+            className="flex-1 flex items-center justify-center cursor-grab active:cursor-grabbing"
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+          >
+            {isLoading ? (
+              <div className="text-white text-xl">Lade Bilder...</div>
+            ) : (
+              <img
+                src={images[currentImageIndex]}
+                alt={`360-Grad Ansicht ${currentImageIndex}`}
+                className="max-h-full max-w-full object-contain select-none"
+                draggable="false"
+              />
+            )}
+          </div>
+
+          {/* Hinweistext */}
+          <div className="text-white text-center p-2 bg-black bg-opacity-50">
+            Mit der Maus klicken und ziehen, um zu drehen
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Viewer360;
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/static/js/photo-sphere-viewer.js ---
+/**
+ * photo-sphere-viewer.js
+ * Integration von Photo Sphere Viewer für die 360-Grad-Ansicht
+ */
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Projekt-ID aus URL-Parameter holen
+    const urlParams = new URLSearchParams(window.location.search);
+    const projectId = urlParams.get('project');
+    
+    if (!projectId) {
+        console.error('Keine Projekt-ID in der URL gefunden.');
+        showError('Keine Projekt-ID angegeben');
+        return;
+    }
+    
+    // Viewer-Element und Spinner
+    const viewerContainer = document.getElementById('photo-sphere-container');
+    const spinner = document.getElementById('spinner');
+    const projectNameElement = document.querySelector('#project-name span');
+    const imageCountElement = document.querySelector('#image-count span');
+    
+    // Lade Projektdaten
+    loadProject(projectId)
+        .then(setupPhotoSphereViewer)
+        .catch(error => {
+            console.error('Fehler beim Laden des Projekts:', error);
+            showError(error.message);
+        });
+    
+    /**
+     * Lädt die Projektdaten vom Server
+     */
+    async function loadProject(projectId) {
+        if (spinner) spinner.style.display = 'block';
+        
+        try {
+            const response = await fetch(`/api/project/${projectId}`);
+            
+            if (!response.ok) {
+                throw new Error(`Projekt konnte nicht geladen werden: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            // Prüfen, ob Bilder vorhanden sind
+            if (!data.images || data.images.length === 0) {
+                throw new Error('Keine Bilder im Projekt gefunden.');
+            }
+            
+            // Projektinformationen anzeigen
+            if (projectNameElement) projectNameElement.textContent = data.name || projectId;
+            if (imageCountElement) imageCountElement.textContent = data.images.length;
+            
+            return data;
+        } catch (error) {
+            throw error;
+        } finally {
+            if (spinner) spinner.style.display = 'none';
+        }
+    }
+    
+    /**
+     * Zeigt eine Fehlermeldung an
+     */
+    function showError(message) {
+        if (spinner) spinner.style.display = 'none';
+        
+        if (viewerContainer) {
+            viewerContainer.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    ${message || 'Ein Fehler ist aufgetreten.'}
+                </div>
+            `;
+        }
+    }
+    
+    /**
+     * Richtet den Photo Sphere Viewer ein
+     */
+    function setupPhotoSphereViewer(data) {
+        // Bereite die Bilder für den Viewer vor
+        const images = data.images.map(img => `/static/projects/${projectId}/${img}`);
+        
+        // Erstelle den Viewer
+        const viewer = new PhotoSphereViewer.Viewer({
+            container: viewerContainer,
+            panorama: images[0],
+            caption: data.name || 'Produktansicht',
+            navbar: [
+                'autorotate',
+                'zoom',
+                'fullscreen'
+            ],
+            plugins: [
+                [PhotoSphereViewer.AutorotatePlugin, {
+                    autorotateDelay: 1000,
+                    autorotateSpeed: '1rpm',
+                }],
+                [PhotoSphereViewer.GalleryPlugin, {
+                    thumbnails: images.map((img, i) => ({
+                        id: i,
+                        panorama: img,
+                        thumbnail: img,
+                        name: `Ansicht ${i+1}`
+                    }))
+                }]
+            ]
+        });
+        
+        // Event-Handler für den Vollbildmodus
+        const fullscreenButton = document.getElementById('fullscreen-btn');
+        if (fullscreenButton) {
+            fullscreenButton.addEventListener('click', () => {
+                viewer.toggleFullscreen();
+            });
+        }
+        
+        // Tastatur-Navigation
+        document.addEventListener('keydown', (e) => {
+            const galleryPlugin = viewer.getPlugin(PhotoSphereViewer.GalleryPlugin);
+            if (!galleryPlugin) return;
+            
+            switch (e.key) {
+                case 'ArrowLeft':
+                    galleryPlugin.showPrevious();
+                    break;
+                case 'ArrowRight':
+                    galleryPlugin.showNext();
+                    break;
+            }
+        });
+    }
+});
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/static/js/project_view.js ---
+/**
+ * project_view.js
+ * JavaScript für die Projektdetailansicht
+ */
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Bilder laden, falls vorhanden
+    loadImages();
+    
+    // Event-Listener für das Löschen von Bildern
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('delete-image-btn')) {
+            e.preventDefault();
+            deleteImage(e.target.dataset.imageId);
+        }
+    });
+});
+
+// Bilder laden
+function loadImages() {
+    const imageGrid = document.querySelector('.image-grid');
+    if (!imageGrid) return;
+    
+    // Bilder sind bereits im HTML und müssen nicht neu geladen werden
+    // Diese Funktion kann jedoch verwendet werden, um zusätzliche
+    // Interaktivität hinzuzufügen, z.B. Zoom-Funktionen oder Sortierung
+}
+
+// Bild löschen
+function deleteImage(imageId) {
+    if (!confirm('Möchten Sie dieses Bild wirklich löschen?')) {
+        return;
+    }
+    
+    const projectId = document.body.dataset.projectId;
+    if (!projectId) return;
+    
+    fetch(`/projects/${projectId}/image/${imageId}`, {
+        method: 'DELETE'
+    })
+    .then(response => {
+        if (response.ok) {
+            // Bild erfolgreich gelöscht, Element entfernen
+            const imageElement = document.querySelector(`[data-image-id="${imageId}"]`).closest('.image-item');
+            if (imageElement) {
+                imageElement.remove();
+            }
+        } else {
+            return response.json();
+        }
+    })
+    .then(data => {
+        if (data && data.error) {
+            alert(`Fehler beim Löschen des Bildes: ${data.error}`);
+        }
+    })
+    .catch(error => {
+        console.error('Fehler beim Löschen des Bildes:', error);
+        alert('Fehler beim Löschen des Bildes');
+    });
+}
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/static/js/components/Viewer360.jsx ---
+/**
+ * 360° Produktansicht Viewer mit Vollbild-Modus
+ * Interaktiver Viewer für 360-Grad-Produktansichten
+ */
+
+class Viewer360 {
+    constructor(containerId, projectId = null, options = {}) {
+        // Grundkonfiguration
+        this.container = document.getElementById(containerId);
+        this.projectId = projectId;
+        this.options = {
+            logoText: "360°",
+            logoSubText: "Klicken für 360° Ansicht",
+            logoClass: "bg-blue-600 text-white rounded-lg p-4 shadow-lg inline-block",
+            imageDirectory: projectId ? `/static/projects/${projectId}/` : '/static/sample_images/',
+            autoRotate: false,
+            autoRotateSpeed: 100,
+            ...options
+        };
+
+        // Status-Variablen
+        this.images = [];
+        this.currentImageIndex = 0;
+        this.isViewerOpen = false;
+        this.isDragging = false;
+        this.startX = 0;
+        this.isLoading = true;
+        this.autoRotateTimer = null;
+
+        // Initialisierung
+        this.init();
+    }
+
+    async init() {
+        if (!this.container) {
+            console.error('Container nicht gefunden!');
+            return;
+        }
+
+        // UI-Elemente erstellen
+        this.render();
+
+        // Bilder laden
+        await this.loadImages();
+    }
+
+    render() {
+        // Logo erstellen, das als Trigger für den Viewer dient
+        this.container.innerHTML = `
+            <div class="viewer360-logo" style="cursor: pointer; text-align: center;">
+                <div style="background-color: #2563eb; color: white; border-radius: 0.5rem; padding: 1rem; display: inline-block; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);">
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">${this.options.logoText}</div>
+                    <div style="font-size: 0.875rem;">${this.options.logoSubText}</div>
+                </div>
+            </div>
+        `;
+
+        // Logo-Klick-Event hinzufügen
+        this.container.querySelector('.viewer360-logo').addEventListener('click', () => this.openViewer());
+    }
+
+    async loadImages() {
+        try {
+            this.isLoading = true;
+
+            // Wenn eine Projekt-ID angegeben ist, versuche die Bilder vom Server zu laden
+            if (this.projectId) {
+                try {
+                    const response = await fetch(`/api/project/${this.projectId}`);
+
+                    if (response.ok) {
+                        const projectData = await response.json();
+
+                        if (projectData.images && projectData.images.length > 0) {
+                            this.images = projectData.images.map(img =>
+                                `${this.options.imageDirectory}${img}`
+                            );
+                            console.log(`${projectData.images.length} Bilder für Projekt ${this.projectId} geladen`);
+                        } else {
+                            this.loadDemoImages();
+                        }
+                    } else {
+                        this.loadDemoImages();
+                    }
+                } catch (error) {
+                    console.error('Fehler beim Laden der Projektbilder:', error);
+                    this.loadDemoImages();
+                }
+            } else {
+                this.loadDemoImages();
+            }
+
+            this.isLoading = false;
+        } catch (error) {
+            console.error('Fehler beim Laden der Bilder:', error);
+            this.isLoading = false;
+        }
+    }
+
+    loadDemoImages() {
+        // Demo-Bilder laden (36 Bilder für 10-Grad-Schritte)
+        console.log('Lade Demo-Bilder als Fallback');
+        this.images = Array.from({ length: 36 }, (_, i) =>
+            `${this.options.imageDirectory}sample_image_${i % 10}.jpg`
+        );
+    }
+
+    openViewer() {
+        if (this.isLoading || this.images.length === 0) {
+            console.log('Bilder werden noch geladen oder keine Bilder verfügbar');
+            return;
+        }
+
+        this.isViewerOpen = true;
+
+        // Scrolling verhindern
+        document.body.style.overflow = 'hidden';
+
+        // Vollbild-Viewer-Container erstellen
+        const viewerContainer = document.createElement('div');
+        viewerContainer.className = 'viewer360-fullscreen';
+        viewerContainer.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: black;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+        `;
+
+        // Schließen-Button
+        const closeButton = document.createElement('button');
+        closeButton.innerHTML = '✕';
+        closeButton.style.cssText = `
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            z-index: 10;
+            color: white;
+            background-color: #dc2626;
+            border: none;
+            border-radius: 9999px;
+            width: 2.5rem;
+            height: 2.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1rem;
+        `;
+        closeButton.addEventListener('click', () => this.closeViewer());
+
+        // Bild-Container
+        const imageContainer = document.createElement('div');
+        imageContainer.className = 'viewer360-image-container';
+        imageContainer.style.cssText = `
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: grab;
+        `;
+
+        // Bild-Element
+        const image = document.createElement('img');
+        image.src = this.images[this.currentImageIndex];
+        image.alt = `360-Grad Ansicht ${this.currentImageIndex}`;
+        image.style.cssText = `
+            max-height: 100%;
+            max-width: 100%;
+            object-fit: contain;
+            user-select: none;
+            -webkit-user-drag: none;
+        `;
+        image.draggable = false;
+
+        // Hinweistext
+        const hintText = document.createElement('div');
+        hintText.textContent = 'Mit der Maus klicken und ziehen, um zu drehen';
+        hintText.style.cssText = `
+            color: white;
+            text-align: center;
+            padding: 0.5rem;
+            background-color: rgba(0, 0, 0, 0.5);
+        `;
+
+        // Elemente zusammenfügen
+        imageContainer.appendChild(image);
+        viewerContainer.appendChild(closeButton);
+        viewerContainer.appendChild(imageContainer);
+        viewerContainer.appendChild(hintText);
+        document.body.appendChild(viewerContainer);
+
+        // Event-Listener für die Rotation
+        this.setupRotationEvents(imageContainer, image);
+
+        // Automatische Rotation starten, falls aktiviert
+        if (this.options.autoRotate) {
+            this.startAutoRotate();
+        }
+    }
+
+    setupRotationEvents(container, image) {
+        // Maus-Events
+        container.addEventListener('mousedown', (e) => {
+            this.isDragging = true;
+            this.startX = e.clientX;
+            container.style.cursor = 'grabbing';
+
+            // Auto-Rotation stoppen, falls aktiv
+            this.stopAutoRotate();
+        });
+
+        container.addEventListener('mousemove', (e) => {
+            if (!this.isDragging) return;
+
+            const deltaX = e.clientX - this.startX;
+
+            if (Math.abs(deltaX) > 5) {
+                const direction = deltaX > 0 ? -1 : 1;
+                this.currentImageIndex = (this.currentImageIndex + direction + this.images.length) % this.images.length;
+
+                image.src = this.images[this.currentImageIndex];
+                this.startX = e.clientX;
+            }
+        });
+
+        // Touch-Events für mobile Geräte
+        container.addEventListener('touchstart', (e) => {
+            this.isDragging = true;
+            this.startX = e.touches[0].clientX;
+
+            // Auto-Rotation stoppen, falls aktiv
+            this.stopAutoRotate();
+        });
+
+        container.addEventListener('touchmove', (e) => {
+            if (!this.isDragging) return;
+
+            const deltaX = e.touches[0].clientX - this.startX;
+
+            if (Math.abs(deltaX) > 5) {
+                const direction = deltaX > 0 ? -1 : 1;
+                this.currentImageIndex = (this.currentImageIndex + direction + this.images.length) % this.images.length;
+
+                image.src = this.images[this.currentImageIndex];
+                this.startX = e.touches[0].clientX;
+            }
+        });
+
+        // Globale Events für das Ende des Ziehens
+        const mouseUpHandler = () => {
+            if (this.isDragging) {
+                this.isDragging = false;
+                container.style.cursor = 'grab';
+            }
+        };
+
+        document.addEventListener('mouseup', mouseUpHandler);
+        document.addEventListener('touchend', mouseUpHandler);
+
+        // Cleanup-Funktion für Event-Listener
+        this.cleanupListeners = () => {
+            document.removeEventListener('mouseup', mouseUpHandler);
+            document.removeEventListener('touchend', mouseUpHandler);
+        };
+    }
+
+    closeViewer() {
+        this.isViewerOpen = false;
+
+        // Scrolling wieder erlauben
+        document.body.style.overflow = 'auto';
+
+        // Auto-Rotation stoppen, falls aktiv
+        this.stopAutoRotate();
+
+        // Event-Listener bereinigen
+        if (this.cleanupListeners) {
+            this.cleanupListeners();
+        }
+
+        // Viewer-Container entfernen
+        const viewerContainer = document.querySelector('.viewer360-fullscreen');
+        if (viewerContainer) {
+            document.body.removeChild(viewerContainer);
+        }
+    }
+
+    startAutoRotate() {
+        if (this.autoRotateTimer) return;
+
+        this.autoRotateTimer = setInterval(() => {
+            if (!this.isDragging) {
+                this.currentImageIndex = (this.currentImageIndex + 1) % this.images.length;
+
+                const image = document.querySelector('.viewer360-fullscreen img');
+                if (image) {
+                    image.src = this.images[this.currentImageIndex];
+                }
+            }
+        }, this.options.autoRotateSpeed);
+    }
+
+    stopAutoRotate() {
+        if (this.autoRotateTimer) {
+            clearInterval(this.autoRotateTimer);
+            this.autoRotateTimer = null;
+        }
+    }
+}
+
+// Beim Laden der Seite den Viewer initialisieren
+document.addEventListener('DOMContentLoaded', function() {
+    // Prüfe, ob ein Viewer-Container existiert
+    const container = document.getElementById('viewer360-container');
+    if (container) {
+        // Optional: Projekt-ID aus Attribut oder URL-Parameter auslesen
+        let projectId = container.getAttribute('data-project-id');
+
+        if (!projectId) {
+            // Versuche, die Projekt-ID aus URL-Parametern zu extrahieren
+            const urlParams = new URLSearchParams(window.location.search);
+            projectId = urlParams.get('project');
+        }
+
+        // Viewer initialisieren
+        window.viewer360 = new Viewer360('viewer360-container', projectId, {
+            autoRotate: true, // Automatische Rotation aktivieren
+            logoText: "360° Ansicht", // Text im Logo anpassen
+            logoSubText: "Klicken zum Vergrößern" // Un
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/static/js/modules/projectManager.js ---
+// projectManager.js - Modul für Projektverwaltung
+import api from './api.js';
+
+const projectManager = {
+    // Projekte laden und sortieren
+    loadProjects: async function() {
+        try {
+            const projects = await api.getProjects();
+            
+            // Projekte nach Erstellungsdatum sortieren (neueste zuerst)
+            return projects.sort((a, b) => b.created - a.created);
+        } catch (error) {
+            console.error('Fehler beim Laden der Projekte:', error);
+            throw error;
+        }
+    },
+    
+    // Projekt löschen
+    deleteProject: async function(projectId) {
+        try {
+            await api.deleteProject(projectId);
+            return true;
+        } catch (error) {
+            console.error('Fehler beim Löschen des Projekts:', error);
+            throw error;
+        }
+    },
+    
+    // Projekt-Element für die Anzeige erstellen
+    createProjectElement: function(project, onDeleteClick) {
+        // Projekt-Template klonen
+        const template = document.getElementById('project-template');
+        const projectElement = template.content.cloneNode(true);
+        
+        // Hauptelement für das Projekt
+        const projectCard = projectElement.querySelector('.project-card');
+        projectCard.dataset.projectId = project.id;
+        
+        // Elemente für Projektdaten
+        const thumbnailElement = projectElement.querySelector('.project-thumbnail');
+        const nameElement = projectElement.querySelector('.project-name');
+        const dateElement = projectElement.querySelector('.project-date');
+        const imageCountElement = projectElement.querySelector('.project-image-count');
+        const viewButton = projectElement.querySelector('.view-btn');
+        const deleteButton = projectElement.querySelector('.delete-btn');
+        
+        // Thumbnail setzen (erstes Bild im Projekt)
+        if (project.images && project.images.length > 0) {
+            thumbnailElement.style.backgroundImage = `url('/static/projects/${project.id}/${project.images[0]}')`;
+        }
+        
+        // Projektname setzen
+        nameElement.textContent = project.name || project.id;
+        
+        // Datum formatieren
+        const date = new Date(project.created * 1000);
+        dateElement.textContent = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+        
+        // Bildanzahl
+        const imageCount = project.image_count || (project.images ? project.images.length : 0);
+        imageCountElement.textContent = `${imageCount} Bilder`;
+        
+        // Link zum Viewer
+        viewButton.href = `/viewer?project=${project.id}`;
+        
+        // Lösch-Button-Event
+        if (deleteButton && typeof onDeleteClick === 'function') {
+            deleteButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onDeleteClick(project);
+            });
+        }
+        
+        return projectElement.firstElementChild;
+    }
+};
+
+export default projectManager;
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/static/js/modules/viewer.js ---
+// viewer.js - Modul für den 360°-Viewer
+import api from './api.js';
+
+const viewer = {
+    config: {
+        currentIndex: 0,
+        images: [],
+        isPlaying: false,
+        isDragging: false,
+        startX: 0,
+        playInterval: null,
+        zoom: 1.0,
+        maxZoom: 3.0,
+        minZoom: 0.5,
+        zoomStep: 0.1
+    },
+    
+    elements: {
+        container: null,
+        mainImage: null,
+        thumbnails: null,
+        spinner: null,
+        playButton: null,
+        projectName: null,
+        imageCount: null
+    },
+    
+    // Viewer initialisieren
+    init: async function(containerId, projectId) {
+        try {
+            // Elemente suchen
+            this.elements.container = document.getElementById(containerId);
+            this.elements.spinner = document.getElementById('spinner');
+            this.elements.playButton = document.getElementById('play-btn');
+            this.elements.projectName = document.querySelector('#project-name span');
+            this.elements.imageCount = document.querySelector('#image-count span');
+            
+            if (!this.elements.container) {
+                throw new Error('Viewer-Container nicht gefunden');
+            }
+            
+            // Projekt laden
+            const projectData = await api.getProject(projectId);
+            
+            // Projektinformationen anzeigen
+            this.elements.projectName.textContent = projectData.name || projectId;
+            this.elements.imageCount.textContent = projectData.images ? projectData.images.length : 0;
+            
+            // Bilder verarbeiten
+            if (!projectData.images || projectData.images.length === 0) {
+                throw new Error('Keine Bilder im Projekt gefunden');
+            }
+            
+            this.config.images = projectData.images.map(img => `/static/projects/${projectId}/${img}`);
+            
+            // UI erstellen
+            this.createViewerUI();
+            
+            // Events registrieren
+            this.setupEvents();
+            
+            return true;
+        } catch (error) {
+            console.error('Fehler beim Initialisieren des Viewers:', error);
+            this.showError(error.message);
+            return false;
+        }
+    },
+    
+    // Viewer-UI erstellen
+    createViewerUI: function() {
+        // Spinner ausblenden
+        if (this.elements.spinner) {
+            this.elements.spinner.style.display = 'none';
+        }
+        
+        // Container leeren
+        this.elements.container.innerHTML = '';
+        
+        // Hauptbild erstellen
+        this.elements.mainImage = document.createElement('img');
+        this.elements.mainImage.src = this.config.images[0];
+        this.elements.mainImage.alt = 'Hauptbild';
+        this.elements.mainImage.className = 'img-fluid main-image';
+        this.elements.mainImage.style.maxHeight = '400px';
+        this.elements.mainImage.style.margin = '0 auto';
+        this.elements.mainImage.style.display = 'block';
+        this.elements.mainImage.style.cursor = 'grab';
+        
+        this.elements.container.appendChild(this.elements.mainImage);
+        
+        // Thumbnails erstellen
+        const thumbnailsContainer = document.createElement('div');
+        thumbnailsContainer.className = 'thumbnails-container mt-3 d-flex flex-wrap justify-content-center';
+        this.elements.thumbnails = thumbnailsContainer;
+        
+        this.config.images.forEach((imgSrc, index) => {
+            const thumbContainer = document.createElement('div');
+            thumbContainer.className = 'thumb-container m-1';
+            thumbContainer.style.width = '60px';
+            thumbContainer.style.height = '60px';
+            thumbContainer.style.overflow = 'hidden';
+            thumbContainer.style.border = index === 0 ? '2px solid #0d6efd' : '1px solid #ddd';
+            thumbContainer.style.borderRadius = '4px';
+            thumbContainer.style.cursor = 'pointer';
+            thumbContainer.dataset.index = index;
+            
+            const thumbImg = document.createElement('img');
+            thumbImg.src = imgSrc;
+            thumbImg.alt = `Miniaturansicht ${index + 1}`;
+            thumbImg.className = 'img-fluid';
+            thumbImg.style.width = '100%';
+            thumbImg.style.height = '100%';
+            thumbImg.style.objectFit = 'cover';
+            
+            thumbContainer.appendChild(thumbImg);
+            thumbnailsContainer.appendChild(thumbContainer);
+            
+            // Klick-Event für Thumbnail
+            thumbContainer.addEventListener('click', () => {
+                this.showImage(index);
+            });
+        });
+        
+        this.elements.container.appendChild(thumbnailsContainer);
+    },
+    
+    // Events einrichten
+    setupEvents: function() {
+        // Maus-Events für Hauptbild
+        this.elements.mainImage.addEventListener('mousedown', this.handleMouseDown.bind(this));
+        document.addEventListener('mousemove', this.handleMouseMove.bind(this));
+        document.addEventListener('mouseup', this.handleMouseUp.bind(this));
+        
+        // Touch-Events für mobile Geräte
+        this.elements.mainImage.addEventListener('touchstart', this.handleTouchStart.bind(this));
+        document.addEventListener('touchmove', this.handleTouchMove.bind(this));
+        document.addEventListener('touchend', this.handleTouchEnd.bind(this));
+        
+        // Play-Button
+        if (this.elements.playButton) {
+            this.elements.playButton.addEventListener('click', this.toggleAutoRotation.bind(this));
+        }
+        
+        // Zoom-Buttons
+        const zoomInBtn = document.getElementById('zoom-in-btn');
+        const zoomOutBtn = document.getElementById('zoom-out-btn');
+        
+        if (zoomInBtn) {
+            zoomInBtn.addEventListener('click', this.zoomIn.bind(this));
+        }
+        
+        if (zoomOutBtn) {
+            zoomOutBtn.addEventListener('click', this.zoomOut.bind(this));
+        }
+        
+        // Mausrad-Event für Zoom
+        this.elements.mainImage.addEventListener('wheel', this.handleWheel.bind(this));
+    },
+    
+    // Bild anzeigen
+    showImage: function(index) {
+        if (index < 0 || index >= this.config.images.length) {
+            return;
+        }
+        
+        // Aktuellen Index aktualisieren
+        this.config.currentIndex = index;
+        
+        // Hauptbild aktualisieren
+        this.elements.mainImage.src = this.config.images[index];
+        
+        // Thumbnail-Hervorhebung aktualisieren
+        const thumbnails = this.elements.thumbnails.querySelectorAll('.thumb-container');
+        thumbnails.forEach((thumb, i) => {
+            thumb.style.border = i === index ? '2px solid #0d6efd' : '1px solid #ddd';
+        });
+    },
+    
+    // Automatische Rotation starten/stoppen
+    toggleAutoRotation: function() {
+        if (this.config.isPlaying) {
+            // Animation stoppen
+            clearInterval(this.config.playInterval);
+            this.elements.playButton.innerHTML = '<i class="bi bi-play-fill"></i> Auto-Rotation';
+            this.config.isPlaying = false;
+        } else {
+            // Animation starten
+            this.config.playInterval = setInterval(() => {
+                const nextIndex = (this.config.currentIndex + 1) % this.config.images.length;
+                this.showImage(nextIndex);
+            }, 300);
+            
+            this.elements.playButton.innerHTML = '<i class="bi bi-pause-fill"></i> Pause';
+            this.config.isPlaying = true;
+        }
+    },
+    
+    // Maus-Event-Handler
+    handleMouseDown: function(e) {
+        e.preventDefault();
+        this.config.isDragging = true;
+        this.config.startX = e.clientX;
+        this.elements.mainImage.style.cursor = 'grabbing';
+        
+        if (this.config.isPlaying) {
+            this.toggleAutoRotation();
+        }
+    },
+    
+    handleMouseMove: function(e) {
+        if (!this.config.isDragging) return;
+        
+        const deltaX = e.clientX - this.config.startX;
+        
+        if (Math.abs(deltaX) > 30) {
+            const direction = deltaX > 0 ? -1 : 1;
+            const newIndex = (this.config.currentIndex + direction + this.config.images.length) % this.config.images.length;
+            
+            this.showImage(newIndex);
+            this.config.startX = e.clientX;
+        }
+    },
+    
+    handleMouseUp: function() {
+        this.config.isDragging = false;
+        if (this.elements.mainImage) {
+            this.elements.mainImage.style.cursor = 'grab';
+        }
+    },
+    
+    // Touch-Event-Handler
+    handleTouchStart: function(e) {
+        e.preventDefault();
+        this.config.isDragging = true;
+        this.config.startX = e.touches[0].clientX;
+        
+        if (this.config.isPlaying) {
+            this.toggleAutoRotation();
+        }
+    },
+    
+    handleTouchMove: function(e) {
+        if (!this.config.isDragging) return;
+        
+        const deltaX = e.touches[0].clientX - this.config.startX;
+        
+        if (Math.abs(deltaX) > 30) {
+            const direction = deltaX > 0 ? -1 : 1;
+            const newIndex = (this.config.currentIndex + direction + this.config.images.length) % this.config.images.length;
+            
+            this.showImage(newIndex);
+            this.config.startX = e.touches[0].clientX;
+        }
+    },
+    
+    handleTouchEnd: function() {
+        this.config.isDragging = false;
+    },
+    
+    // Zoom-Funktionen
+    zoomIn: function() {
+        if (this.config.zoom < this.config.maxZoom) {
+            this.config.zoom += this.config.zoomStep;
+            this.applyZoom();
+        }
+    },
+    
+    zoomOut: function() {
+        if (this.config.zoom > this.config.minZoom) {
+            this.config.zoom -= this.config.zoomStep;
+            this.applyZoom();
+        }
+    },
+    
+    applyZoom: function() {
+        this.elements.mainImage.style.transform = `scale(${this.config.zoom})`;
+    },
+    
+    handleWheel: function(e) {
+        e.preventDefault();
+        
+        if (e.deltaY < 0) {
+            this.zoomIn();
+        } else {
+            this.zoomOut();
+        }
+    },
+    
+    // Fehler anzeigen
+    showError: function(message) {
+        if (this.elements.spinner) {
+            this.elements.spinner.style.display = 'none';
+        }
+        
+        this.elements.container.innerHTML = `
+            <div class="alert alert-danger m-3">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                ${message || 'Ein Fehler ist aufgetreten'}
+            </div>
+        `;
+    }
+};
+
+export default viewer;
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/static/js/modules/projects.js ---
+// projects.js - Hauptskript für die Projektseite
+document.addEventListener('DOMContentLoaded', () => {
+    // DOM-Elemente
+    const projectsContainer = document.getElementById('projects-container');
+    const loadingElement = document.getElementById('loading');
+    const noProjectsElement = document.getElementById('no-projects');
+    
+    // Lösch-Dialog
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    const deleteProjectNameElement = document.getElementById('delete-project-name');
+    const confirmDeleteButton = document.getElementById('confirm-delete');
+    
+    // Aktuell zu löschendes Projekt
+    let projectToDelete = null;
+    
+    // Projekte laden
+    async function loadProjects() {
+        try {
+            const response = await fetch('/api/projects');
+            const projects = await response.json();
+            
+            // Loading-Element entfernen
+            if (loadingElement) {
+                loadingElement.remove();
+            }
+            
+            // Prüfen, ob Projekte vorhanden sind
+            if (projects.length === 0) {
+                if (noProjectsElement) {
+                    noProjectsElement.classList.remove('d-none');
+                }
+                return;
+            }
+            
+            // Projekte sortieren (neueste zuerst)
+            projects.sort((a, b) => b.created - a.created);
+            
+            // Projekte anzeigen
+            projects.forEach(project => {
+                const projectElement = createProjectElement(project);
+                projectsContainer.appendChild(projectElement);
+            });
+        } catch (error) {
+            console.error('Fehler beim Laden der Projekte:', error);
+            
+            if (loadingElement) {
+                loadingElement.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle"></i> Fehler beim Laden der Projekte: ${error.message}
+                    </div>
+                `;
+            }
+        }
+    }
+    
+    // Projekt-Element erstellen
+    function createProjectElement(project) {
+        const template = document.getElementById('project-template');
+        const projectElement = template.content.cloneNode(true);
+        
+        // Wichtig: Projekt-ID als data-Attribut speichern
+        const projectCard = projectElement.querySelector('.project-card');
+        projectCard.dataset.projectId = project.id;
+        
+        console.log('Erstelle Projektelement für Projekt-ID:', project.id);
+        
+        // Projektdaten einfügen
+        const thumbnailElement = projectElement.querySelector('.project-thumbnail');
+        const nameElement = projectElement.querySelector('.project-name');
+        const dateElement = projectElement.querySelector('.project-date');
+        const imageCountElement = projectElement.querySelector('.project-image-count');
+        const viewButton = projectElement.querySelector('.view-btn');
+        const deleteButton = projectElement.querySelector('.delete-btn');
+        
+        // Thumbnail setzen (erstes Bild im Projekt)
+        if (project.images && project.images.length > 0) {
+            thumbnailElement.style.backgroundImage = `url('/static/projects/${project.id}/${project.images[0]}')`;
+        }
+        
+        // Projektname setzen
+        nameElement.textContent = project.name || project.id;
+        
+        // Datum formatieren
+        const date = new Date(project.created * 1000);
+        dateElement.textContent = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+        
+        // Bildanzahl
+        const imageCount = project.image_count || (project.images ? project.images.length : 0);
+        imageCountElement.textContent = `${imageCount} Bilder`;
+        
+        // Link zum Viewer
+        viewButton.href = `/viewer?project=${project.id}`;
+        
+        // Lösch-Button
+        if (deleteButton) {
+            deleteButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Löschen von Projekt mit ID:', project.id);
+                deleteProjectNameElement.textContent = project.name || project.id;
+                projectToDelete = project.id;
+                deleteModal.show();
+            });
+        }
+        
+        return projectElement.firstElementChild;
+    }
+    
+    // Projekt löschen
+    async function deleteProject(projectId) {
+        console.log('Starte Löschvorgang für Projekt:', projectId);
+        
+        try {
+            const response = await fetch(`/api/project/${projectId}`, {
+                method: 'DELETE'
+            });
+            
+            console.log('Löschanfrage-Status:', response.status);
+            
+            if (response.ok) {
+                console.log('Projekt erfolgreich gelöscht, lade Seite neu');
+                window.location.reload();
+            } else {
+                const errorData = await response.json();
+                console.error('Server-Fehler beim Löschen:', errorData);
+                throw new Error(errorData.error || 'Unbekannter Fehler beim Löschen');
+            }
+        } catch (error) {
+            console.error('Fehler beim Löschen des Projekts:', error);
+            alert(`Fehler beim Löschen: ${error.message}`);
+        }
+    }
+    
+    // Event-Listener für den Bestätigungs-Button
+    if (confirmDeleteButton) {
+        confirmDeleteButton.addEventListener('click', () => {
+            if (projectToDelete) {
+                console.log('Bestätigung zum Löschen von Projekt:', projectToDelete);
+                deleteProject(projectToDelete);
+                deleteModal.hide();
+            }
+        });
+    }
+    
+    // Projekte laden
+    loadProjects();
+});
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/static/js/modules/api.js ---
+// api.js - Modul für API-Kommunikation
+const api = {
+    // Projekte abrufen
+    getProjects: async function() {
+        try {
+            const response = await fetch('/api/projects');
+            if (!response.ok) {
+                throw new Error(`HTTP-Fehler: ${response.status}`);
+            }
+            return await response.json();
+        } catch (error) {
+            console.error('API-Fehler beim Abrufen der Projekte:', error);
+            throw error;
+        }
+    },
+    
+    // Einzelnes Projekt abrufen
+    getProject: async function(projectId) {
+        try {
+            const response = await fetch(`/api/project/${projectId}`);
+            if (!response.ok) {
+                throw new Error(`HTTP-Fehler: ${response.status}`);
+            }
+            return await response.json();
+        } catch (error) {
+            console.error(`API-Fehler beim Abrufen des Projekts ${projectId}:`, error);
+            throw error;
+        }
+    },
+    
+    // Projekt löschen
+    deleteProject: async function(projectId) {
+        try {
+            const response = await fetch(`/api/project/${projectId}`, {
+                method: 'DELETE'
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `Fehler beim Löschen: ${response.status}`);
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error(`API-Fehler beim Löschen des Projekts ${projectId}:`, error);
+            throw error;
+        }
+    },
+    
+    // Geräte abrufen
+    getDevices: async function() {
+        try {
+            const response = await fetch('/api/devices');
+            if (!response.ok) {
+                throw new Error(`HTTP-Fehler: ${response.status}`);
+            }
+            return await response.json();
+        } catch (error) {
+            console.error('API-Fehler beim Abrufen der Geräte:', error);
+            throw error;
+        }
+    },
+    
+    // Konfiguration abrufen
+    getConfig: async function() {
+        try {
+            const response = await fetch('/get_config');
+            if (!response.ok) {
+                throw new Error(`HTTP-Fehler: ${response.status}`);
+            }
+            return await response.json();
+        } catch (error) {
+            console.error('API-Fehler beim Abrufen der Konfiguration:', error);
+            throw error;
+        }
+    },
+    
+    // Konfiguration speichern
+    saveConfig: async function(config) {
+        try {
+            const response = await fetch('/settings/save_config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(config)
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || `Fehler beim Speichern: ${response.status}`);
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error('API-Fehler beim Speichern der Konfiguration:', error);
+            throw error;
+        }
+    }
+};
+
+export default api;
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/static/sample_images/.gitkeep ---
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/static/css/index.css ---
+/* Stile für die Startseite */
+.container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+}
+
+.control-panel {
+    display: flex;
+    flex-direction: column;
+}
+
+.project-selection {
+    margin-bottom: 1.5rem;
+}
+
+.rotation-settings {
+    margin-bottom: 1.5rem;
+}
+
+.controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.status-message {
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-left: 4px solid #6c757d;
+    border-radius: 4px;
+    margin-top: 1rem;
+}
+
+.status-message.success {
+    border-left-color: #28a745;
+    background-color: #e8f5e9;
+}
+
+.status-message.error {
+    border-left-color: #dc3545;
+    background-color: #f8d7da;
+}
+
+.preview {
+    display: flex;
+    flex-direction: column;
+}
+
+.image-preview {
+    flex-grow: 1;
+    min-height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f9f9f9;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.no-image {
+    color: var(--lightest-text);
+    text-align: center;
+    padding: 2rem;
+}
+
+.image-container {
+    position: relative;
+    max-width: 100%;
+}
+
+.captured-image {
+    max-width: 100%;
+    max-height: 400px;
+    display: block;
+}
+
+.angle-label {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+/* Popup für Projekterstellung */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background-color: white;
+    padding: 2rem;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+    margin-bottom: 1.5rem;
+}
+
+.modal-header h3 {
+    margin: 0;
+}
+
+.modal-body {
+    margin-bottom: 1.5rem;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/static/css/project_edit.css ---
+/* static/css/project_edit.css */
+body {
+    background-color: #f4f4f4;
+    padding-top: 50px;
+}
+
+.container {
+    max-width: 1000px;
+}
+
+.card {
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    margin-bottom: 50px;
+}
+
+.current-capture-container {
+    display: flex;
+    justify-content: center;
+    margin: 20px 0;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    padding: 10px;
+}
+
+#current-capture {
+    max-height: 300px;
+    object-fit: contain;
+}
+
+.image-gallery .card-img-top {
+    height: 150px;
+    object-fit: cover;
+}
+
+#progress-container {
+    margin-top: 20px;
+}
+
+@media (max-width: 768px) {
+    body {
+        padding-top: 20px;
+    }
+
+    .container {
+        padding: 0 15px;
+    }
+
+    #current-capture {
+        max-height: 200px;
+    }
+}
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/static/css/projects.css ---
+/* Stile für die Projektliste */
+.projects-container {
+    margin-top: 1.5rem;
+}
+
+.project-actions {
+    margin: 1.5rem 0;
+}
+
+.projects-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.project-card {
+    background: var(--card-color);
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.project-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.project-card h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    color: var(--primary-color);
+}
+
+.project-meta {
+    margin-bottom: 1rem;
+    color: var(--light-text);
+    font-size: 0.9rem;
+}
+
+.no-description {
+    color: var(--lightest-text);
+    font-style: italic;
+}
+
+.created-date, .image-count {
+    margin: 0.5rem 0;
+}
+
+.inline-form {
+    display: inline;
+}
+
+.no-projects {
+    color: var(--lightest-text);
+    font-style: italic;
+    padding: 1rem;
+    text-align: center;
+    background: #f9f9f9;
+    border-radius: 4px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .projects-list {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/static/css/project_view.css ---
+/* Stile für die Projektdetailansicht */
+.project-details {
+    background: var(--card-color);
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.project-info {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.project-actions {
+    margin: 1.5rem 0;
+}
+
+/* Bilder */
+.project-images {
+    margin-bottom: 2rem;
+}
+
+.image-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.image-item {
+    position: relative;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.image-item img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.image-info {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.8rem;
+    border-top-left-radius: 4px;
+}
+
+.no-images {
+    color: var(--lightest-text);
+    font-style: italic;
+    padding: 1rem;
+    text-align: center;
+    background: #f9f9f9;
+    border-radius: 4px;
+}
+
+/* Sessions */
+.sessions-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.session-item {
+    background: #f9f9f9;
+    padding: 1rem;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.session-item h4 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    color: var(--primary-color);
+}
+
+.session-item p {
+    margin: 0.3rem 0;
+    font-size: 0.9rem;
+}
+
+.no-sessions {
+    color: var(--lightest-text);
+    font-style: italic;
+    padding: 1rem;
+    text-align: center;
+    background: #f9f9f9;
+    border-radius: 4px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .image-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    }
+    
+    .sessions-list {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/static/css/error.css ---
+/* Stile für die Fehlerseite */
+.error-container {
+    max-width: 600px;
+    margin: 2rem auto;
+    text-align: center;
+    padding: 2rem;
+    background: var(--card-color);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.error-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    color: var(--warning-color);
+}
+
+.error-message {
+    color: var(--accent-color);
+    margin-bottom: 2rem;
+    padding: 1rem;
+    background: #fef5f5;
+    border-radius: 4px;
+}
+
+.error-actions {
+    margin-top: 2rem;
+}
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/static/css/base.css ---
+/* Basis-Stile für alle Seiten */
+:root {
+    --primary-color: #2c3e50;
+    --primary-light: #34495e;
+    --secondary-color: #3498db;
+    --secondary-light: #5dade2;
+    --accent-color: #e74c3c;
+    --text-color: #333;
+    --light-text: #666;
+    --lightest-text: #999;
+    --background-color: #f5f5f5;
+    --card-color: #fff;
+    --border-color: #ddd;
+    --success-color: #27ae60;
+    --warning-color: #f39c12;
+    --danger-color: #e74c3c;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+    color: var(--text-color);
+    background-color: var(--background-color);
+}
+
+/* Header und Navigation */
+header {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 1rem 2rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+    margin: 0;
+    font-size: 1.8rem;
+}
+
+nav {
+    margin-top: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+}
+
+nav a {
+    color: white;
+    margin-right: 1.5rem;
+    text-decoration: none;
+    padding: 0.5rem 0;
+    border-bottom: 2px solid transparent;
+    transition: border-color 0.3s;
+}
+
+nav a:hover, nav a.active {
+    border-color: white;
+}
+
+/* Main Content */
+main {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+}
+
+h2 {
+    color: var(--primary-color);
+    margin-top: 0;
+    margin-bottom: 1rem;
+}
+
+h3 {
+    color: var(--primary-light);
+    margin-top: 1.5rem;
+    margin-bottom: 0.8rem;
+}
+
+/* Cards und Container */
+.card {
+    background: var(--card-color);
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1.5rem;
+}
+
+/* Buttons */
+.btn {
+    display: inline-block;
+    padding: 0.5rem 1.2rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    text-decoration: none;
+    text-align: center;
+    transition: background-color 0.3s, transform 0.1s;
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.btn:active {
+    transform: translateY(1px);
+}
+
+.btn-primary {
+    background-color: var(--secondary-color);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: var(--secondary-light);
+}
+
+.btn-secondary {
+    background-color: var(--primary-light);
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: var(--primary-color);
+}
+
+.btn-danger {
+    background-color: var(--danger-color);
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #c0392b;
+}
+
+.btn:disabled {
+    background-color: var(--lightest-text);
+    cursor: not-allowed;
+}
+
+/* Footer */
+footer {
+    text-align: center;
+    padding: 1rem;
+    background-color: var(--primary-color);
+    color: white;
+    margin-top: 2rem;
+}
+
+/* Formulare */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+}
+
+input, select, textarea {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 1rem;
+    box-sizing: border-box;
+}
+
+textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    nav {
+        flex-direction: column;
+    }
+    
+    nav a {
+        margin-bottom: 0.5rem;
+    }
+}
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/static/css/settings.css ---
+/* Stile für die Einstellungsseite */
+.settings-container {
+    background: var(--card-color);
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.settings-group {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.settings-group:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.settings-group h2 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+}
+
+.setting-row {
+    display: flex;
+    margin-bottom: 1rem;
+    align-items: center;
+}
+
+.setting-label {
+    flex: 1;
+    font-weight: bold;
+}
+
+.setting-control {
+    flex: 2;
+}
+
+.setting-description {
+    font-size: 0.9rem;
+    color: var(--light-text);
+    margin-top: 0.3rem;
+}
+
+.save-btn {
+    background-color: var(--success-color);
+    color: white;
+    padding: 0.7rem 1.5rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    margin-top: 1rem;
+    transition: background-color 0.3s;
+}
+
+.save-btn:hover {
+    background-color: #219653;
+}
+
+.status-message {
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: 4px;
+    display: none;
+}
+
+.status-success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.status-error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .setting-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .setting-label, .setting-control {
+        width: 100%;
+    }
+    
+    .setting-label {
+        margin-bottom: 0.5rem;
+    }
+}
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/static/css/main.css ---
+/* Datei: static/css/main.css - Hauptstilvorlage für die Anwendung */
+
+/* Grundlegende CSS-Zurücksetzung und allgemeine Stile */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background-color: #f5f5f5;
+}
+
+a {
+    color: #4682B4;
+    text-decoration: none;
+}
+
+a:hover {
+    color: #385D8A;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    line-height: 1.2;
+    margin-bottom: 0.5rem;
+}
+
+/* Container und Layout */
+.app-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.main-content {
+    flex: 1;
+    padding: 1.5rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+/* Navigation */
+.main-nav {
+    background-color: #4682B4;
+    color: white;
+    padding: 1rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.nav-links {
+    display: flex;
+    list-style: none;
+}
+
+.nav-links li {
+    margin-left: 1.5rem;
+}
+
+.nav-links a {
+    color: white;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.nav-links a:hover {
+    text-decoration: underline;
+}
+
+/* Footer */
+.main-footer {
+    background-color: #333;
+    color: #ccc;
+    padding: 1rem;
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+/* Kopfzeilen für Seiten */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #ddd;
+}
+
+.page-header h2 {
+    font-size: 1.8rem;
+    margin: 0;
+}
+
+.header-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Buttons */
+.btn {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: center;
+    border: none;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.primary-btn {
+    background-color: #4682B4;
+    color: white;
+}
+
+.primary-btn:hover {
+    background-color: #385D8A;
+    color: white;
+}
+
+.secondary-btn {
+    background-color: #e9ecef;
+    color: #333;
+}
+
+.secondary-btn:hover {
+    background-color: #dde2e6;
+}
+
+.danger-btn {
+    background-color: #dc3545;
+    color: white;
+}
+
+.danger-btn:hover {
+    background-color: #bd2130;
+}
+
+/* Formulare */
+.form-container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.standard-form {
+    background-color: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group textarea,
+.form-group select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.form-group select {
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1rem;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+}
+
+.main-actions {
+    padding-top: 1rem;
+    border-top: 1px solid #ddd;
+}
+
+/* Projekte */
+.projects-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.project-card {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.project-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.project-header {
+    padding: 1rem;
+    border-bottom: 1px solid #eee;
+}
+
+.project-date {
+    font-size: 0.8rem;
+    color: #777;
+}
+
+.project-description {
+    padding: 1rem;
+    color: #555;
+    font-size: 0.9rem;
+}
+
+.project-details {
+    padding: 0 1rem;
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.detail-item {
+    margin-bottom: 0.5rem;
+    width: 50%;
+    font-size: 0.9rem;
+}
+
+.detail-label {
+    font-weight: 500;
+    color: #666;
+}
+
+.project-actions {
+    padding: 1rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    border-top: 1px solid #eee;
+}
+
+/* Projektdetails */
+.project-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.detail-section, .sessions-section, .danger-zone {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 1.5rem;
+}
+
+.detail-section h3, .sessions-section h3, .danger-zone h3 {
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #eee;
+}
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+}
+
+.sessions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+
+.session-card {
+    background-color: #f8f9fa;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid #eee;
+}
+
+.session-header {
+    padding: 0.75rem;
+    background-color: #e9ecef;
+}
+
+.session-date {
+    font-size: 0.8rem;
+    color: #666;
+}
+
+.session-details {
+    padding: 0.75rem;
+}
+
+.session-actions {
+    padding: 0.75rem;
+    display: flex;
+    justify-content: center;
+    border-top: 1px solid #eee;
+}
+
+.danger-zone {
+    background-color: #fff8f8;
+    border: 1px solid #ffdddd;
+}
+
+.danger-zone h3 {
+    color: #dc3545;
+}
+
+.danger-zone p {
+    margin-bottom: 1rem;
+    color: #666;
+}
+
+/* Leerer Zustand */
+.empty-state {
+    text-align: center;
+    padding: 2rem;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    margin: 1rem 0;
+}
+
+.empty-state p {
+    margin-bottom: 1rem;
+    color: #666;
+}
+
+/* Aufnahmeseite */
+.capture-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+.capture-setup, .hardware-status, .capture-preview {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 1.5rem;
+}
+
+.setup-details {
+    margin-bottom: 1.5rem;
+}
+
+.status-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.status-item {
+    padding: 0.75rem;
+    border-radius: 4px;
+    background-color: #f8f9fa;
+    border: 1px solid #eee;
+}
+
+.status-label {
+    font-weight: 500;
+}
+
+.status-value {
+    display: inline-block;
+    padding-left: 0.5rem;
+}
+
+.status-value.ok {
+    color: #28a745;
+}
+
+.status-value.error {
+    color: #dc3545;
+}
+
+.status-value.loading {
+    color: #ffc107;
+}
+
+.preview-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 200px;
+}
+
+.preview-container img {
+    max-width: 100%;
+    max-height: 300px;
+    border-radius: 4px;
+}
+
+/* Einstellungsseite */
+.settings-container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.settings-section {
+    margin-bottom: 2rem;
+}
+
+.settings-section h3 {
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #eee;
+}
+
+.arduino-device {
+    font-weight: 500;
+    color: #28a745;
+}
+
+/* Fehlermeldungen */
+.error-message {
+    background-color: #f8d7da;
+    color: #721c24;
+    padding: 0.75rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+    border: 1px solid #f5c6cb;
+}
+
+/* Responsives Design */
+@media (max-width: 768px) {
+    .capture-container {
+        grid-template-columns: 1fr;
+    }
+
+    .status-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .projects-container, .sessions-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .form-actions {
+        flex-direction: column;
+    }
+
+    .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+}
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/static/css/viewer.css ---
+/* Stile für den 360° Produktviewer mit Pannellum */
+.viewer-container {
+    position: relative;
+    width: 100%;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+#pannellum-viewer {
+    width: 100%;
+    height: 400px;
+    background-color: #f8f9fa;
+}
+
+#spinner {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+}
+
+.viewer-controls {
+    display: flex;
+    justify-content: center;
+    margin-top: 15px;
+}
+
+.control-btn-group {
+    display: flex;
+    gap: 10px;
+}
+
+.btn {
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 14px;
+}
+
+.btn-primary {
+    background-color: #4682B4;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #385D8A;
+}
+
+.btn-secondary {
+    background-color: #e9ecef;
+    color: #333;
+}
+
+.btn-secondary:hover {
+    background-color: #dde2e6;
+}
+
+/* Pannellum-spezifische Anpassungen */
+.pnlm-container {
+    background-color: #f8f9fa;
+}
+
+.pnlm-load-button {
+    display: none; /* Verstecke den Standard-Ladebutton von Pannellum */
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    #pannellum-viewer {
+        height: 300px;
+    }
+    
+    .viewer-controls {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .control-btn-group {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+}
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/static/css/styles.css ---
+/* Globale Stile */
+:root {
+    --primary-color: #2c3e50;
+    --primary-light: #34495e;
+    --secondary-color: #3498db;
+    --secondary-light: #5dade2;
+    --accent-color: #e74c3c;
+    --text-color: #333;
+    --light-text: #666;
+    --lightest-text: #999;
+    --background-color: #f5f5f5;
+    --card-color: #fff;
+    --border-color: #ddd;
+    --success-color: #27ae60;
+    --warning-color: #f39c12;
+    --danger-color: #e74c3c;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+    color: var(--text-color);
+    background-color: var(--background-color);
+}
+
+/* Header und Navigation */
+header {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 1rem 2rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+    margin: 0;
+    font-size: 1.8rem;
+}
+
+nav {
+    margin-top: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+}
+
+nav a {
+    color: white;
+    margin-right: 1.5rem;
+    text-decoration: none;
+    padding: 0.5rem 0;
+    border-bottom: 2px solid transparent;
+    transition: border-color 0.3s;
+}
+
+nav a:hover, nav a.active {
+    border-color: white;
+}
+
+/* Main Content */
+main {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+}
+
+h2 {
+    color: var(--primary-color);
+    margin-top: 0;
+    margin-bottom: 1rem;
+}
+
+h3 {
+    color: var(--primary-light);
+    margin-top: 1.5rem;
+    margin-bottom: 0.8rem;
+}
+
+/* Cards und Container */
+.card, .settings-container, .project-details, .error-container {
+    background: var(--card-color);
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1.5rem;
+}
+
+/* Formulare */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+}
+
+input, select, textarea {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 1rem;
+    box-sizing: border-box;
+}
+
+textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+/* Buttons */
+.btn {
+    display: inline-block;
+    padding: 0.5rem 1.2rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    text-decoration: none;
+    text-align: center;
+    transition: background-color 0.3s, transform 0.1s;
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.btn:active {
+    transform: translateY(1px);
+}
+
+.btn-primary {
+    background-color: var(--secondary-color);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: var(--secondary-light);
+}
+
+.btn-secondary {
+    background-color: var(--primary-light);
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: var(--primary-color);
+}
+
+.btn-danger {
+    background-color: var(--danger-color);
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #c0392b;
+}
+
+.btn:disabled {
+    background-color: var(--lightest-text);
+    cursor: not-allowed;
+}
+
+/* Projektliste */
+.projects-container {
+    margin-top: 1.5rem;
+}
+
+.project-actions {
+    margin: 1.5rem 0;
+}
+
+.projects-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.project-card {
+    background: var(--card-color);
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.project-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.project-card h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    color: var(--primary-color);
+}
+
+.project-meta {
+    margin-bottom: 1rem;
+    color: var(--light-text);
+    font-size: 0.9rem;
+}
+
+.no-description {
+    color: var(--lightest-text);
+    font-style: italic;
+}
+
+.created-date, .image-count {
+    margin: 0.5rem 0;
+}
+
+.inline-form {
+    display: inline;
+}
+
+/* Projektdetails */
+.project-info {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.project-images {
+    margin-bottom: 2rem;
+}
+
+.image-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.image-item {
+    position: relative;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.image-item img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.image-info {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.8rem;
+    border-top-left-radius: 4px;
+}
+
+.no-images, .no-projects, .no-sessions {
+    color: var(--lightest-text);
+    font-style: italic;
+    padding: 1rem;
+    text-align: center;
+    background: #f9f9f9;
+    border-radius: 4px;
+}
+
+/* Sessions */
+.sessions-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.session-item {
+    background: #f9f9f9;
+    padding: 1rem;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.session-item h4 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    color: var(--primary-color);
+}
+
+.session-item p {
+    margin: 0.3rem 0;
+    font-size: 0.9rem;
+}
+
+/* Fehlerseite */
+.error-container {
+    max-width: 600px;
+    margin: 2rem auto;
+    text-align: center;
+    padding: 2rem;
+}
+
+.error-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.error-message {
+    color: var(--accent-color);
+    margin-bottom: 2rem;
+    padding: 1rem;
+    background: #fef5f5;
+    border-radius: 4px;
+}
+
+.error-actions {
+    margin-top: 2rem;
+}
+
+/* Einstellungen */
+.settings-group {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.settings-group:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.settings-group h2 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+}
+
+.setting-row {
+    display: flex;
+    margin-bottom: 1rem;
+    align-items: center;
+}
+
+.setting-label {
+    flex: 1;
+    font-weight: bold;
+}
+
+.setting-control {
+    flex: 2;
+}
+
+.setting-description {
+    font-size: 0.9rem;
+    color: var(--light-text);
+    margin-top: 0.3rem;
+}
+
+.status-message {
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: 4px;
+    display: none;
+}
+
+.status-success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.status-error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+/* Footer */
+footer {
+    text-align: center;
+    padding: 1rem;
+    background-color: var(--primary-color);
+    color: white;
+    margin-top: 2rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .setting-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .setting-label, .setting-control {
+        width: 100%;
+    }
+    
+    .setting-label {
+        margin-bottom: 0.5rem;
+    }
+    
+    .projects-list {
+        grid-template-columns: 1fr;
+    }
+    
+    .sessions-list {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/static/css/project_create.css ---
+/* Stile für die Projekterstellungsseite */
+.project-form-container {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.error-message {
+    background-color: #f8d7da;
+    color: #721c24;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    border-radius: 4px;
+    border: 1px solid #f5c6cb;
+}
+
+.form-actions {
+    margin-top: 2rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+}
+

@@ -163,31 +163,52 @@ def get_project_image(project_id, image_path):
         project_id: ID des Projekts
         image_path: Pfad zum Bild innerhalb des Projekts
     """
-    # ID und Bildpfad validieren
-    if not validate_project_id(project_id):
-        logger.warning(f"Ungültige Projekt-ID: {project_id}")
-        abort(404)
+    try:
+        logger.debug(f"Bild angefordert: Projekt={project_id}, Pfad={image_path}")
         
-    # Den Bildpfad sicher machen
-    safe_image_filename = secure_filename(os.path.basename(image_path))
-    if not safe_image_filename:
-        abort(404)
+        # ID validieren
+        if not validate_project_id(project_id):
+            logger.warning(f"Ungültige Projekt-ID: {project_id}")
+            abort(404)
+            
+        # Path Manager holen
+        path_manager = PathManager()
         
-    # Projektverzeichnis im abgesicherten Pfad
-    project_dir = project_manager.get_project_path(project_id)
-    
-    # Sicherstellen, dass das Verzeichnis existiert
-    if not os.path.isdir(project_dir):
-        abort(404)
-    
-    # Bildverzeichnis und Dateinamen sicher zusammenführen
-    image_dir_path = os.path.dirname(os.path.join(project_dir, image_path))
-    
-    # Sicherstellen, dass das Bildverzeichnis innerhalb des Projektverzeichnisses liegt
-    if not os.path.abspath(image_dir_path).startswith(os.path.abspath(project_dir)):
-        abort(404)
-    
-    return send_from_directory(image_dir_path, safe_image_filename)
+        # Projektverzeichnis ermitteln
+        project_path = path_manager.get_project_path(project_id)
+        logger.debug(f"Projektpfad: {project_path}")
+        
+        # Vollständiger Bildpfad
+        if 'images' not in image_path:
+            # Falls "images" nicht im Pfad ist, fügen wir es hinzu
+            full_image_path = os.path.join(project_path, 'images', image_path)
+        else:
+            # Falls "images" bereits im Pfad ist
+            full_image_path = os.path.join(project_path, image_path)
+            
+        logger.debug(f"Vollständiger Bildpfad: {full_image_path}")
+        
+        # Überprüfen, ob die Datei existiert
+        if not os.path.exists(full_image_path):
+            logger.warning(f"Datei existiert nicht: {full_image_path}")
+            # Versuche einen alternativen Pfad
+            alt_path = os.path.join(project_path, image_path)
+            logger.debug(f"Versuche alternativen Pfad: {alt_path}")
+            if os.path.exists(alt_path):
+                full_image_path = alt_path
+            else:
+                abort(404)
+            
+        # Bild-Verzeichnis und Dateinamen trennen
+        image_dir = os.path.dirname(full_image_path)
+        image_file = os.path.basename(full_image_path)
+        
+        logger.debug(f"Sende Datei: Verzeichnis={image_dir}, Datei={image_file}")
+        return send_from_directory(image_dir, image_file)
+        
+    except Exception as e:
+        logger.error(f"Fehler beim Abrufen des Bildes: {str(e)}")
+        abort(500)
 
 @projects_bp.route('/<project_id>/view360')
 def view_360(project_id):
