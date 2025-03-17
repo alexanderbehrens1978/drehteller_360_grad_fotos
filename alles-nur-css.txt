@@ -1,0 +1,1705 @@
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos-claude-pro/static/css/index.css ---
+/* Stile für die Startseite */
+.container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+}
+
+.control-panel {
+    display: flex;
+    flex-direction: column;
+}
+
+.project-selection {
+    margin-bottom: 1.5rem;
+}
+
+.rotation-settings {
+    margin-bottom: 1.5rem;
+}
+
+.controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.status-message {
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-left: 4px solid #6c757d;
+    border-radius: 4px;
+    margin-top: 1rem;
+}
+
+.status-message.success {
+    border-left-color: #28a745;
+    background-color: #e8f5e9;
+}
+
+.status-message.error {
+    border-left-color: #dc3545;
+    background-color: #f8d7da;
+}
+
+.preview {
+    display: flex;
+    flex-direction: column;
+}
+
+.image-preview {
+    flex-grow: 1;
+    min-height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f9f9f9;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.no-image {
+    color: var(--lightest-text);
+    text-align: center;
+    padding: 2rem;
+}
+
+.image-container {
+    position: relative;
+    max-width: 100%;
+}
+
+.captured-image {
+    max-width: 100%;
+    max-height: 400px;
+    display: block;
+}
+
+.angle-label {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+/* Popup für Projekterstellung */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background-color: white;
+    padding: 2rem;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+    margin-bottom: 1.5rem;
+}
+
+.modal-header h3 {
+    margin: 0;
+}
+
+.modal-body {
+    margin-bottom: 1.5rem;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos-claude-pro/static/css/project_edit.css ---
+/* static/css/project_edit.css */
+body {
+    background-color: #f4f4f4;
+    padding-top: 50px;
+}
+
+.container {
+    max-width: 1000px;
+}
+
+.card {
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    margin-bottom: 50px;
+}
+
+.current-capture-container {
+    display: flex;
+    justify-content: center;
+    margin: 20px 0;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    padding: 10px;
+}
+
+#current-capture {
+    max-height: 300px;
+    object-fit: contain;
+}
+
+.image-gallery .card-img-top {
+    height: 150px;
+    object-fit: cover;
+}
+
+#progress-container {
+    margin-top: 20px;
+}
+
+@media (max-width: 768px) {
+    body {
+        padding-top: 20px;
+    }
+
+    .container {
+        padding: 0 15px;
+    }
+
+    #current-capture {
+        max-height: 200px;
+    }
+}
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos-claude-pro/static/css/projects.css ---
+/* Stile für die Projektliste */
+.projects-container {
+    margin-top: 1.5rem;
+}
+
+.project-actions {
+    margin: 1.5rem 0;
+}
+
+.projects-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.project-card {
+    background: var(--card-color);
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.project-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.project-card h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    color: var(--primary-color);
+}
+
+.project-meta {
+    margin-bottom: 1rem;
+    color: var(--light-text);
+    font-size: 0.9rem;
+}
+
+.no-description {
+    color: var(--lightest-text);
+    font-style: italic;
+}
+
+.created-date, .image-count {
+    margin: 0.5rem 0;
+}
+
+.inline-form {
+    display: inline;
+}
+
+.no-projects {
+    color: var(--lightest-text);
+    font-style: italic;
+    padding: 1rem;
+    text-align: center;
+    background: #f9f9f9;
+    border-radius: 4px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .projects-list {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos-claude-pro/static/css/project_view.css ---
+/* Stile für die Projektdetailansicht */
+.project-details {
+    background: var(--card-color);
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.project-info {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.project-actions {
+    margin: 1.5rem 0;
+}
+
+/* Bilder */
+.project-images {
+    margin-bottom: 2rem;
+}
+
+.image-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.image-item {
+    position: relative;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.image-item img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.image-info {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.8rem;
+    border-top-left-radius: 4px;
+}
+
+.no-images {
+    color: var(--lightest-text);
+    font-style: italic;
+    padding: 1rem;
+    text-align: center;
+    background: #f9f9f9;
+    border-radius: 4px;
+}
+
+/* Sessions */
+.sessions-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.session-item {
+    background: #f9f9f9;
+    padding: 1rem;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.session-item h4 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    color: var(--primary-color);
+}
+
+.session-item p {
+    margin: 0.3rem 0;
+    font-size: 0.9rem;
+}
+
+.no-sessions {
+    color: var(--lightest-text);
+    font-style: italic;
+    padding: 1rem;
+    text-align: center;
+    background: #f9f9f9;
+    border-radius: 4px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .image-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    }
+    
+    .sessions-list {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos-claude-pro/static/css/error.css ---
+/* Stile für die Fehlerseite */
+.error-container {
+    max-width: 600px;
+    margin: 2rem auto;
+    text-align: center;
+    padding: 2rem;
+    background: var(--card-color);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.error-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    color: var(--warning-color);
+}
+
+.error-message {
+    color: var(--accent-color);
+    margin-bottom: 2rem;
+    padding: 1rem;
+    background: #fef5f5;
+    border-radius: 4px;
+}
+
+.error-actions {
+    margin-top: 2rem;
+}
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos-claude-pro/static/css/base.css ---
+/* Basis-Stile für alle Seiten */
+:root {
+    --primary-color: #2c3e50;
+    --primary-light: #34495e;
+    --secondary-color: #3498db;
+    --secondary-light: #5dade2;
+    --accent-color: #e74c3c;
+    --text-color: #333;
+    --light-text: #666;
+    --lightest-text: #999;
+    --background-color: #f5f5f5;
+    --card-color: #fff;
+    --border-color: #ddd;
+    --success-color: #27ae60;
+    --warning-color: #f39c12;
+    --danger-color: #e74c3c;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+    color: var(--text-color);
+    background-color: var(--background-color);
+}
+
+/* Header und Navigation */
+header {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 1rem 2rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+    margin: 0;
+    font-size: 1.8rem;
+}
+
+nav {
+    margin-top: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+}
+
+nav a {
+    color: white;
+    margin-right: 1.5rem;
+    text-decoration: none;
+    padding: 0.5rem 0;
+    border-bottom: 2px solid transparent;
+    transition: border-color 0.3s;
+}
+
+nav a:hover, nav a.active {
+    border-color: white;
+}
+
+/* Main Content */
+main {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+}
+
+h2 {
+    color: var(--primary-color);
+    margin-top: 0;
+    margin-bottom: 1rem;
+}
+
+h3 {
+    color: var(--primary-light);
+    margin-top: 1.5rem;
+    margin-bottom: 0.8rem;
+}
+
+/* Cards und Container */
+.card {
+    background: var(--card-color);
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1.5rem;
+}
+
+/* Buttons */
+.btn {
+    display: inline-block;
+    padding: 0.5rem 1.2rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    text-decoration: none;
+    text-align: center;
+    transition: background-color 0.3s, transform 0.1s;
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.btn:active {
+    transform: translateY(1px);
+}
+
+.btn-primary {
+    background-color: var(--secondary-color);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: var(--secondary-light);
+}
+
+.btn-secondary {
+    background-color: var(--primary-light);
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: var(--primary-color);
+}
+
+.btn-danger {
+    background-color: var(--danger-color);
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #c0392b;
+}
+
+.btn:disabled {
+    background-color: var(--lightest-text);
+    cursor: not-allowed;
+}
+
+/* Footer */
+footer {
+    text-align: center;
+    padding: 1rem;
+    background-color: var(--primary-color);
+    color: white;
+    margin-top: 2rem;
+}
+
+/* Formulare */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+}
+
+input, select, textarea {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 1rem;
+    box-sizing: border-box;
+}
+
+textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    nav {
+        flex-direction: column;
+    }
+    
+    nav a {
+        margin-bottom: 0.5rem;
+    }
+}
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos-claude-pro/static/css/settings.css ---
+/* Stile für die Einstellungsseite */
+.settings-container {
+    background: var(--card-color);
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.settings-group {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.settings-group:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.settings-group h2 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+}
+
+.setting-row {
+    display: flex;
+    margin-bottom: 1rem;
+    align-items: center;
+}
+
+.setting-label {
+    flex: 1;
+    font-weight: bold;
+}
+
+.setting-control {
+    flex: 2;
+}
+
+.setting-description {
+    font-size: 0.9rem;
+    color: var(--light-text);
+    margin-top: 0.3rem;
+}
+
+.save-btn {
+    background-color: var(--success-color);
+    color: white;
+    padding: 0.7rem 1.5rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    margin-top: 1rem;
+    transition: background-color 0.3s;
+}
+
+.save-btn:hover {
+    background-color: #219653;
+}
+
+.status-message {
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: 4px;
+    display: none;
+}
+
+.status-success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.status-error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .setting-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .setting-label, .setting-control {
+        width: 100%;
+    }
+    
+    .setting-label {
+        margin-bottom: 0.5rem;
+    }
+}
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos-claude-pro/static/css/main.css ---
+/* Datei: static/css/main.css - Hauptstilvorlage für die Anwendung */
+
+/* Grundlegende CSS-Zurücksetzung und allgemeine Stile */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background-color: #f5f5f5;
+}
+
+a {
+    color: #4682B4;
+    text-decoration: none;
+}
+
+a:hover {
+    color: #385D8A;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    line-height: 1.2;
+    margin-bottom: 0.5rem;
+}
+
+/* Container und Layout */
+.app-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.main-content {
+    flex: 1;
+    padding: 1.5rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+/* Navigation */
+.main-nav {
+    background-color: #4682B4;
+    color: white;
+    padding: 1rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.nav-links {
+    display: flex;
+    list-style: none;
+}
+
+.nav-links li {
+    margin-left: 1.5rem;
+}
+
+.nav-links a {
+    color: white;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.nav-links a:hover {
+    text-decoration: underline;
+}
+
+/* Footer */
+.main-footer {
+    background-color: #333;
+    color: #ccc;
+    padding: 1rem;
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+/* Kopfzeilen für Seiten */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #ddd;
+}
+
+.page-header h2 {
+    font-size: 1.8rem;
+    margin: 0;
+}
+
+.header-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Buttons */
+.btn {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: center;
+    border: none;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.primary-btn {
+    background-color: #4682B4;
+    color: white;
+}
+
+.primary-btn:hover {
+    background-color: #385D8A;
+    color: white;
+}
+
+.secondary-btn {
+    background-color: #e9ecef;
+    color: #333;
+}
+
+.secondary-btn:hover {
+    background-color: #dde2e6;
+}
+
+.danger-btn {
+    background-color: #dc3545;
+    color: white;
+}
+
+.danger-btn:hover {
+    background-color: #bd2130;
+}
+
+/* Formulare */
+.form-container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.standard-form {
+    background-color: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group textarea,
+.form-group select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.form-group select {
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1rem;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+}
+
+.main-actions {
+    padding-top: 1rem;
+    border-top: 1px solid #ddd;
+}
+
+/* Projekte */
+.projects-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.project-card {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.project-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.project-header {
+    padding: 1rem;
+    border-bottom: 1px solid #eee;
+}
+
+.project-date {
+    font-size: 0.8rem;
+    color: #777;
+}
+
+.project-description {
+    padding: 1rem;
+    color: #555;
+    font-size: 0.9rem;
+}
+
+.project-details {
+    padding: 0 1rem;
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.detail-item {
+    margin-bottom: 0.5rem;
+    width: 50%;
+    font-size: 0.9rem;
+}
+
+.detail-label {
+    font-weight: 500;
+    color: #666;
+}
+
+.project-actions {
+    padding: 1rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    border-top: 1px solid #eee;
+}
+
+/* Projektdetails */
+.project-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.detail-section, .sessions-section, .danger-zone {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 1.5rem;
+}
+
+.detail-section h3, .sessions-section h3, .danger-zone h3 {
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #eee;
+}
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+}
+
+.sessions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+
+.session-card {
+    background-color: #f8f9fa;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid #eee;
+}
+
+.session-header {
+    padding: 0.75rem;
+    background-color: #e9ecef;
+}
+
+.session-date {
+    font-size: 0.8rem;
+    color: #666;
+}
+
+.session-details {
+    padding: 0.75rem;
+}
+
+.session-actions {
+    padding: 0.75rem;
+    display: flex;
+    justify-content: center;
+    border-top: 1px solid #eee;
+}
+
+.danger-zone {
+    background-color: #fff8f8;
+    border: 1px solid #ffdddd;
+}
+
+.danger-zone h3 {
+    color: #dc3545;
+}
+
+.danger-zone p {
+    margin-bottom: 1rem;
+    color: #666;
+}
+
+/* Leerer Zustand */
+.empty-state {
+    text-align: center;
+    padding: 2rem;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    margin: 1rem 0;
+}
+
+.empty-state p {
+    margin-bottom: 1rem;
+    color: #666;
+}
+
+/* Aufnahmeseite */
+.capture-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+.capture-setup, .hardware-status, .capture-preview {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 1.5rem;
+}
+
+.setup-details {
+    margin-bottom: 1.5rem;
+}
+
+.status-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.status-item {
+    padding: 0.75rem;
+    border-radius: 4px;
+    background-color: #f8f9fa;
+    border: 1px solid #eee;
+}
+
+.status-label {
+    font-weight: 500;
+}
+
+.status-value {
+    display: inline-block;
+    padding-left: 0.5rem;
+}
+
+.status-value.ok {
+    color: #28a745;
+}
+
+.status-value.error {
+    color: #dc3545;
+}
+
+.status-value.loading {
+    color: #ffc107;
+}
+
+.preview-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 200px;
+}
+
+.preview-container img {
+    max-width: 100%;
+    max-height: 300px;
+    border-radius: 4px;
+}
+
+/* Einstellungsseite */
+.settings-container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.settings-section {
+    margin-bottom: 2rem;
+}
+
+.settings-section h3 {
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #eee;
+}
+
+.arduino-device {
+    font-weight: 500;
+    color: #28a745;
+}
+
+/* Fehlermeldungen */
+.error-message {
+    background-color: #f8d7da;
+    color: #721c24;
+    padding: 0.75rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+    border: 1px solid #f5c6cb;
+}
+
+/* Responsives Design */
+@media (max-width: 768px) {
+    .capture-container {
+        grid-template-columns: 1fr;
+    }
+
+    .status-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .projects-container, .sessions-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .form-actions {
+        flex-direction: column;
+    }
+
+    .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+}
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos-claude-pro/static/css/viewer.css ---
+body {
+    background-color: #f4f4f4;
+    padding-top: 50px;
+}
+
+.container {
+    max-width: 800px;
+}
+
+.card {
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.viewer-360 {
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.main-image {
+    cursor: grab;
+    transition: transform 0.2s ease-in-out;
+    transform-origin: center center;
+}
+
+.main-image:active {
+    cursor: grabbing;
+}
+
+.thumb-container {
+    transition: all 0.2s ease-in-out;
+}
+
+.thumb-container:hover {
+    transform: scale(1.1);
+    z-index: 1;
+}
+
+/* Fullscreen-Modus */
+.container.fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    max-width: 100%;
+    z-index: 9999;
+    background-color: white;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.container.fullscreen .card {
+    height: calc(100vh - 40px);
+    display: flex;
+    flex-direction: column;
+}
+
+.container.fullscreen .card-body {
+    flex: 1;
+    overflow: hidden;
+}
+
+.container.fullscreen .viewer-360 {
+    height: 100%;
+}
+
+.container.fullscreen .main-image {
+    max-height: 70vh;
+}
+
+/* Responsives Design */
+@media (max-width: 768px) {
+    body {
+        padding-top: 20px;
+    }
+    
+    .container {
+        padding: 0 15px;
+    }
+    
+    .viewer-360 {
+        min-height: 300px;
+    }
+    
+    .zoom-controls, .viewer-controls {
+        flex-wrap: wrap;
+    }
+    
+    .zoom-controls .btn, .viewer-controls .btn {
+        margin-bottom: 10px;
+    }
+}
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos-claude-pro/static/css/styles.css ---
+/* Globale Stile */
+:root {
+    --primary-color: #2c3e50;
+    --primary-light: #34495e;
+    --secondary-color: #3498db;
+    --secondary-light: #5dade2;
+    --accent-color: #e74c3c;
+    --text-color: #333;
+    --light-text: #666;
+    --lightest-text: #999;
+    --background-color: #f5f5f5;
+    --card-color: #fff;
+    --border-color: #ddd;
+    --success-color: #27ae60;
+    --warning-color: #f39c12;
+    --danger-color: #e74c3c;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+    color: var(--text-color);
+    background-color: var(--background-color);
+}
+
+/* Header und Navigation */
+header {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 1rem 2rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+    margin: 0;
+    font-size: 1.8rem;
+}
+
+nav {
+    margin-top: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+}
+
+nav a {
+    color: white;
+    margin-right: 1.5rem;
+    text-decoration: none;
+    padding: 0.5rem 0;
+    border-bottom: 2px solid transparent;
+    transition: border-color 0.3s;
+}
+
+nav a:hover, nav a.active {
+    border-color: white;
+}
+
+/* Main Content */
+main {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+}
+
+h2 {
+    color: var(--primary-color);
+    margin-top: 0;
+    margin-bottom: 1rem;
+}
+
+h3 {
+    color: var(--primary-light);
+    margin-top: 1.5rem;
+    margin-bottom: 0.8rem;
+}
+
+/* Cards und Container */
+.card, .settings-container, .project-details, .error-container {
+    background: var(--card-color);
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1.5rem;
+}
+
+/* Formulare */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+}
+
+input, select, textarea {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 1rem;
+    box-sizing: border-box;
+}
+
+textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+/* Buttons */
+.btn {
+    display: inline-block;
+    padding: 0.5rem 1.2rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    text-decoration: none;
+    text-align: center;
+    transition: background-color 0.3s, transform 0.1s;
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.btn:active {
+    transform: translateY(1px);
+}
+
+.btn-primary {
+    background-color: var(--secondary-color);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: var(--secondary-light);
+}
+
+.btn-secondary {
+    background-color: var(--primary-light);
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: var(--primary-color);
+}
+
+.btn-danger {
+    background-color: var(--danger-color);
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #c0392b;
+}
+
+.btn:disabled {
+    background-color: var(--lightest-text);
+    cursor: not-allowed;
+}
+
+/* Projektliste */
+.projects-container {
+    margin-top: 1.5rem;
+}
+
+.project-actions {
+    margin: 1.5rem 0;
+}
+
+.projects-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.project-card {
+    background: var(--card-color);
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.project-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.project-card h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    color: var(--primary-color);
+}
+
+.project-meta {
+    margin-bottom: 1rem;
+    color: var(--light-text);
+    font-size: 0.9rem;
+}
+
+.no-description {
+    color: var(--lightest-text);
+    font-style: italic;
+}
+
+.created-date, .image-count {
+    margin: 0.5rem 0;
+}
+
+.inline-form {
+    display: inline;
+}
+
+/* Projektdetails */
+.project-info {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.project-images {
+    margin-bottom: 2rem;
+}
+
+.image-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.image-item {
+    position: relative;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.image-item img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.image-info {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.8rem;
+    border-top-left-radius: 4px;
+}
+
+.no-images, .no-projects, .no-sessions {
+    color: var(--lightest-text);
+    font-style: italic;
+    padding: 1rem;
+    text-align: center;
+    background: #f9f9f9;
+    border-radius: 4px;
+}
+
+/* Sessions */
+.sessions-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.session-item {
+    background: #f9f9f9;
+    padding: 1rem;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.session-item h4 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    color: var(--primary-color);
+}
+
+.session-item p {
+    margin: 0.3rem 0;
+    font-size: 0.9rem;
+}
+
+/* Fehlerseite */
+.error-container {
+    max-width: 600px;
+    margin: 2rem auto;
+    text-align: center;
+    padding: 2rem;
+}
+
+.error-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.error-message {
+    color: var(--accent-color);
+    margin-bottom: 2rem;
+    padding: 1rem;
+    background: #fef5f5;
+    border-radius: 4px;
+}
+
+.error-actions {
+    margin-top: 2rem;
+}
+
+/* Einstellungen */
+.settings-group {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.settings-group:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.settings-group h2 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+}
+
+.setting-row {
+    display: flex;
+    margin-bottom: 1rem;
+    align-items: center;
+}
+
+.setting-label {
+    flex: 1;
+    font-weight: bold;
+}
+
+.setting-control {
+    flex: 2;
+}
+
+.setting-description {
+    font-size: 0.9rem;
+    color: var(--light-text);
+    margin-top: 0.3rem;
+}
+
+.status-message {
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: 4px;
+    display: none;
+}
+
+.status-success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.status-error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+/* Footer */
+footer {
+    text-align: center;
+    padding: 1rem;
+    background-color: var(--primary-color);
+    color: white;
+    margin-top: 2rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .setting-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .setting-label, .setting-control {
+        width: 100%;
+    }
+    
+    .setting-label {
+        margin-bottom: 0.5rem;
+    }
+    
+    .projects-list {
+        grid-template-columns: 1fr;
+    }
+    
+    .sessions-list {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos-claude-pro/static/css/project_create.css ---
+/* Stile für die Projekterstellungsseite */
+.project-form-container {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.error-message {
+    background-color: #f8d7da;
+    color: #721c24;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    border-radius: 4px;
+    border: 1px solid #f5c6cb;
+}
+
+.form-actions {
+    margin-top: 2rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+}
+
