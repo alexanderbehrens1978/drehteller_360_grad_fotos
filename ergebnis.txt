@@ -1,0 +1,8 @@
+# Dateien verwendet von drehteller.sh - 2025-03-17 15:07:39
+# Ausgeführt als: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/drehteller.sh restart
+
+drehteller.sh
+../../../../usr/bin/systemctl
+../../../../usr/bin/systemd-tty-ask-password-agent
+
+# Insgesamt 3 Dateien gefunden.
