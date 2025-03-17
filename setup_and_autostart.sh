@@ -162,10 +162,12 @@ chmod -R u+rwX "$PROJECT_DIR/myenv"
 echo -e "\n${GREEN}3. Erstelle Verzeichnisstruktur...${NC}"
 mkdir -p "$PROJECT_DIR/static/photos"
 mkdir -p "$PROJECT_DIR/projects"
+mkdir -p "$PROJECT_DIR/logs"
 
 # Berechtigungen setzen
 chown -R $REAL_USER:$REAL_USER "$PROJECT_DIR/static"
 chown -R $REAL_USER:$REAL_USER "$PROJECT_DIR/projects"
+chown -R $REAL_USER:$REAL_USER "$PROJECT_DIR/logs"
 
 # Berechtigungen für serielle Ports und Video-Geräte
 echo -e "${YELLOW}Füge Benutzer zu notwendigen Gruppen hinzu...${NC}"
@@ -498,3 +500,4 @@ echo -e "  ${YELLOW}./drehteller.sh install-headless${NC}  - Installiert OpenCV 
 echo -e "  ${YELLOW}./drehteller.sh diagnose${NC}          - Diagnostiziert Modul-Probleme"
 
 echo -e "\n${GREEN}Viel Erfolg mit deinem 360° Drehteller-System!${NC}"
+echo -e "\n${GREEN}Anfang 27.02.2025${NC}"

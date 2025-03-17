@@ -26,6 +26,6 @@ def zeige_dateien_und_inhalt(verzeichnis):
                 print(f"Fehler beim Lesen der Datei: {e}")
 
 # Beispielnutzung
-verzeichnis_pfad = "/home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos-claude-pro/app"
+verzeichnis_pfad = "/home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/app"
 zeige_dateien_und_inhalt(verzeichnis_pfad)
 

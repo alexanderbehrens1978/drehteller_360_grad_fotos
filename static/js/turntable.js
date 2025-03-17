@@ -365,7 +365,7 @@ if (!project_id) {
         console.log("Antwort vom Server:", data);
         if (data.message) {
             alert(data.message); // Erfolgsmeldung
-            window.location.href = `/viewer?project_id=${project_id}`; // Weiterleitung zum Viewer
+            window.location.href = `/viewer?project=${project_id}`; // GEÄNDERT: 'project' statt 'project_id'
         }
     })
     .catch(error => console.error("Fehler beim Generieren:", error));

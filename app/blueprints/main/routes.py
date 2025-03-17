@@ -37,8 +37,15 @@ def index():
     return render_template('index.html', project=project)
 
 @main_bp.route('/viewer')
-def view_360():
-    """Zeigt den 360°-Viewer an."""
+def viewer():
+    """Zeigt den 360°-Viewer für ein Projekt an"""
+    # Projekt-ID aus Query-Parameter holen
+    project_id = request.args.get('project')
+    
+    if not project_id:
+        return render_template('error.html', message="Keine Projekt-ID angegeben"), 400
+        
+    # Viewer-Template rendern
     return render_template('viewer.html')
 
 @main_bp.route('/rotate', methods=['POST'])
@@ -267,6 +274,7 @@ def save_config():
 
 @main_bp.route('/generate_360', methods=['POST'])
 def generate_360():
+    """Generiert einen 360°-Viewer aus den Projektbildern"""
     data = request.get_json()
     
     if not data:
@@ -282,4 +290,63 @@ def generate_360():
     project_id = data['project_id']
     print(f"Generiere 360°-Viewer für Projekt: {project_id}")
 
-    return jsonify({"message": f"360°-Viewer für {project_id} generiert"})
+    try:
+        # Projekt laden
+        from app.models.project import ProjectManager
+        from app.utils.path_manager import PathManager
+        import shutil
+        
+        path_manager = PathManager()
+        project_manager = ProjectManager(path_manager.projects_dir)
+        project = project_manager.get_project(project_id)
+        
+        if not project:
+            return jsonify({"error": "Projekt nicht gefunden"}), 404
+        
+        # Pfade erstellen
+        static_dir = os.path.abspath(os.path.join(current_app.root_path, '..', 'static'))
+        projects_dir = os.path.join(static_dir, 'projects')
+        project_dir = os.path.join(projects_dir, project_id)
+        
+        # Verzeichnis erstellen, falls es noch nicht existiert
+        os.makedirs(project_dir, exist_ok=True)
+        
+        # Bildpfade sammeln (nur Dateinamen ohne Pfad)
+        image_filenames = []
+        for image in project.images:
+            # Bildpfad aus dem Projekt extrahieren
+            src_path = os.path.join(project.path, image['path'])
+            filename = os.path.basename(src_path)
+            dst_path = os.path.join(project_dir, filename)
+            
+            # Bild in das Projektverzeichnis kopieren
+            if os.path.exists(src_path) and not os.path.exists(dst_path):
+                shutil.copy(src_path, dst_path)
+                
+            image_filenames.append(filename)
+        
+        # Metadaten erstellen
+        metadata = {
+            "name": project.name,
+            "created": time.time(),
+            "image_count": len(image_filenames),
+            "images": image_filenames,
+            "description": project.description
+        }
+        
+        # Metadaten speichern
+        metadata_path = os.path.join(project_dir, 'metadata.json')
+        with open(metadata_path, 'w') as f:
+            json.dump(metadata, f, indent=4)
+        
+        return jsonify({
+            "status": "success",
+            "message": f"360°-Viewer für {project.name} wurde erfolgreich generiert",
+            "url": f"/viewer?project={project_id}"
+        })
+        
+    except Exception as e:
+        logger.error(f"Fehler beim Generieren des 360°-Viewers: {str(e)}")
+        return jsonify({
+            "error": f"Fehler beim Generieren des 360°-Viewers: {str(e)}"
+        }), 500

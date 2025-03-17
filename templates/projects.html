@@ -27,29 +27,29 @@
             
             <div class="projects-list" id="projectsList">
                 {% if projects %}
-                    {% for project in projects %}
+                    {% for proj in projects %}
                         <div class="project-card">
-                            <h3>{{ project.name }}</h3>
+                            <h3>{{ proj.name }}</h3>
                             <div class="project-meta">
-                                {% if project.description %}
-                                    <p>{{ project.description }}</p>
+                                {% if proj.description %}
+                                    <p>{{ proj.description }}</p>
                                 {% else %}
                                     <p class="no-description">Keine Beschreibung</p>
                                 {% endif %}
                                 
                                 <p class="created-date">
-                                    Erstellt: {% if project.created_at %}{{ project.created_at|datetime }}{% else %}Unbekannt{% endif %}
+                                    Erstellt: {% if proj.created_at %}{{ proj.created_at|datetime }}{% else %}Unbekannt{% endif %}
                                 </p>
                                 
                                 <p class="image-count">
-                                    Bilder: {{ project.images|length if project.images else 0 }}
+                                    Bilder: {{ proj.images|length if proj.images else 0 }}
                                 </p>
                             </div>
                             
                             <div class="project-actions">
-                                <a href="{{ url_for('projects.view_project', project_id=project.id) }}" class="btn btn-secondary">Anzeigen</a>
-                                <form action="{{ url_for('projects.delete_project', project_id=project.id) }}" method="POST" class="inline-form"
-                                      onsubmit="return confirm('Möchten Sie das Projekt \"{{ project.name }}\" wirklich löschen?');">
+                                <a href="{{ url_for('projects.view_project', project_id=proj.id) }}" class="btn btn-secondary">Anzeigen</a>
+                                <form action="{{ url_for('projects.delete_project', project_id=proj.id) }}" method="POST" class="inline-form"
+                                      onsubmit="return confirm('Möchten Sie das Projekt \"{{ proj.name }}\" wirklich löschen?');">
                                     <button type="submit" class="btn btn-danger">Löschen</button>
                                 </form>
                             </div>
@@ -64,10 +64,8 @@
         </div>
     </main>
     
-
     <footer>
        <p>&copy; 2025 Alexander Behrens 360° Drehteller Steuerung</p>
     </footer>
-
 </body>
 </html>

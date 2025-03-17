@@ -33,11 +33,16 @@ def projects_page():
     try:
         # Alle Projekte laden
         projects = project_manager.get_all_projects()
+        
+        # Debug-Logging für jedes Projekt
+        for p in projects:
+            logger.debug(f"Projekt geladen: {p.id} - {p.name}")
+            
         return render_template('projects.html', projects=projects)
     except Exception as e:
-        logger.error(f"Fehler beim Laden der Projekte: {str(e)}")
+        import traceback
+        logger.error(f"Fehler beim Laden der Projekte: {str(e)}\n{traceback.format_exc()}")
         return render_template('error.html', message=f"Fehler beim Laden der Projekte: {str(e)}"), 500
-
 
 @projects_bp.route('/create', methods=['GET', 'POST'])
 def create_project():
@@ -90,21 +95,6 @@ def create_project():
             return jsonify({"error": str(e)}), 500
         else:
             return render_template('project_create.html', error=f"Ein Fehler ist aufgetreten: {str(e)}"), 500
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 @projects_bp.route('/<project_id>')
 def view_project(project_id):
@@ -198,3 +188,14 @@ def get_project_image(project_id, image_path):
         abort(404)
     
     return send_from_directory(image_dir_path, safe_image_filename)
+
+@projects_bp.route('/<project_id>/view360')
+def view_360(project_id):
+    """Zeigt den 360°-Viewer für ein Projekt an"""
+    # Projekt laden
+    project = project_manager.get_project(project_id)
+    if not project:
+        return render_template('error.html', message="Projekt nicht gefunden"), 404
+    
+    # Weiterleitung zum Viewer
+    return redirect(f'/viewer?project={project_id}')

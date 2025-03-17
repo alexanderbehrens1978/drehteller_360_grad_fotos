@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>360° Viewer - Drehteller Steuerung</title>
+    <title>360° Produktansicht - Drehteller Steuerung</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="/static/css/viewer.css">
 </head>
 <body>
     <div class="container">
@@ -21,54 +23,52 @@
                 </div>
             </div>
             <div class="card-body">
-                <div id="viewer-container" class="position-relative">
-                    <!-- Viewer wird hier per JavaScript eingefügt -->
-                    <div id="spinner" class="position-absolute top-50 start-50 translate-middle">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Laden...</span>
-                        </div>
+                <div class="viewer-container">
+                    <div id="spinner" class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Laden...</span>
                     </div>
-                    <div id="product-viewer" class="viewer-360"></div>
+                    <div id="product-viewer"></div>
                 </div>
 
-                <div class="mt-4 d-flex justify-content-between">
-                    <div class="viewer-controls">
+                <div class="viewer-controls">
+                    <div class="control-btn-group">
                         <button id="play-btn" class="btn btn-primary">
                             <i class="bi bi-play-fill"></i> Auto-Rotation
                         </button>
-                        <a href="/projects" class="btn btn-secondary ms-2">
-                            <i class="bi bi-arrow-left"></i> Zurück
-                        </a>
+                        <button id="reset-btn" class="btn btn-secondary">
+                            <i class="bi bi-arrow-counterclockwise"></i> Zurücksetzen
+                        </button>
                     </div>
 
-                    <div class="zoom-controls">
-                        <button id="zoom-in-btn" class="btn btn-outline-secondary">
+                    <div class="control-btn-group">
+                        <button id="zoom-in-btn" class="btn btn-secondary">
                             <i class="bi bi-zoom-in"></i>
                         </button>
-                        <button id="zoom-out-btn" class="btn btn-outline-secondary ms-2">
+                        <button id="zoom-out-btn" class="btn btn-secondary">
                             <i class="bi bi-zoom-out"></i>
                         </button>
                     </div>
                 </div>
 
-                <div class="mt-4">
-                    <div class="project-info">
-                        <h4 id="project-name">Projekt: <span>Wird geladen...</span></h4>
-                        <p id="image-count">Bilder: <span>...</span></p>
+                <div class="project-info mt-4">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h4 id="project-name">Projekt: <span>Wird geladen...</span></h4>
+                        </div>
+                        <div class="col-md-6 text-md-end">
+                            <p id="image-count">Bilder: <span>...</span></p>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <div class="card-footer text-center">
-                <p>Bewegen Sie die Maus oder wischen Sie auf dem Touchscreen, um das Objekt zu drehen.</p>
-                <small class="text-muted">Erstellt mit Drehteller 360° Steuerung</small>
+                <p>Ziehen Sie mit der Maus oder wischen Sie auf dem Touchscreen, um das Objekt zu drehen.</p>
+                <small class="text-muted">Erstellt mit 360° Drehteller Steuerung</small>
             </div>
         </div>
     </div>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Modulare Skripte mit ES Modules -->
-    <script type="module" src="/static/js/viewer-app.js"></script>
+    <script src="/static/js/interactive-viewer.js"></script>
 </body>
 </html>

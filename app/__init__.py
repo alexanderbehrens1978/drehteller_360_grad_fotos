@@ -65,14 +65,18 @@ def create_app(config_name=None):
     # Blueprints registrieren
     register_blueprints(app)
     
-    # Jinja-Filter für die Formatierung von Zeitstempeln
     @app.template_filter('datetime')
     def format_datetime(timestamp):
         """Formatiert einen Zeitstempel als lesbares Datum"""
         from datetime import datetime
-        date = datetime.fromtimestamp(timestamp)
-        return date.strftime('%d.%m.%Y %H:%M')
-    
+        if timestamp is None:
+            return ""
+        try:
+            date = datetime.fromtimestamp(timestamp)
+            return date.strftime('%d.%m.%Y %H:%M')
+        except Exception as e:
+            return "Ungültiges Datum"
+
     # Sicherheits-Header hinzufügen
     @app.after_request
     def add_security_headers(response):
