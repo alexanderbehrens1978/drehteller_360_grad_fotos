@@ -54,6 +54,14 @@ def main():
     # Liste der Verzeichnisse, die durchsucht werden sollen
     verzeichnisse = {
         'app': os.path.join(projekt_root, 'app'),
+        'doc': os.path.join(projekt_root, 'doc'),
+        'ardunio_drehteller_steuerung': os.path.join(projekt_root, 'arunio_drehteller_steuerung'),
+        'config': os.path.join(projekt_root, 'config'),
+        'controllers': os.path.join(projekt_root, 'controllers'),
+        'models': os.path.join(projekt_root, 'models'),
+        'projects': os.path.join(projekt_root, 'projects'),
+        'utility': os.path.join(projekt_root, 'utility'),
+        'utils': os.path.join(projekt_root, 'utils'),
         'templates': os.path.join(projekt_root, 'templates'),
         'static': os.path.join(projekt_root, 'static')
     }

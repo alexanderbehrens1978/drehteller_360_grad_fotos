@@ -1,0 +1,42 @@
+
+--- Datei: /home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/utility/zeige-alles-an.py ---
+import os
+
+def zeige_dateien_und_inhalt(verzeichnis, excluded_files=None):
+    """
+    Durchsucht rekursiv ein Verzeichnis und gibt den Inhalt aller Dateien aus, 
+    außer denjenigen, die in den ausgeschlossenen Verzeichnissen oder Dateien enthalten sind.
+    
+    :param verzeichnis: Pfad zum zu durchsuchenden Verzeichnis
+    :param excluded_files: Liste von Dateinamen, die ausgeschlossen werden sollen
+    """
+    if excluded_files is None:
+        excluded_files = []
+
+    excluded_dirs = {'.git', 'bin', '__pycache__', '.idea', 'myenv', 'photos','doc','static/css'}
+
+    for root, dirs, files in os.walk(verzeichnis):
+        # Entferne ausgeschlossene Verzeichnisse aus der Liste
+        dirs[:] = [d for d in dirs if d not in excluded_dirs]
+        
+        for file in files:
+            if file in excluded_files:
+                continue  # Überspringe ausgeschlossene Dateien
+            
+            dateipfad = os.path.join(root, file)
+            print(f"\n--- Datei: {dateipfad} ---")
+            try:
+                # Versuche, die Datei im UTF-8 Format zu öffnen
+                with open(dateipfad, 'r', encoding='utf-8') as f:
+                    inhalt = f.read()
+                    print(inhalt)
+            except Exception as e:
+                print(f"Fehler beim Lesen der Datei: {e}")
+
+# Beispielnutzung mit ausgeschlossenen Dateien
+verzeichnis_pfad = "/home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos-claude-pro"
+excluded_files = ['README.md','*.log', '.gitignore']
+
+zeige_dateien_und_inhalt(verzeichnis_pfad, excluded_files)
+
+
