@@ -1,0 +1,96 @@
+body {
+    background-color: #f4f4f4;
+    padding-top: 50px;
+}
+
+.container {
+    max-width: 800px;
+}
+
+.card {
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.viewer-360 {
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.main-image {
+    cursor: grab;
+    transition: transform 0.2s ease-in-out;
+    transform-origin: center center;
+}
+
+.main-image:active {
+    cursor: grabbing;
+}
+
+.thumb-container {
+    transition: all 0.2s ease-in-out;
+}
+
+.thumb-container:hover {
+    transform: scale(1.1);
+    z-index: 1;
+}
+
+/* Fullscreen-Modus */
+.container.fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    max-width: 100%;
+    z-index: 9999;
+    background-color: white;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.container.fullscreen .card {
+    height: calc(100vh - 40px);
+    display: flex;
+    flex-direction: column;
+}
+
+.container.fullscreen .card-body {
+    flex: 1;
+    overflow: hidden;
+}
+
+.container.fullscreen .viewer-360 {
+    height: 100%;
+}
+
+.container.fullscreen .main-image {
+    max-height: 70vh;
+}
+
+/* Responsives Design */
+@media (max-width: 768px) {
+    body {
+        padding-top: 20px;
+    }
+    
+    .container {
+        padding: 0 15px;
+    }
+    
+    .viewer-360 {
+        min-height: 300px;
+    }
+    
+    .zoom-controls, .viewer-controls {
+        flex-wrap: wrap;
+    }
+    
+    .zoom-controls .btn, .viewer-controls .btn {
+        margin-bottom: 10px;
+    }
+}

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projektverwaltung - 360° Drehteller Steuerung</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            margin: 0;
+        }
+        
+        nav {
+            margin-top: 1rem;
+        }
+        
+        nav a {
+            color: white;
+            margin-right: 1rem;
+            text-decoration: none;
+        }
+        
+        nav a:hover {
+            text-decoration: underline;
+        }
+        
+        main {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        
+        .module-info {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+        
+        .method {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid #3498db;
+        }
+        
+        .method h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        
+        .method-signature {
+            font-family: monospace;
+            background: #eee;
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+        }
+        
+        .method-description {
+            margin-bottom: 1rem;
+        }
+        
+        .parameter, .return-value {
+            margin-bottom: 0.5rem;
+        }
+        
+        .parameter-name, .return-label {
+            font-weight: bold;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 1rem;
+            background-color: #2c3e50;
+            color: white;
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Projektverwaltung</h1>
+        <nav>
+            <a href="index.html">Zurück zur Übersicht</a>
+        </nav>
+    </header>
+    
+    <main>
+        <div class="module-info">
+            <h2>ProjectsBlueprint</h2>
+            <p>Routen für die Projektverwaltung</p>
+            <p><strong>Datei:</strong> /app/blueprints/projects/routes.py</p>
+        </div>
+        
+        <h2>Routen</h2>
+        
+        <div class="method">
+            <h3>projects_page</h3>
+            <div class="method-signature">@projects_bp.route('/')</div>
+            <div class="method-description">
+                <p>Zeigt die Projektverwaltungsseite an</p>
+            </div>
+            <div class="return-value">
+                <h4>Rückgabewert:</h4>
+                <div class="return-description">
+                    <p>HTML-Template mit der Liste aller Projekte</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="method">
+            <h3>create_project</h3>
+            <div class="method-signature">@projects_bp.route('/create', methods=['GET', 'POST'])</div>
+            <div class="method-description">
+                <p>Erstellt ein neues Projekt</p>
+            </div>
+            <div class="return-value">
+                <h4>Rückgabewert:</h4>
+                <div class="return-description">
+                    <p>Bei GET: HTML-Template mit dem Projektformular</p>
+                    <p>Bei POST: Weiterleitung zur Projektansicht oder Fehlerseite</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="method">
+            <h3>view_project</h3>
+            <div class="method-signature">@projects_bp.route('/<project_id>')</div>
+            <div class="method-description">
+                <p>Zeigt ein Projekt an</p>
+            </div>
+            <div class="parameters">
+                <h4>Parameter:</h4>
+                <div class="parameter">
+                    <span class="parameter-name">project_id:</span> ID des Projekts
+                </div>
+            </div>
+            <div class="return-value">
+                <h4>Rückgabewert:</h4>
+                <div class="return-description">
+                    <p>HTML-Template mit den Projektdetails oder Weiterleitung zur Projektliste</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="method">
+            <h3>delete_project</h3>
+            <div class="method-signature">@projects_bp.route('/delete/<project_id>', methods=['POST'])</div>
+            <div class="method-description">
+                <p>Löscht ein Projekt</p>
+            </div>
+            <div class="parameters">
+                <h4>Parameter:</h4>
+                <div class="parameter">
+                    <span class="parameter-name">project_id:</span> ID des zu löschenden Projekts
+                </div>
+            </div>
+            <div class="return-value">
+                <h4>Rückgabewert:</h4>
+                <div class="return-description">
+                    <p>Weiterleitung zur Projektliste oder Fehlerseite</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="method">
+            <h3>get_project_image</h3>
+            <div class="method-signature">@projects_bp.route('/image/<project_id>/<path:image_path>')</div>
+            <div class="method-description">
+                <p>Liefert ein Projektbild</p>
+            </div>
+            <div class="parameters">
+                <h4>Parameter:</h4>
+                <div class="parameter">
+                    <span class="parameter-name">project_id:</span> ID des Projekts
+                </div>
+                <div class="parameter">
+                    <span class="parameter-name">image_path:</span> Pfad zum Bild innerhalb des Projekts
+                </div>
+            </div>
+            <div class="return-value">
+                <h4>Rückgabewert:</h4>
+                <div class="return-description">
+                    <p>Das angeforderte Bild oder eine 404-Fehlerseite</p>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+        <p>&copy; 2025 360° Drehteller Steuerung</p>
+    </footer>
+</body>
+</html>

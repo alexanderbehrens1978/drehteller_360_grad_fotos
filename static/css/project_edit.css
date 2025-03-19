@@ -1,0 +1,51 @@
+/* static/css/project_edit.css */
+body {
+    background-color: #f4f4f4;
+    padding-top: 50px;
+}
+
+.container {
+    max-width: 1000px;
+}
+
+.card {
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    margin-bottom: 50px;
+}
+
+.current-capture-container {
+    display: flex;
+    justify-content: center;
+    margin: 20px 0;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    padding: 10px;
+}
+
+#current-capture {
+    max-height: 300px;
+    object-fit: contain;
+}
+
+.image-gallery .card-img-top {
+    height: 150px;
+    object-fit: cover;
+}
+
+#progress-container {
+    margin-top: 20px;
+}
+
+@media (max-width: 768px) {
+    body {
+        padding-top: 20px;
+    }
+
+    .container {
+        padding: 0 15px;
+    }
+
+    #current-capture {
+        max-height: 200px;
+    }
+}

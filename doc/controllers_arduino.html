@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arduino-Controller - 360° Drehteller Steuerung</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            margin: 0;
+        }
+        
+        nav {
+            margin-top: 1rem;
+        }
+        
+        nav a {
+            color: white;
+            margin-right: 1rem;
+            text-decoration: none;
+        }
+        
+        nav a:hover {
+            text-decoration: underline;
+        }
+        
+        main {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        
+        .module-info {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+        
+        .method {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid #3498db;
+        }
+        
+        .method h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        
+        .method-signature {
+            font-family: monospace;
+            background: #eee;
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+        }
+        
+        .method-description {
+            margin-bottom: 1rem;
+        }
+        
+        .parameter, .return-value {
+            margin-bottom: 0.5rem;
+        }
+        
+        .parameter-name, .return-label {
+            font-weight: bold;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 1rem;
+            background-color: #2c3e50;
+            color: white;
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Arduino-Controller</h1>
+        <nav>
+            <a href="index.html">Zurück zur Übersicht</a>
+        </nav>
+    </header>
+    
+    <main>
+        <div class="module-info">
+            <h2>ArduinoController</h2>
+            <p>Controller für die Kommunikation mit dem Arduino, der den Drehteller steuert</p>
+            <p><strong>Datei:</strong> /app/controllers/arduino_controller.py</p>
+        </div>
+        
+        <h2>Methoden</h2>
+        
+        <div class="method">
+            <h3>__init__</h3>
+            <div class="method-signature">def __init__(self, port=None, baudrate=9600)</div>
+            <div class="method-description">
+                <p>Initialisiert die Arduino-Verbindung</p>
+            </div>
+            <div class="parameters">
+                <h4>Parameter:</h4>
+                <div class="parameter">
+                    <span class="parameter-name">port:</span> Serieller Port (optional)
+                </div>
+                <div class="parameter">
+                    <span class="parameter-name">baudrate:</span> Baudrate (optional)
+                </div>
+            </div>
+        </div>
+        
+        <div class="method">
+            <h3>connect</h3>
+            <div class="method-signature">def connect(self)</div>
+            <div class="method-description">
+                <p>Stellt eine Verbindung zum Arduino her</p>
+            </div>
+            <div class="return-value">
+                <h4>Rückgabewert:</h4>
+                <div class="return-description">
+                    <p>True bei Erfolg, False bei Fehler</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="method">
+            <h3>disconnect</h3>
+            <div class="method-signature">def disconnect(self)</div>
+            <div class="method-description">
+                <p>Trennt die Verbindung zum Arduino</p>
+            </div>
+            <div class="return-value">
+                <h4>Rückgabewert:</h4>
+                <div class="return-description">
+                    <p>True bei Erfolg, False bei Fehler</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="method">
+            <h3>is_connected</h3>
+            <div class="method-signature">def is_connected(self)</div>
+            <div class="method-description">
+                <p>Prüft, ob die Verbindung zum Arduino hergestellt ist</p>
+            </div>
+            <div class="return-value">
+                <h4>Rückgabewert:</h4>
+                <div class="return-description">
+                    <p>True wenn verbunden, sonst False</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="method">
+            <h3>send_command</h3>
+            <div class="method-signature">def send_command(self, command)</div>
+            <div class="method-description">
+                <p>Sendet einen Befehl an den Arduino</p>
+            </div>
+            <div class="parameters">
+                <h4>Parameter:</h4>
+                <div class="parameter">
+                    <span class="parameter-name">command:</span> Zu sendender Befehl
+                </div>
+            </div>
+            <div class="return-value">
+                <h4>Rückgabewert:</h4>
+                <div class="return-description">
+                    <p>True bei Erfolg, False bei Fehler</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="method">
+            <h3>turn_motor_on</h3>
+            <div class="method-signature">def turn_motor_on(self)</div>
+            <div class="method-description">
+                <p>Schaltet den Motor ein (Relais schließen)</p>
+            </div>
+            <div class="return-value">
+                <h4>Rückgabewert:</h4>
+                <div class="return-description">
+                    <p>True bei Erfolg, False bei Fehler</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="method">
+            <h3>turn_motor_off</h3>
+            <div class="method-signature">def turn_motor_off(self)</div>
+            <div class="method-description">
+                <p>Schaltet den Motor aus (Relais öffnen)</p>
+            </div>
+            <div class="return-value">
+                <h4>Rückgabewert:</h4>
+                <div class="return-description">
+                    <p>True bei Erfolg, False bei Fehler</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="method">
+            <h3>rotate_for_duration</h3>
+            <div class="method-signature">def rotate_for_duration(self, duration_ms)</div>
+            <div class="method-description">
+                <p>Dreht den Motor für eine bestimmte Zeit</p>
+            </div>
+            <div class="parameters">
+                <h4>Parameter:</h4>
+                <div class="parameter">
+                    <span class="parameter-name">duration_ms:</span> Dauer in Millisekunden
+                </div>
+            </div>
+            <div class="return-value">
+                <h4>Rückgabewert:</h4>
+                <div class="return-description">
+                    <p>True bei Erfolg, False bei Fehler</p>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+        <p>&copy; 2025 360° Drehteller Steuerung</p>
+    </footer>
+</body>
+</html>

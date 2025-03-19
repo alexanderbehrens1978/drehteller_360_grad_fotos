@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fehler - 360° Drehteller Steuerung</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <header>
+        <h1>360° Drehteller Steuerung</h1>
+        <nav>
+            <a href="/">Startseite</a>
+            <a href="/projects">Projekte</a>
+            <a href="/settings">Einstellungen</a>
+        </nav>
+    </header>
+    
+    <main>
+        <div class="error-container">
+            <div class="error-icon">⚠️</div>
+            <h2>Fehler aufgetreten</h2>
+            <p class="error-message">{{ message }}</p>
+            <div class="error-actions">
+                <a href="/" class="btn">Zur Startseite</a>
+                <a href="/projects" class="btn">Zu den Projekten</a>
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+       <p>&copy; 2025 Alexander Behrens 360° Drehteller Steuerung</p>
+    </footer>
+</body>
+</html>

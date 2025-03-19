@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ project.name }} - 360° Drehteller Steuerung</title>
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="/static/css/project_view.css">
+</head>
+<body>
+    <header>
+        <h1>360° Drehteller Steuerung</h1>
+        <nav>
+            <a href="/">Startseite</a>
+            <a href="/projects">Projekte</a>
+            <a href="/settings">Einstellungen</a>
+        </nav>
+    </header>
+    
+    <main>
+        <div class="project-details">
+            <h2>{{ project.name }}</h2>
+            
+            <div class="project-info">
+                <p><strong>Beschreibung:</strong> {{ project.description or "Keine Beschreibung" }}</p>
+                <p><strong>Erstellt am:</strong> {{ project.created_at|datetime }}</p>
+                <p><strong>Winkelschritt:</strong> {{ project.angle_step }}°</p>
+            </div>
+            
+            <div class="project-actions">
+                <a href="/?project_id={{ project.id }}" class="btn btn-primary">Bilder aufnehmen</a>
+                <a href="/projects" class="btn btn-secondary">Zurück zur Projektliste</a>
+            </div>
+            
+            <h3>Bilder</h3>
+            <div class="project-images">
+                {% if project.images and project.images|length > 0 %}
+                    <div class="image-grid">
+                        {% for image in project.images %}
+                            <div class="image-item">
+                                <img src="/projects/image/{{ project.id }}/{{ image.path }}" alt="Foto bei {{ image.angle }}°">
+                                <div class="image-info">
+                                    <span class="angle">{{ image.angle }}°</span>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="no-images">Keine Bilder vorhanden. Nehmen Sie Bilder auf, um sie hier anzuzeigen.</p>
+                {% endif %}
+            </div>
+            
+            <h3>Sessions</h3>
+            <div class="project-sessions">
+                {% if project.sessions and project.sessions|length > 0 %}
+                    <div class="sessions-list">
+                        {% for session in project.sessions %}
+                            <div class="session-item">
+                                <h4>{{ session.name }}</h4>
+                                <p>Aufgenommen am: {{ session.timestamp|datetime }}</p>
+                                <p>Winkelschritt: {{ session.angle_step }}°</p>
+                                <p>Fotos: {{ session.photos|length if session.photos else 0 }}</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="no-sessions">Keine Sessions vorhanden.</p>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+        <p>&copy; 2025 360° Drehteller Steuerung</p>
+    </footer>
+    
+    <script src="/static/js/project_view.js"></script>
+</body>
+</html>

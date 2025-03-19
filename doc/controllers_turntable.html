@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drehteller-Controller - 360° Drehteller Steuerung</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            margin: 0;
+        }
+        
+        nav {
+            margin-top: 1rem;
+        }
+        
+        nav a {
+            color: white;
+            margin-right: 1rem;
+            text-decoration: none;
+        }
+        
+        nav a:hover {
+            text-decoration: underline;
+        }
+        
+        main {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        
+        .module-info {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+        
+        .method {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid #3498db;
+        }
+        
+        .method h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        
+        .method-signature {
+            font-family: monospace;
+            background: #eee;
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+        }
+        
+        .method-description {
+            margin-bottom: 1rem;
+        }
+        
+        .parameter, .return-value {
+            margin-bottom: 0.5rem;
+        }
+        
+        .parameter-name, .return-label {
+            font-weight: bold;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 1rem;
+            background-color: #2c3e50;
+            color: white;
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Drehteller-Controller</h1>
+        <nav>
+            <a href="index.html">Zurück zur Übersicht</a>
+        </nav>
+    </header>
+    
+    <main>
+        <div class="module-info">
+            <h2>TurntableController</h2>
+            <p>Controller für die Drehteller-Steuerung mit dem Arduino</p>
+            <p><strong>Datei:</strong> /app/controllers/turntable_controller.py</p>
+        </div>
+        
+        <h2>Methoden</h2>
+        
+        <div class="method">
+            <h3>__init__</h3>
+            <div class="method-signature">def __init__(self, arduino_controller, default_angle_step=5)</div>
+            <div class="method-description">
+                <p>Initialisiert den Drehteller-Controller</p>
+            </div>
+            <div class="parameters">
+                <h4>Parameter:</h4>
+                <div class="parameter">
+                    <span class="parameter-name">arduino_controller:</span> ArduinoController-Instanz
+                </div>
+                <div class="parameter">
+                    <span class="parameter-name">default_angle_step:</span> Standard-Winkelschritt in Grad (optional)
+                </div>
+            </div>
+        </div>
+        
+        <div class="method">
+            <h3>calculate_rotation_time</h3>
+            <div class="method-signature">def calculate_rotation_time(self, degrees)</div>
+            <div class="method-description">
+                <p>Berechnet die Zeit, die für eine Rotation um einen bestimmten Winkel benötigt wird</p>
+            </div>
+            <div class="parameters">
+                <h4>Parameter:</h4>
+                <div class="parameter">
+                    <span class="parameter-name">degrees:</span> Winkel in Grad
+                </div>
+            </div>
+            <div class="return-value">
+                <h4>Rückgabewert:</h4>
+                <div class="return-description">
+                    <p>Zeit in Millisekunden</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="method">
+            <h3>move_degrees</h3>
+            <div class="method-signature">def move_degrees(self, degrees)</div>
+            <div class="method-description">
+                <p>Bewegt den Drehteller um einen bestimmten Winkel</p>
+            </div>
+            <div class="parameters">
+                <h4>Parameter:</h4>
+                <div class="parameter">
+                    <span class="parameter-name">degrees:</span> Winkel in Grad
+                </div>
+            </div>
+            <div class="return-value">
+                <h4>Rückgabewert:</h4>
+                <div class="return-description">
+                    <p>True bei Erfolg, False bei Fehler</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="method">
+            <h3>reset_position</h3>
+            <div class="method-signature">def reset_position(self)</div>
+            <div class="method-description">
+                <p>Setzt die aktuelle Position auf 0 Grad zurück (ohne Bewegung)</p>
+            </div>
+            <div class="return-value">
+                <h4>Rückgabewert:</h4>
+                <div class="return-description">
+                    <p>True</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="method">
+            <h3>start_session</h3>
+            <div class="method-signature">
