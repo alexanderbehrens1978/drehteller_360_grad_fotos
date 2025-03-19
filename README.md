@@ -67,6 +67,20 @@ Die Anwendung wurde auf eine Blueprint-basierte Struktur umgestellt, um die Wart
    ```bash
    python run.py
    ```
+   
+5. Alternativer Start der Anwendung:
+   
+   ```bash
+   sudo ./drehteller.sh restart
+   ```
+
+
+6. Logs anzeigen lassen:
+   
+   ```bash
+   ./drehteller.sh logs
+   ```
+   
 
 Die Anwendung ist dann unter [http://localhost:5000](http://localhost:5000) verfügbar.
 
