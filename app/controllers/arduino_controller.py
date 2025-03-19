@@ -19,7 +19,7 @@ class ArduinoController:
     def __init__(self, port=None, baudrate=9600):
         """
         Initialisiert die Arduino-Verbindung
-        
+
         Args:
             port: Serieller Port (optional)
             baudrate: Baudrate (optional)
@@ -33,13 +33,13 @@ class ArduinoController:
         # Verbindung herstellen, wenn ein Port angegeben wurde
         if port:
             self.connect()
-            
+
         self.logger.debug(f"ArduinoController initialisiert: Port={self.port}, Baudrate={self.baudrate}")
 
     def connect(self):
         """
         Stellt eine Verbindung zum Arduino her
-        
+
         Returns:
             True bei Erfolg, False bei Fehler
         """
@@ -57,7 +57,7 @@ class ArduinoController:
     def disconnect(self):
         """
         Trennt die Verbindung zum Arduino
-        
+
         Returns:
             True bei Erfolg, False bei Fehler
         """
@@ -75,7 +75,7 @@ class ArduinoController:
     def is_connected(self):
         """
         Prüft, ob die Verbindung zum Arduino hergestellt ist
-        
+
         Returns:
             True wenn verbunden, sonst False
         """
@@ -84,10 +84,10 @@ class ArduinoController:
     def send_command(self, command):
         """
         Sendet einen Befehl an den Arduino
-        
+
         Args:
             command: Zu sendender Befehl
-            
+
         Returns:
             True bei Erfolg, False bei Fehler
         """
@@ -114,85 +114,64 @@ class ArduinoController:
     def turn_motor_on(self):
         """
         Schaltet den Motor ein (Relais schließen)
-        
+
         Returns:
             True bei Erfolg, False bei Fehler
         """
+        self.logger.debug("Sende Befehl: Motor einschalten (1)")
         success = self.send_command("1")
         if success:
-            self.logger.debug("Motor eingeschaltet")
+            self.logger.debug("Motor erfolgreich eingeschaltet")
+        else:
+            self.logger.error("Fehler beim Einschalten des Motors")
         return success
 
-def turn_motor_off(self):
-    """
-    Schaltet den Motor aus (Relais öffnen)
-    
-    Returns:
-        True bei Erfolg, False bei Fehler
-    """
-    # Versuche mehrmals, den Motor auszuschalten
-    for attempt in range(3):  # Maximal 3 Versuche
+    def turn_motor_off(self):
+        """
+        Schaltet den Motor aus (Relais öffnen)
+
+        Returns:
+            True bei Erfolg, False bei Fehler
+        """
+        self.logger.debug("Sende Befehl: Motor ausschalten (0)")
         success = self.send_command("0")
         if success:
-            self.logger.debug("Motor ausgeschaltet")
-            return True
+            self.logger.debug("Motor erfolgreich ausgeschaltet")
         else:
-            self.logger.warning(f"Versuch {attempt+1}/3, Motor auszuschalten, fehlgeschlagen")
-            time.sleep(0.2)  # Kurze Pause zwischen den Versuchen
-    
-    self.logger.error("Motor konnte nach mehreren Versuchen nicht ausgeschaltet werden")
-    return False
+            self.logger.error("Fehler beim Ausschalten des Motors")
+        return success
 
-def rotate_for_duration(self, duration_ms):
-    """
-    Dreht den Motor für eine bestimmte Zeit
-    
-    Args:
-        duration_ms: Dauer in Millisekunden
+    def rotate_for_duration(self, duration_ms):
+        """
+        Dreht den Motor für eine bestimmte Zeit
         
-    Returns:
-        True bei Erfolg, False bei Fehler
-    """
-    # Validierung der Eingabe
-    try:
-        duration_ms = float(duration_ms)
-        if duration_ms <= 0 or duration_ms > 60000:  # Maximal 1 Minute
-            self.logger.error(f"Ungültige Drehzeit: {duration_ms} ms")
-            return False
-    except (TypeError, ValueError):
-        self.logger.error(f"Ungültiger Wert für Drehzeit: {duration_ms}")
-        return False
-    
-    try:
-        # Motor einschalten
-        if not self.turn_motor_on():
-            self.logger.error("Motor konnte nicht eingeschaltet werden")
-            return False
-
-        # Warten für die angegebene Dauer
-        self.logger.debug(f"Warte für {duration_ms} ms")
-        time.sleep(duration_ms / 1000.0)
-
-        # Motor ausschalten
-        motor_off_success = self.turn_motor_off()
-        
-        # Doppelter Versuch zum Ausschalten, falls es beim ersten Mal nicht klappt
-        if not motor_off_success:
-            self.logger.warning("Erster Versuch, Motor auszuschalten, fehlgeschlagen. Versuche erneut...")
-            time.sleep(0.5)  # Kurze Pause
-            motor_off_success = self.turn_motor_off()
-            
-            if not motor_off_success:
-                self.logger.error("Motor konnte nach zwei Versuchen nicht ausgeschaltet werden!")
-                return False
-        
-        self.logger.debug(f"Motor für {duration_ms} ms gedreht")
-        return True
-    except Exception as e:
-        self.logger.error(f"Fehler während der Motordrehung: {str(e)}")
-        # Im Fehlerfall unbedingt versuchen, den Motor auszuschalten
+        Args:
+            duration_ms: Dauer in Millisekunden
+                
+        Returns:
+            True bei Erfolg, False bei Fehler
+        """
         try:
+            self.logger.debug(f"Rotiere Motor für {duration_ms} ms")
+            
+            # Direkte Motordrehung ohne Rücksicht auf Rückgabewerte
+            # Motor einschalten
+            self.turn_motor_on()
+            
+            # Warten für die berechnete Zeit
+            self.logger.debug(f"Warte für {duration_ms/1000.0} Sekunden")
+            time.sleep(duration_ms / 1000.0)
+            
+            # Motor ausschalten
             self.turn_motor_off()
-        except Exception:
-            pass
-        return False
+            
+            self.logger.debug(f"Rotation für {duration_ms} ms abgeschlossen")
+            return True
+        except Exception as e:
+            self.logger.error(f"Fehler während der Motordrehung: {str(e)}")
+            # Im Fehlerfall unbedingt versuchen, den Motor auszuschalten
+            try:
+                self.turn_motor_off()
+            except Exception as e2:
+                self.logger.error(f"Fehler beim Ausschalten nach fehlgeschlagener Rotation: {str(e2)}")
+            return False

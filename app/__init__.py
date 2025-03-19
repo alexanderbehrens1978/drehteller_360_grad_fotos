@@ -167,3 +167,7 @@ def register_blueprints(app):
     # Blueprint für Projektverwaltung
     from app.blueprints.projects import projects_bp
     app.register_blueprint(projects_bp, url_prefix='/projects')
+    
+    # Blueprint für den 360° Viewer
+    from app.blueprints.viewer import viewer_bp
+    app.register_blueprint(viewer_bp, url_prefix='/viewer')

@@ -1,16 +1,16 @@
-/* Stile für den 360° Produktviewer mit Pannellum */
+/* Stile für den 360° Produktviewer */
 .viewer-container {
     position: relative;
     width: 100%;
+    height: 600px;
     margin-bottom: 20px;
     border-radius: 8px;
     overflow: hidden;
 }
 
-#pannellum-viewer {
+#viewer {
     width: 100%;
-    height: 400px;
-    background-color: #f8f9fa;
+    height: 100%;
 }
 
 #spinner {
@@ -25,64 +25,118 @@
     display: flex;
     justify-content: center;
     margin-top: 15px;
-}
-
-.control-btn-group {
-    display: flex;
     gap: 10px;
 }
 
-.btn {
-    padding: 8px 15px;
+.viewer-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.control-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Bildauswahl */
+.image-selector {
+    margin-top: 2rem;
+}
+
+.image-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.image-item {
+    position: relative;
     border-radius: 4px;
+    overflow: hidden;
     cursor: pointer;
-    border: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 14px;
+    border: 3px solid transparent;
+    transition: transform 0.2s, border-color 0.2s;
 }
 
-.btn-primary {
-    background-color: #4682B4;
+.image-item:hover {
+    transform: translateY(-3px);
+}
+
+.image-item.selected {
+    border-color: #3498db;
+}
+
+.image-item img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.image-info {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.7);
     color: white;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.8rem;
+    border-top-left-radius: 4px;
 }
 
-.btn-primary:hover {
-    background-color: #385D8A;
+/* Export-Bereich */
+.export-section {
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid #ddd;
 }
 
-.btn-secondary {
-    background-color: #e9ecef;
-    color: #333;
+.code-block {
+    background: #f8f9fa;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 1rem;
+    font-family: monospace;
+    white-space: pre-wrap;
+    margin-top: 1rem;
+    max-height: 300px;
+    overflow-y: auto;
+    position: relative;
 }
 
-.btn-secondary:hover {
-    background-color: #dde2e6;
+.copy-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 0.3rem 0.6rem;
+    cursor: pointer;
+    font-size: 0.8rem;
 }
 
-/* Pannellum-spezifische Anpassungen */
-.pnlm-container {
-    background-color: #f8f9fa;
-}
-
-.pnlm-load-button {
-    display: none; /* Verstecke den Standard-Ladebutton von Pannellum */
+.copy-btn:hover {
+    background: rgba(255, 255, 255, 1);
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
-    #pannellum-viewer {
-        height: 300px;
+    .viewer-container {
+        height: 400px;
+    }
+    
+    .viewer-info {
+        flex-direction: column;
+    }
+    
+    .control-buttons {
+        margin-top: 1rem;
     }
     
     .viewer-controls {
-        flex-direction: column;
-        gap: 10px;
-    }
-    
-    .control-btn-group {
-        justify-content: center;
         flex-wrap: wrap;
     }
 }
