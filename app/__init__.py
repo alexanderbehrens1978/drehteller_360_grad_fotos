@@ -65,14 +65,18 @@ def create_app(config_name=None):
     # Blueprints registrieren
     register_blueprints(app)
     
-    # Jinja-Filter für die Formatierung von Zeitstempeln
     @app.template_filter('datetime')
     def format_datetime(timestamp):
         """Formatiert einen Zeitstempel als lesbares Datum"""
         from datetime import datetime
-        date = datetime.fromtimestamp(timestamp)
-        return date.strftime('%d.%m.%Y %H:%M')
-    
+        if timestamp is None:
+            return ""
+        try:
+            date = datetime.fromtimestamp(timestamp)
+            return date.strftime('%d.%m.%Y %H:%M')
+        except Exception as e:
+            return "Ungültiges Datum"
+
     # Sicherheits-Header hinzufügen
     @app.after_request
     def add_security_headers(response):
@@ -163,3 +167,7 @@ def register_blueprints(app):
     # Blueprint für Projektverwaltung
     from app.blueprints.projects import projects_bp
     app.register_blueprint(projects_bp, url_prefix='/projects')
+    
+    # Blueprint für den 360° Viewer
+    from app.blueprints.viewer import viewer_bp
+    app.register_blueprint(viewer_bp, url_prefix='/viewer')

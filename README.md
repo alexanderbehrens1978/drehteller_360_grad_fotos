@@ -1,5 +1,7 @@
 # 360° Drehteller Steuerung mit Flask Blueprints
 
+Start 27.02.2025
+
 Am 12.03.2025 war eine lauffähige Version
 
 Diese Anwendung steuert einen Arduino-basierten Drehteller für 360°-Produktfotografie und stellt einen Webserver für die Steuerung und Anzeige der Fotos bereit.

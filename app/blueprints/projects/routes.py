@@ -33,11 +33,16 @@ def projects_page():
     try:
         # Alle Projekte laden
         projects = project_manager.get_all_projects()
+        
+        # Debug-Logging für jedes Projekt
+        for p in projects:
+            logger.debug(f"Projekt geladen: {p.id} - {p.name}")
+            
         return render_template('projects.html', projects=projects)
     except Exception as e:
-        logger.error(f"Fehler beim Laden der Projekte: {str(e)}")
+        import traceback
+        logger.error(f"Fehler beim Laden der Projekte: {str(e)}\n{traceback.format_exc()}")
         return render_template('error.html', message=f"Fehler beim Laden der Projekte: {str(e)}"), 500
-
 
 @projects_bp.route('/create', methods=['GET', 'POST'])
 def create_project():
@@ -90,21 +95,6 @@ def create_project():
             return jsonify({"error": str(e)}), 500
         else:
             return render_template('project_create.html', error=f"Ein Fehler ist aufgetreten: {str(e)}"), 500
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 @projects_bp.route('/<project_id>')
 def view_project(project_id):
@@ -173,28 +163,60 @@ def get_project_image(project_id, image_path):
         project_id: ID des Projekts
         image_path: Pfad zum Bild innerhalb des Projekts
     """
-    # ID und Bildpfad validieren
-    if not validate_project_id(project_id):
-        logger.warning(f"Ungültige Projekt-ID: {project_id}")
-        abort(404)
+    try:
+        logger.debug(f"Bild angefordert: Projekt={project_id}, Pfad={image_path}")
         
-    # Den Bildpfad sicher machen
-    safe_image_filename = secure_filename(os.path.basename(image_path))
-    if not safe_image_filename:
-        abort(404)
+        # ID validieren
+        if not validate_project_id(project_id):
+            logger.warning(f"Ungültige Projekt-ID: {project_id}")
+            abort(404)
+            
+        # Path Manager holen
+        path_manager = PathManager()
         
-    # Projektverzeichnis im abgesicherten Pfad
-    project_dir = project_manager.get_project_path(project_id)
+        # Projektverzeichnis ermitteln
+        project_path = path_manager.get_project_path(project_id)
+        logger.debug(f"Projektpfad: {project_path}")
+        
+        # Vollständiger Bildpfad
+        if 'images' not in image_path:
+            # Falls "images" nicht im Pfad ist, fügen wir es hinzu
+            full_image_path = os.path.join(project_path, 'images', image_path)
+        else:
+            # Falls "images" bereits im Pfad ist
+            full_image_path = os.path.join(project_path, image_path)
+            
+        logger.debug(f"Vollständiger Bildpfad: {full_image_path}")
+        
+        # Überprüfen, ob die Datei existiert
+        if not os.path.exists(full_image_path):
+            logger.warning(f"Datei existiert nicht: {full_image_path}")
+            # Versuche einen alternativen Pfad
+            alt_path = os.path.join(project_path, image_path)
+            logger.debug(f"Versuche alternativen Pfad: {alt_path}")
+            if os.path.exists(alt_path):
+                full_image_path = alt_path
+            else:
+                abort(404)
+            
+        # Bild-Verzeichnis und Dateinamen trennen
+        image_dir = os.path.dirname(full_image_path)
+        image_file = os.path.basename(full_image_path)
+        
+        logger.debug(f"Sende Datei: Verzeichnis={image_dir}, Datei={image_file}")
+        return send_from_directory(image_dir, image_file)
+        
+    except Exception as e:
+        logger.error(f"Fehler beim Abrufen des Bildes: {str(e)}")
+        abort(500)
+
+@projects_bp.route('/<project_id>/view360')
+def view_360(project_id):
+    """Zeigt den 360°-Viewer für ein Projekt an"""
+    # Projekt laden
+    project = project_manager.get_project(project_id)
+    if not project:
+        return render_template('error.html', message="Projekt nicht gefunden"), 404
     
-    # Sicherstellen, dass das Verzeichnis existiert
-    if not os.path.isdir(project_dir):
-        abort(404)
-    
-    # Bildverzeichnis und Dateinamen sicher zusammenführen
-    image_dir_path = os.path.dirname(os.path.join(project_dir, image_path))
-    
-    # Sicherstellen, dass das Bildverzeichnis innerhalb des Projektverzeichnisses liegt
-    if not os.path.abspath(image_dir_path).startswith(os.path.abspath(project_dir)):
-        abort(404)
-    
-    return send_from_directory(image_dir_path, safe_image_filename)
+    # Weiterleitung zum Viewer
+    return redirect(f'/viewer?project={project_id}')

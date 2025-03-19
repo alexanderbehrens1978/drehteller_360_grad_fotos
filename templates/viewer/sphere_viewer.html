@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>360° Panorama Viewer - {{ project.name }}</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="/static/css/viewer.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/core@5/index.css">
+</head>
+<body>
+    <header>
+        <h1>360° Drehteller Steuerung</h1>
+        <nav>
+            <a href="/">Startseite</a>
+            <a href="/projects">Projekte</a>
+            <a href="/settings">Einstellungen</a>
+            <a href="/viewer" class="active">360° Viewer</a>
+        </nav>
+    </header>
+    
+    <main>
+        <div class="card">
+            <h2>360° Panorama Viewer</h2>
+            
+            <div class="viewer-info">
+                <div>
+                    <h3>Projekt: <span id="project-name">{{ project.name }}</span></h3>
+                    <p>Ausgewählte Bilder: <span id="selected-images-count">{{ project.images|length }}</span></p>
+                </div>
+                
+                <div class="control-buttons">
+                    <a href="/viewer" class="btn btn-secondary">Zurück zur Übersicht</a>
+                    <button id="export-btn" class="btn btn-primary">Export für Web</button>
+                </div>
+            </div>
+            
+            <div class="viewer-container">
+                <div id="spinner">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Wird geladen...</span>
+                    </div>
+                </div>
+                <div id="viewer"></div>
+            </div>
+            
+            <div class="viewer-controls">
+                <button id="play-btn" class="btn btn-primary">
+                    <i class="bi bi-play-fill"></i> Auto-Rotation
+                </button>
+                <button id="reset-btn" class="btn btn-secondary">
+                    <i class="bi bi-arrow-counterclockwise"></i> Zurücksetzen
+                </button>
+                <button id="fullscreen-btn" class="btn btn-secondary">
+                    <i class="bi bi-fullscreen"></i> Vollbild
+                </button>
+            </div>
+            
+            <div class="image-selector">
+                <h3>Bilder für den Viewer</h3>
+                <p>Wähle die Bilder aus, die im 360°-Viewer angezeigt werden sollen:</p>
+                
+                <div class="image-grid">
+                    {% if project.images and project.images|length > 0 %}
+                        {% for image in project.images %}
+                            <div class="image-item selected" data-path="{{ image.path }}" data-angle="{{ image.angle }}">
+                                <img src="/projects/image/{{ project.id }}/{{ image.path }}" 
+                                     alt="Foto bei {{ image.angle }}°">
+                                <div class="image-info">
+                                    <span class="angle">{{ image.angle }}°</span>
+                                </div>
+                                <input type="checkbox" name="selected_images" value="{{ image.path }}" 
+                                       style="display: none;" checked>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="no-images">Keine Bilder vorhanden.</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="export-section" style="display: none;" id="export-section">
+                <h3>HTML-Code für Webseiten-Integration</h3>
+                <p>Kopieren Sie diesen Code, um den 360°-Viewer in Ihre Webseite einzubinden:</p>
+                
+                <div style="position: relative;">
+                    <button class="copy-btn" id="copy-embed-btn">Kopieren</button>
+                    <pre class="code-block" id="embed-code"></pre>
+                </div>
+                
+                <h3>Direktlink zum 360°-Viewer</h3>
+                <div style="position: relative;">
+                    <button class="copy-btn" id="copy-link-btn">Kopieren</button>
+                    <pre class="code-block" id="direct-link"></pre>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+        <p>&copy; 2025 Alexander Behrens 360° Drehteller Steuerung</p>
+    </footer>
+    
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three/build/three.module.js",
+            "@photo-sphere-viewer/core": "https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/core@5/index.module.js",
+            "@photo-sphere-viewer/autorotate-plugin": "https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/autorotate-plugin@5/index.module.js",
+            "@photo-sphere-viewer/gallery-plugin": "https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/gallery-plugin@5/index.module.js"
+        }
+    }
+    </script>
+    
+    <script type="module">
+        import { Viewer, utils } from '@photo-sphere-viewer/core';
+        import { AutorotatePlugin } from '@photo-sphere-viewer/autorotate-plugin';
+        import { GalleryPlugin } from '@photo-sphere-viewer/gallery-plugin';
+        
+        // DOM-Elemente
+        const viewerContainer = document.getElementById('viewer');
+        const spinner = document.getElementById('spinner');
+        const projectNameEl = document.getElementById('project-name');
+        const selectedImagesCountEl = document.getElementById('selected-images-count');
+        const exportBtn = document.getElementById('export-btn');
+        const exportSection = document.getElementById('export-section');
+        const embedCodeEl = document.getElementById('embed-code');
+        const directLinkEl = document.getElementById('direct-link');
+        const copyEmbedBtn = document.getElementById('copy-embed-btn');
+        const copyLinkBtn = document.getElementById('copy-link-btn');
+        const playBtn = document.getElementById('play-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const fullscreenBtn = document.getElementById('fullscreen-btn');
+        
+        // Projekt-ID und Basis-URL
+        const projectId = '{{ project.id }}';
+        const baseUrl = window.location.origin;
+        
+        // Viewer-Konfiguration
+        let viewer = null;
+        let autorotatePlugin = null;
+        
+        // Ausgewählte Bilder
+        let selectedImages = [];
+        
+        // Initialisierung
+        document.addEventListener('DOMContentLoaded', function() {
+            // Bildauswahl-Event-Listener
+            setupImageSelection();
+            
+            // Export-Button-Event-Listener
+            exportBtn.addEventListener('click', function() {
+                exportSection.style.display = 'block';
+                generateExportCode();
+            });
+            
+            // Kopier-Buttons
+            copyEmbedBtn.addEventListener('click', function() {
+                copyToClipboard(embedCodeEl.textContent);
+                this.textContent = 'Kopiert!';
+                setTimeout(() => { this.textContent = 'Kopieren'; }, 2000);
+            });
+            
+            copyLinkBtn.addEventListener('click', function() {
+                copyToClipboard(directLinkEl.textContent);
+                this.textContent = 'Kopiert!';
+                setTimeout(() => { this.textContent = 'Kopieren'; }, 2000);
+            });
+            
+            // Steuerungsbuttons
+            playBtn.addEventListener('click', toggleAutorotate);
+            resetBtn.addEventListener('click', resetViewer);
+            fullscreenBtn.addEventListener('click', toggleFullscreen);
+        });
+        
+        // Bildauswahl einrichten
+        function setupImageSelection() {
+            const imageItems = document.querySelectorAll('.image-item');
+            
+            imageItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    const checkbox = this.querySelector('input[type="checkbox"]');
+                    this.classList.toggle('selected');
+                    checkbox.checked = !checkbox.checked;
+                    
+                    // Ausgewählte Bilder aktualisieren
+                    updateSelectedImages();
+                });
+            });
+            
+            // Initiale Aktualisierung
+            updateSelectedImages();
+        }
+        
+        // Ausgewählte Bilder aktualisieren
+        function updateSelectedImages() {
+            const checkedBoxes = document.querySelectorAll('input[name="selected_images"]:checked');
+            selectedImages = Array.from(checkedBoxes).map(checkbox => {
+                const item = checkbox.closest('.image-item');
+                return {
+                    path: item.dataset.path,
+                    angle: parseFloat(item.dataset.angle)
+                };
+            });
+            
+            // Sortieren nach Winkel
+            selectedImages.sort((a, b) => a.angle - b.angle);
+            
+            // Zähler aktualisieren
+            selectedImagesCountEl.textContent = selectedImages.length;
+            
+            // Viewer aktualisieren, falls er existiert
+            updateViewer();
+        }
+        
+        // Viewer aktualisieren oder initialisieren
+        function updateViewer() {
+            // Wenn keine Bilder ausgewählt sind
+            if (selectedImages.length === 0) {
+                if (viewer) {
+                    viewer.destroy();
+                    viewer = null;
+                }
+                return;
+            }
+            
+            // Spinner anzeigen
+            spinner.style.display = 'block';
+            
+            // Bilder für die Galerie vorbereiten
+            const galleryItems = selectedImages.map((img, index) => ({
+                id: index,
+                name: `Winkel ${img.angle}°`,
+                panorama: `${baseUrl}/projects/image/${projectId}/${img.path}`,
+                thumbnail: `${baseUrl}/projects/image/${projectId}/${img.path}`
+            }));
+            
+            // Viewer erstellen oder aktualisieren
+            if (viewer) {
+                // Viewer-Plugins aktualisieren
+                const galleryPlugin = viewer.getPlugin(GalleryPlugin);
+                if (galleryPlugin) {
+                    galleryPlugin.setItems(galleryItems);
+                }
+                spinner.style.display = 'none';
+            } else {
+                // Neuen Viewer erstellen
+                viewer = new Viewer({
+                    container: viewerContainer,
+                    panorama: galleryItems[0].panorama,
+                    caption: `${projectNameEl.textContent} - ${galleryItems[0].name}`,
+                    loadingImg: '/static/img/loading.gif',
+                    touchmoveTwoFingers: true,
+                    mousewheelCtrlKey: true,
+                    navbar: [
+                        'autorotate',
+                        'zoom',
+                        'gallery',
+                        'fullscreen'
+                    ],
+                    plugins: [
+                        [AutorotatePlugin, {
+                            autorotatePitch: 0,
+                            autorotateSpeed: '2rpm',
+                            autorotateDelay: 1000
+                        }],
+                        [GalleryPlugin, {
+                            thumbnails: galleryItems
+                        }]
+                    ]
+                });
+                
+                // Autorotate-Plugin referenzieren
+                autorotatePlugin = viewer.getPlugin(AutorotatePlugin);
+                
+                // Event-Listener für "ready"
+                viewer.addEventListener('ready', () => {
+                    spinner.style.display = 'none';
+                    autorotatePlugin.start();
+                });
+                
+                // Event-Listener für Galerie-Wechsel
+                viewer.addEventListener('panorama-loaded', (e) => {
+                    const currentItem = galleryItems.find(item => item.panorama === e.data.panorama);
+                    if (currentItem) {
+                        viewer.setCaption(`${projectNameEl.textContent} - ${currentItem.name}`);
+                    }
+                });
+            }
+        }
+        
+        // Auto-Rotation ein-/ausschalten
+        function toggleAutorotate() {
+            if (!viewer || !autorotatePlugin) return;
+            
+            if (autorotatePlugin.isAutorotating()) {
+                autorotatePlugin.stop();
+                playBtn.innerHTML = '<i class="bi bi-play-fill"></i> Auto-Rotation';
+            } else {
+                autorotatePlugin.start();
+                playBtn.innerHTML = '<i class="bi bi-pause-fill"></i> Pause';
+            }
+        }
+        
+        // Viewer zurücksetzen
+        function resetViewer() {
+            if (!viewer) return;
+            
+            viewer.animate({
+                zoom: 0,
+                yaw: 0,
+                pitch: 0
+            });
+        }
+        
+        // Vollbild ein-/ausschalten
+        function toggleFullscreen() {
+            if (!viewer) return;
+            
+            viewer.toggleFullscreen();
+        }
+        
+        // Export-Code generieren
+        function generateExportCode() {
+            if (selectedImages.length === 0) {
+                alert('Bitte wähle mindestens ein Bild aus.');
+                return;
+            }
+            
+            // API-Endpunkt für den Export aufrufen
+            fetch('/viewer/export', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    project_id: projectId,
+                    selected_images: selectedImages.map(img => img.path)
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Direktlink anzeigen
+                    directLinkEl.textContent = data.export_url;
+                    
+                    // Embed-Code anzeigen
+                    embedCodeEl.textContent = data.embed_code;
+                } else {
+                    alert('Fehler beim Exportieren: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Fehler beim Export:', error);
+                alert('Fehler beim Exportieren: ' + error.message);
+            });
+        }
+        
+        // Text in die Zwischenablage kopieren
+        function copyToClipboard(text) {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+        }
+    </script>
+</body>
+</html>

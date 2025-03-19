@@ -1,44 +1,49 @@
-// arduino_drehteller_steuerung.ino
+/*
+ * Drehteller-Steuerung über Solid State Relais
+ * 
+ * Steuert einen Motor mit einem Solid State Relais an.
+ * Kommandos über die serielle Schnittstelle:
+ * 1 = Motor einschalten (Relais schließen)
+ * 0 = Motor ausschalten (Relais öffnen)
+ */
 
-// Definiere den Pin für das Relais
-#define RELAIS_PIN 8
+const int RELAY_PIN = 8;  // Pin an dem das Relais angeschlossen ist (ggf. anpassen)
 
 void setup() {
-  // Initialisiere die serielle Kommunikation mit 9600 Baud
+  // Initialisierung der seriellen Kommunikation
   Serial.begin(9600);
-
-  // Konfiguriere den Relais-Pin als Ausgang
-  pinMode(RELAIS_PIN, OUTPUT);
-
-  // Stelle sicher, dass das Relais zu Beginn ausgeschaltet ist
-  digitalWrite(RELAIS_PIN, LOW);
-
-  Serial.println("Arduino Drehteller Steuerung bereit");
+  
+  // Relay-Pin als Ausgang konfigurieren
+  pinMode(RELAY_PIN, OUTPUT);
+  
+  // Relay initial ausschalten
+  digitalWrite(RELAY_PIN, LOW);
+  
+  // Status-Meldung
+  Serial.println("Drehteller-Steuerung bereit");
 }
 
 void loop() {
-  // Prüfe, ob Daten verfügbar sind
+  // Auf Befehle von der seriellen Schnittstelle warten
   if (Serial.available() > 0) {
-    // Lese eingehende Daten
-    char command = Serial.read();
-
-    // Interpretiere Befehl
-    if (command == '1') {
-      // Relais einschalten
-      digitalWrite(RELAIS_PIN, HIGH);
-      Serial.println("Relais eingeschaltet - Drehteller läuft");
-    }
-    else if (command == '0') {
-      // Relais ausschalten
-      digitalWrite(RELAIS_PIN, LOW);
-      Serial.println("Relais ausgeschaltet - Drehteller gestoppt");
+    // Befehl lesen
+    String command = Serial.readStringUntil('\n');
+    command.trim(); // Leerzeichen und Zeilenumbrüche entfernen
+    
+    // Befehl verarbeiten
+    if (command == "1") {
+      // Motor einschalten
+      digitalWrite(RELAY_PIN, HIGH);
+      Serial.println("OK");
+    } 
+    else if (command == "0") {
+      // Motor ausschalten
+      digitalWrite(RELAY_PIN, LOW);
+      Serial.println("OK");
     }
     else {
       // Unbekannter Befehl
-      Serial.println("Unbekannter Befehl empfangen. Verwende '1' zum Einschalten und '0' zum Ausschalten.");
+      Serial.println("ERROR: Unknown command");
     }
   }
-
-  // Kurze Pause, um CPU-Last zu reduzieren
-  delay(10);
 }

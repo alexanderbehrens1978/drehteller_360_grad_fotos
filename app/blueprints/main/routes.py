@@ -37,16 +37,39 @@ def index():
     return render_template('index.html', project=project)
 
 @main_bp.route('/viewer')
-def view_360():
-    """Zeigt den 360°-Viewer an."""
-    return render_template('viewer.html')
+def viewer_overview():
+    """Zeigt eine Übersicht aller Projekte und den 360° Viewer für ein ausgewähltes Projekt"""
+    # Projekte aus dem ProjectManager laden
+    from app.models.project import ProjectManager
+    from app.utils.path_manager import PathManager
+    
+    path_manager = PathManager()
+    project_manager = ProjectManager(path_manager.projects_dir)
+    
+    projects = project_manager.get_all_projects()
+    
+    # Ausgewähltes Projekt (falls vorhanden)
+    project_id = request.args.get('project')
+    selected_project = None
+    
+    if project_id:
+        selected_project = project_manager.get_project(project_id)
+    
+    return render_template('viewer_overview.html', 
+                          projects=projects,
+                          selected_project=selected_project)
 
 @main_bp.route('/rotate', methods=['POST'])
 def rotate():
-    global arduino_controller
-    global camera_controller
-    """Dreht den Teller und nimmt ein Foto auf"""
+    """Nimmt ein Foto auf und dreht dann den Teller zur nächsten Position
+       Alternative: Mit mode=rotate_only wird nur gedreht ohne Foto zu machen"""
+    global arduino_controller, camera_controller, turntable_controller
+    
     try:
+        # Überprüfen des Modus (Foto+Rotation oder nur Rotation)
+        mode = request.form.get('mode', 'photo_and_rotate')
+        logger.debug(f"Rotations-Modus: {mode}")
+        
         # Parameter validieren
         if 'degrees' not in request.form:
             return jsonify({"error": "Parameter 'degrees' fehlt"}), 400
@@ -64,11 +87,6 @@ def rotate():
             
         project_id = request.form['project_id']
         
-        # Projekt-ID validieren
-        from app.utils.secure_path import validate_project_id
-        if not validate_project_id(project_id):
-            return jsonify({"error": "Ungültige Projekt-ID"}), 400
-            
         # Projekt laden
         from app.models.project import ProjectManager
         from app.utils.path_manager import PathManager
@@ -80,79 +98,28 @@ def rotate():
         if not project:
             return jsonify({"error": "Projekt nicht gefunden"}), 404
         
-        # Drehteller rotieren - Stellen Sie sicher, dass turntable_controller korrekt initialisiert ist
+        # Überprüfe Arduino-Verbindung
         if not arduino_controller or not arduino_controller.is_connected():
-            # Versuche, die Arduino-Verbindung herzustellen
-            from app.utils.config_manager import config_manager
-            arduino_port = config_manager.get('arduino.port', '/dev/ttyACM0')
-            arduino_baudrate = config_manager.get('arduino.baudrate', 9600)
-            
-            # Controller neu initialisieren und verbinden
-            from app.controllers.arduino_controller import ArduinoController
-            arduino_controller = ArduinoController(arduino_port, arduino_baudrate)
-            
-            # Wenn die Verbindung jetzt immer noch nicht hergestellt werden kann, Fehler melden
-            if not arduino_controller.is_connected():
-                return jsonify({
-                    "status": "warning",
-                    "error": "Arduino nicht verbunden. Foto wird aufgenommen, aber der Teller wird nicht gedreht.",
-                    "suggestion": "Überprüfen Sie die Arduino-Verbindung in den Einstellungen."
-                })
+            logger.warning("Arduino ist nicht verbunden!")
+            # Versuche erneut zu verbinden
+            if arduino_controller:
+                arduino_port = config_manager.get('arduino.port')
+                arduino_baudrate = config_manager.get('arduino.baudrate', 9600)
+                arduino_controller.port = arduino_port
+                arduino_controller.baudrate = arduino_baudrate
+                connected = arduino_controller.connect()
+                if not connected:
+                    return jsonify({"error": "Arduino konnte nicht verbunden werden. Bitte überprüfen Sie die Verbindung."}), 500
         
-        # Drehteller drehen
-        try:
-            rotate_teller(degrees)
-        except Exception as e:
-            logger.error(f"Fehler beim Drehen des Tellers: {str(e)}")
-            return jsonify({
-                "status": "warning",
-                "error": f"Fehler beim Drehen des Tellers: {str(e)}",
-                "suggestion": "Überprüfen Sie die Arduino-Verbindung und die Stromversorgung des Drehtellers."
-            })
+        # 1. Je nach Modus entweder nur ein Foto oder auch die Rotation ausführen
+        photo_path = None
+        rel_path = None
         
-        # Foto mit Zeitstempel aufnehmen
-        timestamp = int(time.time())
-        filename = f'photo_{timestamp}_{degrees}.jpg'
-        
-        # Stelle sicher, dass der Kamera-Controller korrekt initialisiert ist
-        if not camera_controller:
-            from app.utils.config_manager import config_manager
-            from app.controllers.camera_controller import CameraController
+        if mode != 'rotate_only':
+            # Foto aufnehmen
+            timestamp = int(time.time())
+            filename = f'photo_{timestamp}_{degrees}.jpg'
             
-            camera_type = config_manager.get('camera.type', 'webcam')
-            camera_device = config_manager.get('camera.device_path', '/dev/video0')
-            resolution = config_manager.get('camera.resolution', {'width': 1280, 'height': 720})
-            
-            # Kamera-Profil für gphoto2 laden, falls es sich um eine gphoto2-Kamera handelt
-            camera_settings = {}
-            if camera_type == 'gphoto2':
-                # Kameramodell ermitteln
-                try:
-                    result = subprocess.run(['gphoto2', '--port', camera_device, '--summary'],
-                                          stdout=subprocess.PIPE,
-                                          stderr=subprocess.PIPE,
-                                          text=True)
-                    
-                    if result.returncode == 0:
-                        camera_model = None
-                        for line in result.stdout.split('\n'):
-                            if 'Model:' in line:
-                                camera_model = line.split('Model:', 1)[1].strip()
-                                break
-                        
-                        if camera_model:
-                            # Passendes Profil suchen
-                            profiles = config_manager.get('camera.gphoto2_profiles', {})
-                            if camera_model in profiles:
-                                camera_settings = profiles[camera_model].get('settings', {})
-                except Exception as e:
-                    logger.error(f"Fehler beim Ermitteln des Kameramodells: {str(e)}")
-            
-            # Controller initialisieren
-            camera_controller = CameraController(camera_type, camera_device, resolution, camera_settings)
-        
-        # Bild aufnehmen
-        try:
             # Verzeichnis für das Projekt erstellen, falls noch nicht vorhanden
             project_images_dir = os.path.join(project.path, 'images')
             os.makedirs(project_images_dir, exist_ok=True)
@@ -161,34 +128,97 @@ def rotate():
             photo_path = os.path.join(project_images_dir, filename)
             
             # Foto aufnehmen
-            success = camera_controller.capture_photo(photo_path)
+            logger.debug("Nehme Foto auf...")
+            camera_success = camera_controller.capture_photo(photo_path)
             
-            if not success:
+            if not camera_success:
                 raise Exception("Kamera konnte kein Foto aufnehmen.")
                 
             # Bild zum Projekt hinzufügen mit dem korrekten Winkel
             project.add_image(photo_path, angle=degrees, timestamp=timestamp)
             
             # Relativen Pfad für die Antwort erstellen
-            rel_path = os.path.join('/projects/image', project_id, 'images', filename)
+            rel_path = f"/projects/image/{project_id}/{filename}"
+            logger.debug(f"Relativer Bildpfad für Antwort: {rel_path}")
+        
+        # 2. Jetzt den Drehteller drehen, wenn der Modus es erlaubt
+        rotation_success = False
+        
+        if mode != 'photo_only':
+            logger.debug(f"Drehe Teller um {degrees}°...")
             
-            return jsonify({
-                "status": "success",
-                "photo": rel_path,
-                "angle": degrees  # Winkel in der Antwort zurückgeben
-            })
+            # Versuche über TurntableController zu drehen
+            if turntable_controller and turntable_controller.arduino and turntable_controller.arduino.is_connected():
+                logger.debug(f"Versuche über TurntableController zu drehen, Winkel: {degrees}°")
+                rotation_success = turntable_controller.move_degrees(degrees)
+                logger.debug(f"TurntableController-Rotation erfolgreich: {rotation_success}")
             
-        except Exception as e:
-            logger.error(f"Fehler beim Aufnehmen des Fotos: {str(e)}")
-            return jsonify({
-                "status": "error",
-                "error": f"Fehler beim Aufnehmen des Fotos: {str(e)}",
-                "suggestion": "Überprüfen Sie die Kamera-Verbindung und -Einstellungen."
-            })
+            # Falls nicht erfolgreich, versuche direkt über den Arduino-Controller zu drehen
+            if not rotation_success and arduino_controller and arduino_controller.is_connected():
+                logger.debug(f"Versuche direkt über ArduinoController zu drehen, Winkel: {degrees}°")
+                # Berechne die Rotationszeit basierend auf 0,8° pro Sekunde
+                rotation_time_ms = int((float(degrees) / 0.8) * 1000)
+                logger.debug(f"Berechnete Rotationszeit: {rotation_time_ms} ms")
+                
+                # Direkter Fallback: Motor steuern ohne rotate_for_duration
+                try:
+                    logger.debug("Verwende direkten Fallback für die Motordrehung")
+                    # Motor einschalten
+                    motor_on = arduino_controller.turn_motor_on()
+                    logger.debug(f"Motor eingeschaltet: {motor_on}")
+                    
+                    # Warten für die berechnete Zeit
+                    logger.debug(f"Motor für {rotation_time_ms} ms eingeschaltet")
+                    time.sleep(rotation_time_ms / 1000.0)
+                    
+                    # Motor ausschalten
+                    motor_off = arduino_controller.turn_motor_off()
+                    logger.debug(f"Motor ausgeschaltet: {motor_off}")
+                    
+                    rotation_success = True
+                    logger.debug("Fallback-Rotation erfolgreich")
+                except Exception as e:
+                    logger.error(f"Fehler bei Fallback-Rotation: {str(e)}")
+                    # Extra Error handling
+                    try:
+                        arduino_controller.turn_motor_off()
+                    except:
+                        pass
             
+            # Log für das Rotation-Ergebnis
+            if rotation_success:
+                logger.info(f"Drehteller erfolgreich um {degrees}° gedreht")
+            else:
+                logger.warning(f"Drehteller konnte nicht gedreht werden, Winkel: {degrees}°")
+        
+        return jsonify({
+            "status": "success",
+            "photo": rel_path,
+            "angle": degrees,
+            "rotation_success": rotation_success
+        })
+        
     except Exception as e:
-        logger.error(f"Fehler bei der Rotation/Fotoaufnahme: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        logger.error(f"Fehler bei der Foto-Aufnahme/Rotation: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "error": str(e)
+        }), 500
+
+@main_bp.route('/stop_rotation', methods=['POST'])
+def stop_rotation():
+    """Stoppt die aktuelle Rotation"""
+    try:
+        if turntable_controller:
+            turntable_controller.stop_session()
+            logger.info("Rotation wurde gestoppt")
+            return jsonify({"status": "success", "message": "Rotation wurde gestoppt"})
+        else:
+            logger.error("Turntable-Controller ist nicht initialisiert")
+            return jsonify({"status": "error", "error": "Turntable-Controller ist nicht initialisiert"}), 500
+    except Exception as e:
+        logger.error(f"Fehler beim Stoppen der Rotation: {str(e)}")
+        return jsonify({"status": "error", "error": str(e)}), 500
 
 @main_bp.route('/static/photos/<filename>')
 def serve_photo(filename):
@@ -267,19 +297,95 @@ def save_config():
 
 @main_bp.route('/generate_360', methods=['POST'])
 def generate_360():
+    """Generiert einen 360°-Viewer aus den Projektbildern"""
     data = request.get_json()
     
     if not data:
-        print("Fehler: request.get_json() gibt None zurück!")
+        logger.error("Fehler: request.get_json() gibt None zurück!")
         return jsonify({"error": "Ungültige Anfrage, kein JSON erhalten"}), 400
 
-    print(f"Empfangene Daten: {data}")  # Debug-Ausgabe
+    logger.debug(f"Empfangene Daten: {data}")  # Debug-Ausgabe
 
     if 'project_id' not in data:
-        print("Fehlende project_id!")
+        logger.error("Fehlende project_id!")
         return jsonify({"error": "Fehlende project_id"}), 400
 
     project_id = data['project_id']
-    print(f"Generiere 360°-Viewer für Projekt: {project_id}")
+    logger.info(f"Generiere 360°-Viewer für Projekt: {project_id}")
 
-    return jsonify({"message": f"360°-Viewer für {project_id} generiert"})
+    try:
+        # Projekt laden
+        from app.models.project import ProjectManager
+        from app.utils.path_manager import PathManager
+        import shutil
+        
+        path_manager = PathManager()
+        project_manager = ProjectManager(path_manager.projects_dir)
+        project = project_manager.get_project(project_id)
+        
+        if not project:
+            return jsonify({"error": "Projekt nicht gefunden"}), 404
+        
+        # Pfade erstellen
+        static_dir = os.path.abspath(os.path.join(current_app.root_path, '..', 'static'))
+        projects_dir = os.path.join(static_dir, 'projects')
+        project_dir = os.path.join(projects_dir, project_id)
+        
+        # Verzeichnis erstellen, falls es noch nicht existiert
+        os.makedirs(project_dir, exist_ok=True)
+        
+        # Bildpfade sammeln (nur Dateinamen ohne Pfad)
+        image_filenames = []
+        for image in project.images:
+            # Bildpfad aus dem Projekt extrahieren
+            src_path = os.path.join(project.path, image['path'])
+            filename = os.path.basename(src_path)
+            dst_path = os.path.join(project_dir, filename)
+            
+            # Bild in das Projektverzeichnis kopieren
+            if os.path.exists(src_path) and not os.path.exists(dst_path):
+                shutil.copy(src_path, dst_path)
+                
+            image_filenames.append(filename)
+        
+        # Metadaten erstellen
+        metadata = {
+            "name": project.name,
+            "created": time.time(),
+            "image_count": len(image_filenames),
+            "images": image_filenames,
+            "description": project.description
+        }
+        
+        # Metadaten speichern
+        metadata_path = os.path.join(project_dir, 'metadata.json')
+        with open(metadata_path, 'w') as f:
+            json.dump(metadata, f, indent=4)
+        
+        return jsonify({
+            "status": "success",
+            "message": f"360°-Viewer für {project.name} wurde erfolgreich generiert",
+            "url": f"/viewer?project={project_id}"
+        })
+        
+    except Exception as e:
+        logger.error(f"Fehler beim Generieren des 360°-Viewers: {str(e)}")
+        return jsonify({
+            "error": f"Fehler beim Generieren des 360°-Viewers: {str(e)}"
+        }), 500
+
+@main_bp.route('/arduino_test', methods=['GET'])
+def test_arduino():
+    """Testet die Arduino-Verbindung und die Motorfunktion"""
+    if arduino_controller and arduino_controller.is_connected():
+        # Motor kurz einschalten
+        success = arduino_controller.turn_motor_on()
+        time.sleep(1)  # Eine Sekunde warten
+        arduino_controller.turn_motor_off()
+        
+        if success:
+            return jsonify({"status": "success", "message": "Arduino verbunden und Motor funktioniert"})
+        else:
+            return jsonify({"status": "error", "message": "Arduino verbunden, aber Motor reagiert nicht"})
+    else:
+        return jsonify({"status": "error", "message": "Arduino nicht verbunden"})

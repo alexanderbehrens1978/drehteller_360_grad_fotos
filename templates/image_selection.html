@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bilder auswählen - {{ project.name }} - 360° Drehteller Steuerung</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <style>
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        .image-selection-item {
+            position: relative;
+            border-radius: 4px;
+            overflow: hidden;
+            cursor: pointer;
+            border: 3px solid transparent;
+        }
+        .image-selection-item.selected {
+            border-color: #3498db;
+        }
+        .image-selection-item img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .image-info {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 0.3rem 0.6rem;
+            font-size: 0.8rem;
+            border-top-left-radius: 4px;
+        }
+        .selection-actions {
+            margin: 1.5rem 0;
+            display: flex;
+            justify-content: space-between;
+        }
+        .selection-counter {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>360° Drehteller Steuerung</h1>
+        <nav>
+            <a href="/">Startseite</a>
+            <a href="/projects">Projekte</a>
+            <a href="/settings">Einstellungen</a>
+        </nav>
+    </header>
+    
+    <main>
+        <div class="card">
+            <h2>Bilder für 360° Ansicht auswählen</h2>
+            <h3>Projekt: {{ project.name }}</h3>
+            
+            <div class="selection-counter">
+                <span id="selected-count">0</span> von {{ project.images|length }} Bildern ausgewählt
+            </div>
+            
+            <div class="selection-actions">
+                <button id="select-all-btn" class="btn btn-secondary">Alle auswählen</button>
+                <button id="deselect-all-btn" class="btn btn-secondary">Auswahl aufheben</button>
+                <button id="select-every-btn" class="btn btn-secondary">Jedes n-te Bild</button>
+            </div>
+            
+            <form id="selection-form" action="/viewer" method="GET">
+                <input type="hidden" name="project" value="{{ project.id }}">
+                
+                <div class="image-grid">
+                    {% if project.images and project.images|length > 0 %}
+                        {% for image in project.images %}
+                            <div class="image-selection-item" data-path="{{ image.path }}" data-angle="{{ image.angle }}">
+                                <img src="/projects/image/{{ project.id }}/{{ image.path }}" 
+                                     alt="Foto bei {{ image.angle }}°">
+                                <div class="image-info">
+                                    <span class="angle">{{ image.angle }}°</span>
+                                </div>
+                                <input type="checkbox" name="images" value="{{ image.path }}" 
+                                       style="display: none;">
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="no-images">Keine Bilder vorhanden.</p>
+                    {% endif %}
+                </div>
+                
+                <div class="selection-actions" style="margin-top: 2rem;">
+                    <a href="/projects/{{ project.id }}" class="btn btn-secondary">Abbrechen</a>
+                    <button type="submit" id="view-selected-btn" class="btn btn-primary">
+                        Ausgewählte Bilder anzeigen
+                    </button>
+                </div>
+            </form>
+            
+            <!-- Modal für "Jedes n-te Bild" -->
+            <div id="interval-modal" class="modal">
+                <div class="modal-content">
+                    <h3>Jedes n-te Bild auswählen</h3>
+                    <div class="form-group">
+                        <label for="interval-input">Intervall:</label>
+                        <input type="number" id="interval-input" min="1" max="10" value="2">
+                        <p>1 = jedes Bild, 2 = jedes zweite Bild, usw.</p>
+                    </div>
+                    <div class="modal-actions">
+                        <button id="cancel-interval-btn" class="btn btn-secondary">Abbrechen</button>
+                        <button id="apply-interval-btn" class="btn btn-primary">Anwenden</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+        <p>&copy; 2025 Alexander Behrens 360° Drehteller Steuerung</p>
+    </footer>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const imageItems = document.querySelectorAll('.image-selection-item');
+            const selectAllBtn = document.getElementById('select-all-btn');
+            const deselectAllBtn = document.getElementById('deselect-all-btn');
+            const selectEveryBtn = document.getElementById('select-every-btn');
+            const viewSelectedBtn = document.getElementById('view-selected-btn');
+            const selectedCountEl = document.getElementById('selected-count');
+            const intervalModal = document.getElementById('interval-modal');
+            const intervalInput = document.getElementById('interval-input');
+            const applyIntervalBtn = document.getElementById('apply-interval-btn');
+            const cancelIntervalBtn = document.getElementById('cancel-interval-btn');
+            
+            // Bildauswahl aktivieren
+            imageItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    const checkbox = this.querySelector('input[type="checkbox"]');
+                    this.classList.toggle('selected');
+                    checkbox.checked = !checkbox.checked;
+                    updateSelectedCount();
+                });
+            });
+            
+            // Alle auswählen
+            selectAllBtn.addEventListener('click', function() {
+                imageItems.forEach(item => {
+                    item.classList.add('selected');
+                    item.querySelector('input[type="checkbox"]').checked = true;
+                });
+                updateSelectedCount();
+            });
+            
+            // Auswahl aufheben
+            deselectAllBtn.addEventListener('click', function() {
+                imageItems.forEach(item => {
+                    item.classList.remove('selected');
+                    item.querySelector('input[type="checkbox"]').checked = false;
+                });
+                updateSelectedCount();
+            });
+            
+            // Modal für "Jedes n-te Bild" öffnen
+            selectEveryBtn.addEventListener('click', function() {
+                intervalModal.style.display = 'flex';
+            });
+            
+            // Modal schließen
+            cancelIntervalBtn.addEventListener('click', function() {
+                intervalModal.style.display = 'none';
+            });
+            
+            // Intervall anwenden
+            applyIntervalBtn.addEventListener('click', function() {
+                const interval = parseInt(intervalInput.value);
+                
+                if (interval <= 0) {
+                    alert('Bitte geben Sie ein gültiges Intervall ein (mindestens 1)');
+                    return;
+                }
+                
+                // Auswahl zurücksetzen
+                imageItems.forEach(item => {
+                    item.classList.remove('selected');
+                    item.querySelector('input[type="checkbox"]').checked = false;
+                });
+                
+                // Jedes n-te Element auswählen
+                Array.from(imageItems).forEach((item, index) => {
+                    if (index % interval === 0) {
+                        item.classList.add('selected');
+                        item.querySelector('input[type="checkbox"]').checked = true;
+                    }
+                });
+                
+                updateSelectedCount();
+                intervalModal.style.display = 'none';
+            });
+            
+            // Anzahl ausgewählter Bilder aktualisieren
+            function updateSelectedCount() {
+                const selectedCount = document.querySelectorAll('.image-selection-item.selected').length;
+                selectedCountEl.textContent = selectedCount;
+                
+                // Button deaktivieren, wenn keine Bilder ausgewählt sind
+                if (selectedCount === 0) {
+                    viewSelectedBtn.disabled = true;
+                } else {
+                    viewSelectedBtn.disabled = false;
+                }
+            }
+            
+            // Initial aktualisieren
+            updateSelectedCount();
+        });
+    </script>
+</body>
+</html>

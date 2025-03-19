@@ -21,6 +21,9 @@ class TurntableController:
 
     # Konstanten für den Drehteller (0,8° pro Sekunde bei diesem Motor)
     MOTOR_DEGREE_PER_SECOND = 0.8
+    
+    # Status der aktuellen Fotosession
+    is_session_running = False
 
     def __init__(self, arduino_controller, default_angle_step=5):
         """
@@ -60,24 +63,52 @@ class TurntableController:
         Returns:
             True bei Erfolg, False bei Fehler
         """
+        # Eingabevalidierung
+        try:
+            degrees = float(degrees)
+            if degrees <= 0 or degrees > 360:
+                self.logger.error(f"Ungültiger Drehwinkel: {degrees}°")
+                return False
+        except (TypeError, ValueError):
+            self.logger.error(f"Ungültiger Wert für Drehwinkel: {degrees}")
+            return False
+            
         if not self.arduino or not self.arduino.is_connected():
             self.logger.error("Arduino ist nicht verbunden")
             return False
 
         # Rotation Zeit berechnen
         rotation_time_ms = self.calculate_rotation_time(degrees)
+        
+        self.logger.debug(f"Drehe um {degrees}° (Dauer: {rotation_time_ms} ms)")
 
-        # Motor für die berechnete Zeit einschalten
-        success = self.arduino.rotate_for_duration(rotation_time_ms)
-
-        if success:
+        # DIREKTE MOTOR-STEUERUNG statt rotate_for_duration
+        try:
+            # Motor einschalten
+            self.arduino.turn_motor_on()
+            
+            # Log-Ausgabe hinzufügen
+            self.logger.debug(f"Motor eingeschaltet, warte {rotation_time_ms/1000.0} Sekunden")
+            
+            # Warten für die berechnete Zeit
+            time.sleep(rotation_time_ms / 1000.0)
+            
+            # Motor ausschalten
+            self.logger.debug("Schalte Motor aus")
+            self.arduino.turn_motor_off()
+            
             # Position aktualisieren
             self.current_position = (self.current_position + degrees) % 360
             self.logger.info(f"Drehteller um {degrees}° gedreht, neue Position: {self.current_position}°")
-        else:
-            self.logger.error(f"Fehler beim Drehen des Tellers um {degrees}°")
-
-        return success
+            return True
+        except Exception as e:
+            self.logger.error(f"Fehler beim Drehen des Tellers um {degrees}°: {e}")
+            # Im Fehlerfall trotzdem versuchen, den Motor auszuschalten
+            try:
+                self.arduino.turn_motor_off()
+            except Exception as e2:
+                self.logger.error(f"Fehler beim Ausschalten des Motors nach fehlgeschlagener Rotation: {e2}")
+            return False
 
     def reset_position(self):
         """
@@ -88,6 +119,17 @@ class TurntableController:
         """
         self.current_position = 0
         self.logger.info("Drehteller-Position zurückgesetzt")
+        return True
+
+    def stop_session(self):
+        """
+        Stoppt die laufende Fotosession
+        
+        Returns:
+            True
+        """
+        self.is_session_running = False
+        self.logger.info("Fotosession wurde gestoppt")
         return True
 
     def start_session(self, project, camera_controller):
@@ -110,6 +152,9 @@ class TurntableController:
             return False
 
         try:
+            # Session als aktiv markieren
+            self.is_session_running = True
+            
             # Neue Session erstellen
             session_id = str(uuid.uuid4())
             session = PhotoSession(
@@ -131,7 +176,13 @@ class TurntableController:
 
             self.logger.info(f"Starte Fotosession mit {total_steps} Schritten alle {project.angle_step}°")
 
+            # WICHTIGE ÄNDERUNG: Erst Foto, dann drehen!
             for step in range(total_steps):
+                # Prüfen, ob die Session gestoppt wurde
+                if not self.is_session_running:
+                    self.logger.info("Fotosession wurde unterbrochen")
+                    break
+                    
                 # Aktuelle Winkelposition
                 angle = step * project.angle_step
 
@@ -142,19 +193,22 @@ class TurntableController:
                 self.logger.info(f"Nehme Foto bei {angle}° auf")
                 if not camera_controller.capture_photo(photo_filename):
                     self.logger.error(f"Fehler beim Aufnehmen des Fotos bei {angle}°")
+                    self.is_session_running = False
                     return False
 
                 # Session-Informationen aktualisieren
                 session.add_photo(angle, photo_filename)
 
                 # Wenn wir nicht beim letzten Schritt sind, drehen wir weiter
-                if step < total_steps - 1:
+                if step < total_steps - 1 and self.is_session_running:
+                    self.logger.debug(f"Drehe um {project.angle_step}° zur nächsten Position")
                     self.move_degrees(project.angle_step)
                     # Kurze Pause für Stabilisierung
-                    time.sleep(1)
+                    time.sleep(2)
 
-            # Session als abgeschlossen markieren
-            session.completed = True
+            # Session als abgeschlossen markieren, wenn sie nicht manuell gestoppt wurde
+            session.completed = self.is_session_running
+            self.is_session_running = False
             
             # Session zum Projekt hinzufügen
             project.add_session(session)
@@ -164,45 +218,5 @@ class TurntableController:
 
         except Exception as e:
             self.logger.error(f"Fehler während der Fotosession: {str(e)}")
+            self.is_session_running = False
             return False
-
-# In der Datei app/controllers/turntable_controller.py
-
-def move_degrees(self, degrees):
-    """
-    Bewegt den Drehteller um einen bestimmten Winkel
-    
-    Args:
-        degrees: Winkel in Grad
-        
-    Returns:
-        True bei Erfolg, False bei Fehler
-    """
-    # Eingabevalidierung
-    try:
-        degrees = float(degrees)
-        if degrees <= 0 or degrees > 360:
-            self.logger.error(f"Ungültiger Drehwinkel: {degrees}°")
-            return False
-    except (TypeError, ValueError):
-        self.logger.error(f"Ungültiger Wert für Drehwinkel: {degrees}")
-        return False
-        
-    if not self.arduino or not self.arduino.is_connected():
-        self.logger.error("Arduino ist nicht verbunden")
-        return False
-
-    # Rotation Zeit berechnen
-    rotation_time_ms = self.calculate_rotation_time(degrees)
-
-    # Motor für die berechnete Zeit einschalten
-    success = self.arduino.rotate_for_duration(rotation_time_ms)
-
-    if success:
-        # Position aktualisieren
-        self.current_position = (self.current_position + degrees) % 360
-        self.logger.info(f"Drehteller um {degrees}° gedreht, neue Position: {self.current_position}°")
-    else:
-        self.logger.error(f"Fehler beim Drehen des Tellers um {degrees}°")
-
-    return success

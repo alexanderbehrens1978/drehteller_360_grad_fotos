@@ -7,6 +7,7 @@ Enthält die API-Endpunkte der Anwendung
 
 import os
 import json
+import time
 import logging
 from flask import request, jsonify, current_app, abort
 from app.blueprints.api import api_bp
@@ -34,19 +35,21 @@ def get_project(project_id):
             logger.warning(f"Versuch, auf ungültige Projekt-ID zuzugreifen: {project_id}")
             return jsonify({"error": "Ungültige Projekt-ID"}), 400
             
-        # Sicheren Pfad erstellen
-        static_dir = os.path.abspath(os.path.join(current_app.root_path, '..', 'static'))
-        projects_dir = os.path.join(static_dir, 'projects')
-        project_dir = secure_join(projects_dir, project_id)
-        metadata_path = secure_join(project_dir, 'metadata.json')
+        # Pfadmanager und Projektmanager verwenden
+        from app.utils.path_manager import PathManager
+        from app.models.project import ProjectManager
         
-        if not os.path.exists(metadata_path):
+        path_manager = PathManager()
+        project_manager = ProjectManager(path_manager.projects_dir)
+        
+        # Projekt laden
+        project = project_manager.get_project(project_id)
+        
+        if not project:
             return jsonify({"error": "Projekt nicht gefunden"}), 404
         
-        with open(metadata_path, 'r') as f:
-            metadata = json.load(f)
-        
-        return jsonify(metadata)
+        # Projekt als JSON zurückgeben
+        return jsonify(project.to_dict())
     except Exception as e:
         logger.error(f"Fehler beim Laden der Projektdaten: {e}")
         return jsonify({"error": str(e)}), 500
@@ -106,57 +109,20 @@ def delete_project(project_id):
             logger.warning(f"Versuch, ungültige Projekt-ID zu löschen: {project_id}")
             return jsonify({"error": "Ungültige Projekt-ID"}), 400
             
-        # Sicheren Pfad erstellen
-        static_dir = os.path.abspath(os.path.join(current_app.root_path, '..', 'static'))
-        projects_dir = os.path.join(static_dir, 'projects')
-        project_dir = secure_join(projects_dir, project_id)
+        # Projektmanager verwenden
+        from app.utils.path_manager import PathManager
+        from app.models.project import ProjectManager
         
-        if not os.path.exists(project_dir):
-            return jsonify({"error": "Projekt nicht gefunden"}), 404
+        path_manager = PathManager()
+        project_manager = ProjectManager(path_manager.projects_dir)
         
-        # Metadaten lesen, um Bildinformationen zu erhalten
-        metadata_path = secure_join(project_dir, 'metadata.json')
-        images_to_delete = []
+        # Projekt löschen
+        success = project_manager.delete_project(project_id)
         
-        if os.path.exists(metadata_path):
-            try:
-                with open(metadata_path, 'r') as f:
-                    metadata = json.load(f)
-                
-                # Unterverzeichnisse wie sessions/sessions_id/images prüfen
-                if 'sessions' in metadata:
-                    for session in metadata.get('sessions', []):
-                        session_photos = session.get('photos', {})
-                        for photo_path in session_photos.values():
-                            if isinstance(photo_path, str) and os.path.exists(photo_path) and os.path.isfile(photo_path):
-                                # Sicherstellen, dass der Pfad innerhalb des Projektverzeichnisses liegt
-                                abs_photo_path = os.path.abspath(photo_path)
-                                if abs_photo_path.startswith(project_dir):
-                                    images_to_delete.append(abs_photo_path)
-            except Exception as metadata_error:
-                logger.warning(f"Warnung: Konnte Metadaten nicht lesen: {metadata_error}")
+        if not success:
+            return jsonify({"error": "Projekt konnte nicht gelöscht werden"}), 500
         
-        # Verzeichnisstruktur des Projekts durchsuchen
-        for root, dirs, files in os.walk(project_dir):
-            for file in files:
-                if file.lower().endswith(('.jpg', '.jpeg', '.png', '.gif')):
-                    file_path = os.path.join(root, file)
-                    images_to_delete.append(file_path)
-        
-        # Zuerst die einzelnen Bilddateien löschen
-        for image_path in images_to_delete:
-            try:
-                if os.path.exists(image_path) and os.path.isfile(image_path):
-                    os.remove(image_path)
-                    logger.debug(f"Gelöschtes Bild: {image_path}")
-            except Exception as image_error:
-                logger.warning(f"Warnung: Konnte Bild nicht löschen: {image_error}")
-        
-        # Dann das gesamte Projektverzeichnis löschen
-        import shutil
-        shutil.rmtree(project_dir)
-        logger.info(f"Projekt {project_id} und alle zugehörigen Dateien wurden gelöscht")
-        
+        logger.info(f"Projekt {project_id} wurde gelöscht")
         return jsonify({"status": "success"})
     except Exception as e:
         logger.error(f"Fehler beim Löschen des Projekts: {e}")
@@ -309,4 +275,8 @@ def camera_capabilities():
             "capabilities": capabilities
         })
     except Exception as e:
-        logger.error(f"Fehler beim Abrufen der Kamera-Fähigkeiten")
+        logger.error(f"Fehler beim Abrufen der Kamera-Fähigkeiten: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "message": f"Fehler beim Abrufen der Kamera-Fähigkeiten: {str(e)}"
+        }), 500

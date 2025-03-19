@@ -3,72 +3,81 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>360° Viewer - Drehteller Steuerung</title>
+    <title>360° Produktansicht - Drehteller Steuerung</title>
     <link rel="stylesheet" href="/static/css/styles.css">
+    <style>
+        .debug-info {
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        .image-display {
+            margin: 20px 0;
+            text-align: center;
+        }
+        .image-display img {
+            max-width: 100%;
+            max-height: 400px;
+            border: 1px solid #ddd;
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
+    <header>
+        <h1>360° Drehteller Steuerung</h1>
+        <nav>
+            <a href="/">Startseite</a>
+            <a href="/projects">Projekte</a>
+            <a href="/settings">Einstellungen</a>
+            <a href="/viewer">360° Viewer</a>
+        </nav>
+    </header>
+    
+    <main>
         <div class="card">
-            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                <h2 class="mb-0">360° Produktansicht</h2>
-                <div>
-                    <a href="/projects" class="btn btn-light btn-sm me-2">
-                        <i class="bi bi-arrow-left"></i> Zurück zu Projekten
-                    </a>
-                    <button id="fullscreen-btn" class="btn btn-light btn-sm">
-                        <i class="bi bi-fullscreen"></i>
-                    </button>
-                </div>
+            <h2>360° Viewer Debug</h2>
+            
+            <div class="debug-info">
+                <h3>Projekt-Informationen:</h3>
+                <pre>Projekt-ID: {{ project.id|default('keine ID') }}</pre>
+                <pre>Projekt-Name: {{ project.name|default('kein Name') }}</pre>
+                <pre>Anzahl Bilder: {{ project.images|length if project.images else 0 }}</pre>
+                
+                {% if project and project.images %}
+                    <h3>Bilder:</h3>
+                    <ul>
+                    {% for image in project.images %}
+                        <li>
+                            Pfad: {{ image.path|default('kein Pfad') }}<br>
+                            Winkel: {{ image.angle|default('kein Winkel') }}°
+                        </li>
+                    {% endfor %}
+                    </ul>
+                {% else %}
+                    <p>Keine Bilder gefunden.</p>
+                {% endif %}
             </div>
-            <div class="card-body">
-                <div id="viewer-container" class="position-relative">
-                    <!-- Viewer wird hier per JavaScript eingefügt -->
-                    <div id="spinner" class="position-absolute top-50 start-50 translate-middle">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Laden...</span>
-                        </div>
-                    </div>
-                    <div id="product-viewer" class="viewer-360"></div>
-                </div>
-
-                <div class="mt-4 d-flex justify-content-between">
-                    <div class="viewer-controls">
-                        <button id="play-btn" class="btn btn-primary">
-                            <i class="bi bi-play-fill"></i> Auto-Rotation
-                        </button>
-                        <a href="/projects" class="btn btn-secondary ms-2">
-                            <i class="bi bi-arrow-left"></i> Zurück
-                        </a>
-                    </div>
-
-                    <div class="zoom-controls">
-                        <button id="zoom-in-btn" class="btn btn-outline-secondary">
-                            <i class="bi bi-zoom-in"></i>
-                        </button>
-                        <button id="zoom-out-btn" class="btn btn-outline-secondary ms-2">
-                            <i class="bi bi-zoom-out"></i>
-                        </button>
+            
+            {% if project and project.images and project.images|length > 0 %}
+                <div class="image-display">
+                    <h3>Erstes Bild:</h3>
+                    <img src="/projects/image/{{ project.id }}/{{ project.images[0].path }}" 
+                         alt="Erstes Bild" 
+                         onerror="this.onerror=null; this.src=''; this.alt='Fehler beim Laden des Bildes'; document.getElementById('error-msg').style.display='block';">
+                    <div id="error-msg" style="color: red; display: none;">
+                        Fehler beim Laden des Bildes! URL war: /projects/image/{{ project.id }}/{{ project.images[0].path }}
                     </div>
                 </div>
-
-                <div class="mt-4">
-                    <div class="project-info">
-                        <h4 id="project-name">Projekt: <span>Wird geladen...</span></h4>
-                        <p id="image-count">Bilder: <span>...</span></p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card-footer text-center">
-                <p>Bewegen Sie die Maus oder wischen Sie auf dem Touchscreen, um das Objekt zu drehen.</p>
-                <small class="text-muted">Erstellt mit Drehteller 360° Steuerung</small>
-            </div>
+            {% endif %}
+            
+            <a href="/projects" class="btn">Zurück zu den Projekten</a>
         </div>
-    </div>
-
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Modulare Skripte mit ES Modules -->
-    <script type="module" src="/static/js/viewer-app.js"></script>
+    </main>
+    
+    <footer>
+       <p>&copy; 2025 Alexander Behrens 360° Drehteller Steuerung</p>
+    </footer>
 </body>
 </html>

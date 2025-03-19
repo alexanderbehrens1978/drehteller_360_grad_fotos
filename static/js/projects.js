@@ -27,9 +27,18 @@ function loadProjects() {
     projectsList.appendChild(loadingIndicator);
     
     fetch('/api/projects')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP-Fehler: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(projects => {
             projectsList.innerHTML = '';
+            
+            if (!projects || projects.error) {
+                throw new Error(projects.error || 'Unbekannter Fehler');
+            }
             
             if (projects.length === 0) {
                 const noProjects = document.createElement('div');
@@ -41,23 +50,35 @@ function loadProjects() {
             
             // Projekte anzeigen
             projects.forEach(project => {
+                // Sicherstellen, dass project definiert ist
+                if (!project) {
+                    console.error('Ungültiges Projekt in der Projektliste');
+                    return;
+                }
+                
                 const card = createProjectCard(project);
                 projectsList.appendChild(card);
             });
         })
         .catch(error => {
             console.error('Fehler beim Laden der Projekte:', error);
-            projectsList.innerHTML = '<div class="error">Fehler beim Laden der Projekte. Bitte versuchen Sie es später erneut.</div>';
+            projectsList.innerHTML = `<div class="error">Fehler beim Laden der Projekte: ${error.message}</div>`;
         });
 }
 
 // Projektkarte erstellen
 function createProjectCard(project) {
+    // Defensive Programmierung: Prüfe, ob das Projekt gültig ist
+    if (!project || typeof project !== 'object') {
+        console.error('Ungültiges Projektformat:', project);
+        return document.createElement('div'); // Leeres Element zurückgeben
+    }
+    
     const card = document.createElement('div');
     card.className = 'project-card';
     
     const title = document.createElement('h3');
-    title.textContent = project.name;
+    title.textContent = project.name || `Projekt ${project.id || 'Unbekannt'}`;
     
     const meta = document.createElement('div');
     meta.className = 'project-meta';
