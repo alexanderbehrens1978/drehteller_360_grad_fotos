@@ -1,7 +1,7 @@
 /**
  * index.js
  * JavaScript für die Startseite und Drehteller-Steuerung
- * Endgültige korrigierte Version mit korrekter Sequenz: Erst Drehwinkel, dann Foto
+ * Korrigierte Version mit richtiger Sequenz: Erst drehen, dann Foto
  */
 
 // Globale Variablen
@@ -201,8 +201,8 @@ function createProject(e) {
     });
 }
 
-// Einzelne Rotation und Fotoaufnahme
-function singleRotation() {
+// KORRIGIERTE FUNKTION: Erst drehen, dann fotografieren
+async function singleRotation() {
     if (isRotating) {
         debug("Rotation bereits aktiv, ignoriere Anfrage");
         return;
@@ -223,71 +223,91 @@ function singleRotation() {
 
     // Statusmeldung anzeigen
     if (rotationStatus) {
-        rotationStatus.textContent = "Nehme Foto auf und drehe dann...";
+        rotationStatus.textContent = "Drehe Teller...";
         rotationStatus.style.display = "block";
     }
 
-    // Formular-Daten vorbereiten
-    const formData = new FormData();
-    formData.append('degrees', angle);
-    formData.append('project_id', currentProjectId);
-    formData.append('mode', 'photo_and_rotate'); // Beide Aktionen ausführen
-
-    // Foto aufnehmen und dann rotieren
-    debug("Sende Rotationsanfrage an den Server");
-    fetch('/rotate', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => {
-        debug(`Server-Antwort Status: ${response.status}`);
-        return response.json();
-    })
-    .then(data => {
-        debug(`Server-Antwort: ${JSON.stringify(data)}`);
-        if (data.status === 'success') {
-            // Foto zur Liste hinzufügen
-            capturedPhotos.push({
-                path: data.photo,
-                angle: data.angle
-            });
-
-            // Bild anzeigen
-            displayImage(data.photo, angle);
-
-            // Statusmeldung aktualisieren
-            if (rotationStatus) {
-                rotationStatus.textContent = `Foto aufgenommen bei ${angle}°`;
-                setTimeout(() => {
-                    rotationStatus.style.display = "none";
-                }, 3000);
-            }
-
-            debug(`Erfolgreich Foto aufgenommen und gedreht: ${data.photo}`);
-        } else {
-            console.error('Fehler:', data.error);
-            alert(`Fehler bei der Rotation: ${data.error}`);
-
-            // Statusmeldung aktualisieren
-            if (rotationStatus) {
-                rotationStatus.textContent = `Fehler: ${data.error}`;
-            }
+    // SCHRITT 1: Erst den Motor drehen
+    try {
+        debug("Schritt 1: Drehe Motor");
+        
+        // Formular-Daten für die Drehung
+        const rotateFormData = new FormData();
+        rotateFormData.append('degrees', angle);
+        rotateFormData.append('project_id', currentProjectId);
+        rotateFormData.append('mode', 'rotate_only'); // Nur Rotation
+        
+        // Rotation durchführen
+        const rotateResponse = await fetch('/rotate', {
+            method: 'POST',
+            body: rotateFormData
+        });
+        
+        const rotateData = await rotateResponse.json();
+        
+        if (rotateData.status !== 'success') {
+            throw new Error(`Fehler bei der Rotation: ${rotateData.error || 'Unbekannter Fehler'}`);
         }
-    })
-    .catch(error => {
-        console.error('Netzwerkfehler:', error);
-        alert(`Netzwerkfehler beim Drehen des Tellers: ${error.message}`);
-
+        
+        debug("Rotation abgeschlossen, warte 2 Sekunden zur Stabilisierung");
+        
+        // Kurze Pause für Stabilisierung
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // SCHRITT 2: Jetzt das Foto aufnehmen
+        if (rotationStatus) {
+            rotationStatus.textContent = "Nehme Foto auf...";
+        }
+        
+        debug("Schritt 2: Nehme Foto auf");
+        
+        // Formular-Daten für die Fotoaufnahme
+        const photoFormData = new FormData();
+        photoFormData.append('degrees', angle);
+        photoFormData.append('project_id', currentProjectId);
+        photoFormData.append('mode', 'photo_only'); // Nur Foto
+        
+        // Foto aufnehmen
+        const photoResponse = await fetch('/rotate', {
+            method: 'POST',
+            body: photoFormData
+        });
+        
+        const photoData = await photoResponse.json();
+        
+        if (photoData.status !== 'success') {
+            throw new Error(`Fehler bei der Fotoaufnahme: ${photoData.error || 'Unbekannter Fehler'}`);
+        }
+        
+        // Foto zur Liste hinzufügen
+        capturedPhotos.push({
+            path: photoData.photo,
+            angle: angle
+        });
+        
+        // Bild anzeigen
+        displayImage(photoData.photo, angle);
+        
         // Statusmeldung aktualisieren
         if (rotationStatus) {
-            rotationStatus.textContent = `Netzwerkfehler: ${error.message}`;
+            rotationStatus.textContent = `Erfolgreich: Teller um ${angle}° gedreht und Foto aufgenommen`;
+            setTimeout(() => {
+                rotationStatus.style.display = "none";
+            }, 3000);
         }
-    })
-    .finally(() => {
+        
+        debug(`Erfolgreich gedreht und Foto aufgenommen: ${photoData.photo}`);
+    } catch (error) {
+        console.error('Fehler:', error);
+        if (rotationStatus) {
+            rotationStatus.textContent = `Fehler: ${error.message}`;
+        }
+        alert(`Fehler: ${error.message}`);
+    } finally {
         isRotating = false;
         if (rotateBtn) rotateBtn.disabled = false;
         debug("Einzelrotation abgeschlossen");
-    });
+    }
 }
 
 // Zeigt ein Bild in der Vorschau an
@@ -337,9 +357,9 @@ function displayImage(imagePath, angle) {
     debug("Bild erfolgreich angezeigt");
 }
 
-// Automatische Rotation und Fotoaufnahme - Verbesserte Version
-// WICHTIG: Wir nehmen jetzt das erste Foto und beginnen danach mit der Sequenz
-function startRotation() {
+// Automatische Rotation und Fotoaufnahme - Korrigierte Version
+// WICHTIG: Korrekte Sequenz: 1) Drehen, 2) Warten, 3) Foto aufnehmen, 4) Warten, Wiederholen
+async function startRotation() {
     debug("startRotation() aufgerufen");
     
     if (isRotating) {
@@ -379,157 +399,140 @@ function startRotation() {
     
     isRotating = true;
 
-    // Statusmeldung anzeigen
-    if (rotationStatus) {
-        rotationStatus.textContent = `Rotation gestartet: Nehme erstes Foto auf`;
-        rotationStatus.style.display = "block";
-    }
-
-    // Ersten Schritt starten - nehme erstes Foto auf der Position 0
-    debug("Nehme erstes Foto auf");
-    takePhotoAndContinue();
-}
-
-// Nehme Foto auf und fahre dann mit der Sequenz fort
-function takePhotoAndContinue() {
-    debug(`takePhotoAndContinue() - Schritt ${currentStep+1}/${totalSteps}`);
-    
-    if (!isRotating) {
-        debug("Rotation wurde gestoppt, breche Sequenz ab");
-        return;
-    }
-    
-    // Der gewünschte Drehwinkel pro Schritt
-    const angle = parseInt(angleInput.value) || 15;
-
-    // Aktuelle Winkelposition berechnen (0, 15, 30, ...)
-    // KORREKTUR: Setze Winkel auf mindestens 1 für das erste Foto
-    const currentAngle = Math.max(1, currentStep * angle);
-    
-    // Statusmeldung aktualisieren
-    if (rotationStatus) {
-        rotationStatus.textContent = `Nehme Foto ${currentStep+1}/${totalSteps} bei ${currentAngle}° auf`;
-    }
-
-    // Nur Foto aufnehmen - an der aktuellen Position
-    debug(`Nehme Foto bei Position ${currentAngle}° auf`);
-    const formData = new FormData();
-    formData.append('degrees', currentAngle);  // Winkel für die Metadaten
-    formData.append('project_id', currentProjectId);
-    formData.append('mode', 'photo_only');     // Nur Foto, keine Drehung
-    
-    fetch('/rotate', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            // Foto zur Liste hinzufügen
-            capturedPhotos.push({
-                path: data.photo,
-                angle: currentAngle
-            });
-
-            // Bild anzeigen
-            displayImage(data.photo, currentAngle);
-
-            // Schritt abgeschlossen
-            currentStep++;
-            
-            // Wenn alle Fotos gemacht wurden, fertig
-            if (currentStep >= totalSteps) {
-                debug("Alle Fotos aufgenommen, Sequenz abgeschlossen");
-                completeRotation();
-                return;
+    // Hauptschleife für die 360°-Sequenz
+    try {
+        for (currentStep = 0; currentStep < totalSteps; currentStep++) {
+            // Abbruch prüfen
+            if (!isRotating) {
+                debug("Rotation wurde gestoppt, breche Sequenz ab");
+                break;
             }
             
-            // Sonst: Zur nächsten Position drehen
-            rotateToNextPosition();
-        } else {
-            console.error('Fehler beim Aufnehmen des Fotos:', data.error);
-            alert(`Fehler beim Aufnehmen des Fotos: ${data.error}`);
-            stopRotation();
-        }
-    })
-    .catch(error => {
-        console.error('Netzwerkfehler beim Aufnehmen des Fotos:', error);
-        alert(`Netzwerkfehler beim Aufnehmen des Fotos: ${error.message}`);
-        stopRotation();
-    });
-}
-
-// Drehe zur nächsten Position
-function rotateToNextPosition() {
-    debug(`rotateToNextPosition() - Drehe zu Position ${currentStep+1}/${totalSteps}`);
-    
-    if (!isRotating) {
-        debug("Rotation wurde gestoppt, breche Sequenz ab");
-        return;
-    }
-    
-    const angle = parseInt(angleInput.value) || 15;
-    
-    // Statusmeldung aktualisieren
-    if (rotationStatus) {
-        rotationStatus.textContent = `Drehe um ${angle}° zur nächsten Position...`;
-    }
-    
-    // Drehe um den eingestellten Winkel
-    debug(`Drehe um ${angle}° weiter`);
-    const formData = new FormData();
-    formData.append('degrees', angle);          // Drehwinkel
-    formData.append('project_id', currentProjectId);
-    formData.append('mode', 'rotate_only');     // Nur drehen, kein Foto
-    
-    fetch('/rotate', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            debug("Drehung erfolgreich, warte für Stabilisierung");
+            const currentAngle = (currentStep * angle) % 360;
             
-            // Kurze Pause für Stabilisierung
-            setTimeout(() => {
-                // Prüfen ob Rotation noch aktiv ist
-                if (!isRotating) {
-                    debug("Rotation wurde während der Stabilisierungspause gestoppt");
-                    return;
+            // Statusmeldung aktualisieren
+            if (rotationStatus) {
+                rotationStatus.textContent = `Schritt ${currentStep+1}/${totalSteps}: Drehe zu Position ${currentAngle}°`;
+                rotationStatus.style.display = "block";
+            }
+            
+            // SCHRITT 1: Motor drehen (aber nicht beim ersten Schritt, da wir von 0° starten)
+            if (currentStep > 0) {
+                debug(`Drehe um ${angle}° weiter zu Position ${currentAngle}°`);
+                
+                // Formular-Daten für die Drehung
+                const rotateFormData = new FormData();
+                rotateFormData.append('degrees', angle);
+                rotateFormData.append('project_id', currentProjectId);
+                rotateFormData.append('mode', 'rotate_only'); // Nur Rotation
+                
+                // Rotation durchführen
+                const rotateResponse = await fetch('/rotate', {
+                    method: 'POST',
+                    body: rotateFormData
+                });
+                
+                const rotateData = await rotateResponse.json();
+                
+                if (rotateData.status !== 'success') {
+                    throw new Error(`Fehler bei der Rotation: ${rotateData.error || 'Unbekannter Fehler'}`);
                 }
                 
-                // Intervall-Pause vor dem nächsten Foto
-                const intervalTime = parseInt(intervalInput.value) || 5;
-                debug(`Warte ${intervalTime} Sekunden bis zur nächsten Aufnahme...`);
-                
+                // Kurze Pause für Stabilisierung (2 Sekunden)
+                debug("Warte 2 Sekunden zur Stabilisierung...");
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+            
+            // Abbruch prüfen nach Drehung
+            if (!isRotating) {
+                debug("Rotation wurde während der Stabilisierungspause gestoppt");
+                break;
+            }
+            
+            // SCHRITT 2: Foto aufnehmen
+            if (rotationStatus) {
+                rotationStatus.textContent = `Schritt ${currentStep+1}/${totalSteps}: Nehme Foto bei ${currentAngle}° auf`;
+            }
+            
+            debug(`Nehme Foto bei Position ${currentAngle}° auf`);
+            
+            // Formular-Daten für die Fotoaufnahme
+            const photoFormData = new FormData();
+            photoFormData.append('degrees', currentAngle);
+            photoFormData.append('project_id', currentProjectId);
+            photoFormData.append('mode', 'photo_only'); // Nur Foto
+            
+            // Foto aufnehmen
+            const photoResponse = await fetch('/rotate', {
+                method: 'POST',
+                body: photoFormData
+            });
+            
+            const photoData = await photoResponse.json();
+            
+            if (photoData.status !== 'success') {
+                throw new Error(`Fehler bei der Fotoaufnahme: ${photoData.error || 'Unbekannter Fehler'}`);
+            }
+            
+            // Foto zur Liste hinzufügen
+            capturedPhotos.push({
+                path: photoData.photo,
+                angle: currentAngle
+            });
+            
+            // Bild anzeigen
+            displayImage(photoData.photo, currentAngle);
+            
+            // Abbruch prüfen nach Foto
+            if (!isRotating) {
+                debug("Rotation wurde nach Fotoaufnahme gestoppt");
+                break;
+            }
+            
+            // SCHRITT 3: Warten für das eingestellte Intervall vor dem nächsten Schritt
+            if (currentStep < totalSteps - 1) {
                 if (rotationStatus) {
-                    rotationStatus.textContent = `Warte ${intervalTime}s für nächste Aufnahme...`;
+                    rotationStatus.textContent = `Warte ${interval} Sekunden für nächsten Schritt...`;
                 }
                 
-                setTimeout(() => {
-                    // Erneut prüfen ob Rotation noch aktiv ist
-                    if (!isRotating) {
-                        debug("Rotation wurde während der Intervall-Pause gestoppt");
-                        return;
-                    }
-                    
-                    // Nächstes Foto aufnehmen
-                    takePhotoAndContinue();
-                }, intervalTime * 1000);
-                
-            }, 2000); // 2 Sekunden Pause für Stabilisierung
-        } else {
-            console.error('Fehler bei der Drehung:', data.error);
-            alert(`Fehler bei der Drehung: ${data.error}`);
-            stopRotation();
+                debug(`Warte ${interval} Sekunden vor nächstem Schritt...`);
+                await new Promise(resolve => setTimeout(resolve, interval * 1000));
+            }
         }
-    })
-    .catch(error => {
-        console.error('Netzwerkfehler bei der Drehung:', error);
-        alert(`Netzwerkfehler bei der Drehung: ${error.message}`);
-        stopRotation();
-    });
+        
+        // Sequenz abgeschlossen oder abgebrochen
+        if (isRotating) {
+            debug("360° Sequenz erfolgreich abgeschlossen");
+            if (rotationStatus) {
+                rotationStatus.textContent = "360° Aufnahme erfolgreich abgeschlossen!";
+            }
+            
+            // Nachfragen, ob ein 360°-Viewer erstellt werden soll
+            if (confirm('360° Aufnahme abgeschlossen! Möchten Sie einen 360°-Viewer aus den aufgenommenen Fotos erstellen?')) {
+                generateViewer();
+            }
+        } else {
+            debug("360° Sequenz wurde manuell abgebrochen");
+            if (rotationStatus) {
+                rotationStatus.textContent = "360° Aufnahme wurde gestoppt";
+            }
+        }
+    } catch (error) {
+        console.error('Fehler während der 360°-Aufnahme:', error);
+        if (rotationStatus) {
+            rotationStatus.textContent = `Fehler: ${error.message}`;
+        }
+        alert(`Fehler während der 360°-Aufnahme: ${error.message}`);
+    } finally {
+        isRotating = false;
+        
+        // UI zurücksetzen
+        if (startBtn) startBtn.disabled = false;
+        if (stopBtn) stopBtn.disabled = true;
+        if (rotateBtn) rotateBtn.disabled = false;
+        
+        debug("360° Sequenz beendet");
+    }
 }
 
 // Beende die Rotation (Server-seitig UND client-seitig)
@@ -593,28 +596,6 @@ function stopRotation() {
     });
     
     debug("Rotation wurde gestoppt");
-}
-
-// Rotation abschließen
-function completeRotation() {
-    debug("completeRotation() aufgerufen - Rotation abgeschlossen");
-    isRotating = false;
-
-    if (startBtn) startBtn.disabled = false;
-    if (stopBtn) stopBtn.disabled = true;
-    if (rotateBtn) rotateBtn.disabled = false;
-
-    if (rotationStatus) {
-        rotationStatus.textContent = 'Rotation abgeschlossen!';
-        setTimeout(() => {
-            rotationStatus.style.display = "none";
-        }, 3000);
-    }
-
-    // Nachfragen, ob ein 360°-Viewer erstellt werden soll
-    if (confirm('Rotation abgeschlossen! Möchten Sie einen 360°-Viewer aus den aufgenommenen Fotos erstellen?')) {
-        generateViewer();
-    }
 }
 
 function generateViewer() {

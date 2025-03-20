@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 app/controllers/turntable_controller.py
-Controller für die Drehteller-Steuerung
+Controller für die Drehteller-Steuerung - KORRIGIERTE VERSION
 """
 
 import time
@@ -135,6 +135,7 @@ class TurntableController:
     def start_session(self, project, camera_controller):
         """
         Startet eine Fotosession für ein Projekt
+        KORRIGIERTE VERSION: Erst drehen, dann warten, dann Foto aufnehmen
         
         Args:
             project: Project-Instanz
@@ -176,36 +177,51 @@ class TurntableController:
 
             self.logger.info(f"Starte Fotosession mit {total_steps} Schritten alle {project.angle_step}°")
 
-            # WICHTIGE ÄNDERUNG: Erst Foto, dann drehen!
+            # KORRIGIERTE REIHENFOLGE: Erst Foto bei Position 0 aufnehmen
             for step in range(total_steps):
                 # Prüfen, ob die Session gestoppt wurde
                 if not self.is_session_running:
                     self.logger.info("Fotosession wurde unterbrochen")
                     break
-                    
-                # Aktuelle Winkelposition
+                
+                # Aktuelle Winkelposition berechnen
                 angle = step * project.angle_step
-
+                
                 # Dateiname für das Foto
                 photo_filename = os.path.join(base_path, f"angle_{angle:03d}.jpg")
-
-                # Foto aufnehmen
+                
+                # SCHRITT 1: Foto aufnehmen
                 self.logger.info(f"Nehme Foto bei {angle}° auf")
                 if not camera_controller.capture_photo(photo_filename):
                     self.logger.error(f"Fehler beim Aufnehmen des Fotos bei {angle}°")
                     self.is_session_running = False
                     return False
-
+                
                 # Session-Informationen aktualisieren
                 session.add_photo(angle, photo_filename)
-
-                # Wenn wir nicht beim letzten Schritt sind, drehen wir weiter
+                
+                # Wenn wir nicht beim letzten Schritt sind, drehe weiter
                 if step < total_steps - 1 and self.is_session_running:
+                    # SCHRITT 2: Drehen zur nächsten Position
                     self.logger.debug(f"Drehe um {project.angle_step}° zur nächsten Position")
-                    self.move_degrees(project.angle_step)
-                    # Kurze Pause für Stabilisierung
+                    if not self.move_degrees(project.angle_step):
+                        self.logger.error(f"Fehler beim Drehen des Tellers um {project.angle_step}°")
+                        self.is_session_running = False
+                        return False
+                    
+                    # SCHRITT 3: Kurze Pause für Stabilisierung (2 Sekunden)
+                    self.logger.debug("Warte 2 Sekunden für Stabilisierung...")
                     time.sleep(2)
-
+                    
+                    # Prüfen, ob die Session gestoppt wurde
+                    if not self.is_session_running:
+                        self.logger.info("Fotosession wurde während der Pause unterbrochen")
+                        break
+                    
+                    # Kurzes Intervall vor dem nächsten Foto
+                    # (Kann angepasst werden, falls ein längeres Intervall benötigt wird)
+                    time.sleep(1)
+                    
             # Session als abgeschlossen markieren, wenn sie nicht manuell gestoppt wurde
             session.completed = self.is_session_running
             self.is_session_running = False
