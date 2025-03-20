@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>360° Produkt Viewer - {{ project.name }}</title>
+    <style>
+        /* Grundlegende Stile */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 15px;
+            background-color: #f0f0f0;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #666;
+        }
+        
+        /* Viewer-Styles */
+        .cloudimage-360 {
+            position: relative;
+            width: 100%;
+            margin: 0 auto;
+            cursor: grab;
+            box-sizing: border-box;
+        }
+
+        .cloudimage-360.initialized {
+            display: block;
+        }
+
+        .cloudimage-360:active {
+            cursor: grabbing;
+        }
+
+        .cloudimage-360-inner-box {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .cloudimage-360-img-magnifier-glass {
+            position: absolute;
+            border: 3px solid #fff;
+            border-radius: 50%;
+            cursor: none;
+            z-index: 1000;
+            background-repeat: no-repeat;
+            background-size: 1200px 800px;
+            box-shadow: 0 0 0 7px rgba(255, 255, 255, 0.85),
+                0 0 7px 7px rgba(0, 0, 0, 0.25),
+                inset 0 0 40px 2px rgba(0, 0, 0, 0.25);
+        }
+
+        .cloudimage-360-bottom-circle {
+            position: absolute;
+            bottom: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.8);
+            text-align: center;
+            line-height: 50px;
+            font-weight: bold;
+            font-size: 16px;
+            color: #333;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            z-index: 10;
+            cursor: pointer;
+            transition: opacity 0.3s;
+        }
+
+        .cloudimage-360-fullscreen-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: rgba(0, 0, 0, 0.3);
+            color: white;
+            font-size: 24px;
+            text-align: center;
+            line-height: 40px;
+            cursor: pointer;
+            z-index: 10;
+            transition: background-color 0.3s;
+        }
+
+        .cloudimage-360-view-icon {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            width: 100px;
+            height: 100px;
+            margin: auto;
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            line-height: 100px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            cursor: pointer;
+            z-index: 9;
+            transition: opacity 0.3s;
+        }
+
+        .cloudimage-360-loader {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            width: 120px;
+            height: 120px;
+            margin: auto;
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            transition: opacity 0.3s;
+        }
+
+        .cloudimage-360-loader-circular {
+            width: 50px;
+            height: 50px;
+            border: 2px solid rgba(0, 0, 0, 0.2);
+            border-top: 2px solid #3f51b5;
+            border-radius: 50%;
+            animation: cloudimage-360-spin 2s linear infinite;
+        }
+
+        @keyframes cloudimage-360-spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Controls und UI */
+        .viewer-container {
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+            background-color: white;
+            height: 500px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+            gap: 10px;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 10px 15px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        
+        .btn:hover {
+            background-color: #2980b9;
+        }
+        
+        .btn.secondary {
+            background-color: #95a5a6;
+        }
+        
+        .btn.secondary:hover {
+            background-color: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>{{ project.name }}</h1>
+            <p>360° Ansicht - erstellt mit dem Drehteller-Steuerungssystem</p>
+        </div>
+        
+        <div class="viewer-container">
+            <div id="viewer-container" data-ci-js-360-view
+                 data-image-list="{% for image in project.images %}./img/{{ image.path | basename }}{% if not loop.last %},{% endif %}{% endfor %}"
+                 data-autoplay="true"
+                 data-speed="80"
+                 data-keys="true"
+                 data-box-shadow="0 15px 80px rgba(0,0,0,0.2)"
+                 data-bottom-circle="true"
+                 data-fullscreen="true"
+                 data-bottom-circle-offset="10"
+                 data-spin-reverse="false"
+                 data-magnifier="600px"
+                 data-ratio="true"
+                 style="width: 100%; height: 100%;">
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button id="play-btn" class="btn">
+                Pause/Play
+            </button>
+            <button id="reverse-btn" class="btn secondary">
+                Richtung ändern
+            </button>
+            <button id="reset-btn" class="btn secondary">
+                Reset
+            </button>
+        </div>
+        
+        <div class="footer">
+            <p>Erstellt am {{ project.created_at|datetime }} mit dem 360° Drehteller-Steuerungssystem</p>
+            <p>&copy; 2025 Alexander Behrens</p>
+        </div>
+    </div>
+
+    <!-- CloudImage 360 Viewer JS -->
+    <script>
+        /*!
+         * 360 degree Image Slider v2.0.1
+         * Angepasste Version für die Standalone-Verwendung im 360° Drehteller Steuerungssystem
+         */
+        
+        (function() {
+            'use strict';
+
+            window.CI360 = {
+                instances: [],
+                numLoaded: 0,
+                notInitOnLoad: false,
+                disableAutoInit: false
+            };
+
+            const ATTR_NAMES = {
+                folder: 'data-folder',
+                filename: 'data-filename',
+                imageCount: 'data-image-count',
+                imageList: 'data-image-list',
+                lazyload: 'data-lazyload',
+                lazySelector: 'data-lazyload-selector',
+                spinReverse: 'data-spin-reverse',
+                speed: 'data-spin-speed',
+                dragSpeed: 'data-drag-speed',
+                keys: 'data-keys',
+                boxShadow: 'data-box-shadow',
+                bottomCircle: 'data-bottom-circle',
+                fullScreen: 'data-fullscreen',
+                magnifier: 'data-magnifier',
+                magnifyFactor: 'data-magnify-factor',
+                ratio: 'data-ratio',
+                autoplay: 'data-autoplay',
+                autoplayReverse: 'data-autoplay-reverse',
+                autoplaySpeed: 'data-autoplay-speed',
+                stopAutoplayOnClick: 'data-stop-autoplay-on-click',
+                controlReverse: 'data-control-reverse',
+                alt: 'data-alt',
+                static: 'data-static',
+                bottomCircleOffset: 'data-bottom-circle-offset',
+                initOnLoad: 'data-init-on-load'
+            };
+
+            // Hier wird der vollständige JavaScript-Code des cloudimage-360.js eingefügt
+            // Dies ist eine vereinfachte Version, die die essenziellen Funktionen enthält
+            
+            class CI360Viewer {
+                constructor(container, options) {
+                    this.container = container;
+                    this.activeImage = 1;
+                    this.movementStart = 0;
+                    this.isClicked = false;
+                    this.loadedImages = 0;
+                    this.imagesLoaded = false;
+                    this.reversed = false;
+                    this.dragSpeed = 150;
+                    this.autoplaySpeed = 10;
+                    this.bottomCircleOffset = 5;
+                    this.keys = {
+                        left: [37, 65],
+                        right: [39, 68]
+                    };
+                    this.init(options);
+                    return this;
+                }
+
+                mousedown(event) {
+                    if (this.imageData.length === 1) return;
+                    event.preventDefault();
+                    if (this.autoplay) {
+                        this.stop();
+                        if (this.stopAutoplayOnClick) {
+                            this.autoplay = false;
+                        }
+                    }
+                    if (this.view360Icon) {
+                        this.remove360ViewIcon();
+                    }
+                    if (this.magnifier && this.magnify) {
+                        this.closeMagnifier();
+                    }
+                    this.movementStart = event.type === 'mousedown' ? event.pageX : event.touches[0].pageX;
+                    this.isClicked = true;
+                }
+
+                mouseup() {
+                    if (this.imageData.length === 1) return;
+                    this.isClicked = false;
+                }
+
+                mousemove(event) {
+                    if (this.imageData.length === 1 || !this.isClicked) return;
+                    
+                    let eventX = event.type === 'mousemove' ? event.pageX : event.touches[0].pageX;
+                    const movementDistance = Math.abs(eventX - this.movementStart);
+
+                    if (movementDistance > this.dragSpeed) {
+                        this.movementStart = eventX;
+                        if (this.spinReverse ? eventX < this.movementStart : eventX > this.movementStart) {
+                            this.moveActiveIndexDown();
+                        } else {
+                            this.moveActiveIndexUp();
+                        }
+                    }
+                }
+
+                moveActiveIndexUp() {
+                    if (this.stopAtEdges && this.activeImage === 1) return;
+                    this.activeImage = this.activeImage === 1 ? this.imageData.length : this.activeImage - 1;
+                    this.update();
+                }
+
+                moveActiveIndexDown() {
+                    if (this.stopAtEdges && this.activeImage === this.imageData.length) return;
+                    this.activeImage = this.activeImage === this.imageData.length ? 1 : this.activeImage + 1;
+                    this.update();
+                }
+
+                update() {
+                    this.image.src = this.imageData[this.activeImage - 1];
+                    if (this.fullScreenView) {
+                        this.fullScreenImage.src = this.imageData[this.activeImage - 1];
+                    }
+                }
+
+                loop(direction) {
+                    if (!this.autoplay) return;
+                    const loop = () => {
+                        if (!this.autoplay) {
+                            clearInterval(this.loopTimeoutId);
+                            return;
+                        }
+                        if (direction === 'right') {
+                            this.moveActiveIndexDown();
+                        } else {
+                            this.moveActiveIndexUp();
+                        }
+                    };
+                    this.loopTimeoutId = setInterval(loop, this.autoplaySpeed);
+                }
+
+                play() {
+                    if (this.bottomCircle) this.hide360ViewCircleIcon();
+                    this.autoplay = true;
+                    this.loopTimeoutId = window.setInterval(
+                        () => this.loop(this.autoplayReverse ? 'left' : 'right'),
+                        this.autoplaySpeed
+                    );
+                }
+
+                stop() {
+                    if (this.bottomCircle) this.show360ViewCircleIcon();
+                    this.autoplay = false;
+                    window.clearTimeout(this.loopTimeoutId);
+                }
+
+                keyup(event) {
+                    if (!event.isTrusted || this.imageData.length === 1) return;
+                    const leftKeys = this.keys.left;
+                    const rightKeys = this.keys.right;
+                    if (leftKeys.includes(event.keyCode)) {
+                        this.moveActiveIndexUp();
+                    } else if (rightKeys.includes(event.keyCode)) {
+                        this.moveActiveIndexDown();
+                    }
+                }
+
+                loadImage(idx) {
+                    const image = new Image();
+                    image.src = this.imageData[idx];
+                    image.onload = () => {
+                        this.loadedImages += 1;
+                        if (this.loadedImages === this.imageData.length) {
+                            this.imagesLoaded = true;
+                            this.hideLoader();
+                            this.showImage();
+                            if (this.fullScreen) this.addFullScreenControls();
+                            if (this.autoplay) this.play();
+                            if (this.view360Icon) this.add360ViewIcon();
+                        }
+                    };
+                }
+
+                hideLoader() {
+                    if (this.loader) {
+                        this.loader.style.opacity = '0';
+                        window.setTimeout(() => {
+                            this.loader.remove();
+                            this.loader = null;
+                        }, 300);
+                    }
+                }
+
+                add360ViewIcon() {
+                    const view360Icon = document.createElement('div');
+                    view360Icon.className = 'cloudimage-360-view-icon';
+                    view360Icon.innerText = '360°';
+                    view360Icon.addEventListener('click', () => {
+                        this.remove360ViewIcon();
+                        if (this.autoplay) this.play();
+                    });
+                    this.view360Icon = view360Icon;
+                    this.innerBox.appendChild(view360Icon);
+                }
+
+                remove360ViewIcon() {
+                    if (this.view360Icon) {
+                        this.view360Icon.style.opacity = '0';
+                        window.setTimeout(() => {
+                            this.view360Icon.remove();
+                            this.view360Icon = null;
+                        }, 300);
+                    }
+                }
+
+                hide360ViewCircleIcon() {
+                    if (this.view360CircleIcon) {
+                        this.view360CircleIcon.style.opacity = '0';
+                    }
+                }
+
+                show360ViewCircleIcon() {
+                    if (this.view360CircleIcon) {
+                        this.view360CircleIcon.style.opacity = '1';
+                    }
+                }
+
+                addFullScreenControls() {
+                    const fullScreenBtn = document.createElement('div');
+                    fullScreenBtn.className = 'cloudimage-360-fullscreen-button';
+                    fullScreenBtn.innerText = '⤢';
+                    fullScreenBtn.addEventListener('click', this.openFullscreen.bind(this));
+                    this.innerBox.appendChild(fullScreenBtn);
+                    this.fullScreenBtn = fullScreenBtn;
+                }
+
+                openFullscreen() {
+                    const fullscreenDiv = document.createElement('div');
+                    fullscreenDiv.className = 'cloudimage-360-fullscreen';
+                    fullscreenDiv.style.position = 'fixed';
+                    fullscreenDiv.style.top = '0';
+                    fullscreenDiv.style.left = '0';
+                    fullscreenDiv.style.width = '100%';
+                    fullscreenDiv.style.height = '100%';
+                    fullscreenDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
+                    fullscreenDiv.style.zIndex = '1031';
+                    
+                    const closeBtn = document.createElement('div');
+                    closeBtn.className = 'cloudimage-360-fullscreen-close';
+                    closeBtn.innerHTML = '&times;';
+                    closeBtn.style.position = 'absolute';
+                    closeBtn.style.top = '20px';
+                    closeBtn.style.right = '20px';
+                    closeBtn.style.fontSize = '40px';
+                    closeBtn.style.color = 'white';
+                    closeBtn.style.cursor = 'pointer';
+                    closeBtn.style.zIndex = '2';
+                    
+                    const container = document.createElement('div');
+                    container.className = 'cloudimage-360-fullscreen-container';
+                    container.style.position = 'absolute';
+                    container.style.top = '50%';
+                    container.style.left = '50%';
+                    container.style.transform = 'translate(-50%, -50%)';
+                    container.style.maxWidth = '80%';
+                    container.style.maxHeight = '80%';
+                    
+                    const img = document.createElement('img');
+                    img.src = this.imageData[this.activeImage - 1];
+                    img.style.maxWidth = '100%';
+                    img.style.maxHeight = '100%';
+                    
+                    container.appendChild(img);
+                    fullscreenDiv.appendChild(closeBtn);
+                    fullscreenDiv.appendChild(container);
+                    document.body.appendChild(fullscreenDiv);
+                    
+                    this.fullScreenView = fullscreenDiv;
+                    this.fullScreenImage = img;
+                    
+                    closeBtn.addEventListener('click', this.closeFullscreen.bind(this));
+                    img.addEventListener('mousedown', this.mousedown.bind(this));
+                    img.addEventListener('mouseup', this.mouseup.bind(this));
+                    img.addEventListener('mousemove', this.mousemove.bind(this));
+                    
+                    img.addEventListener('touchstart', this.mousedown.bind(this), { passive: true });
+                    img.addEventListener('touchend', this.mouseup.bind(this), { passive: true });
+                    img.addEventListener('touchmove', this.mousemove.bind(this), { passive: true });
+                }
+
+                closeFullscreen() {
+                    if (this.fullScreenView) {
+                        document.body.removeChild(this.fullScreenView);
+                        this.fullScreenView = null;
+                        this.fullScreenImage = null;
+                    }
+                }
+
+                add360ViewCircleIcon() {
+                    const view360CircleIcon = document.createElement('div');
+                    view360CircleIcon.className = 'cloudimage-360-bottom-circle';
+                    view360CircleIcon.style.bottom = `${this.bottomCircleOffset}px`;
+                    view360CircleIcon.innerText = '360°';
+                    
+                    this.view360CircleIcon = view360CircleIcon;
+                    this.innerBox.appendChild(view360CircleIcon);
+                    
+                    if (this.autoplay) {
+                        this.hide360ViewCircleIcon();
+                    }
+                }
+
+                showImage() {
+                    if (this.image) {
+                        this.image.style.display = 'block';
+                    }
+                }
+
+                createLoader() {
+                    const loader = document.createElement('div');
+                    loader.className = 'cloudimage-360-loader';
+                    
+                    const circular = document.createElement('div');
+                    circular.className = 'cloudimage-360-loader-circular';
+                    
+                    loader.appendChild(circular);
+                    this.innerBox.appendChild(loader);
+                    
+                    return loader;
+                }
+
+                createImage() {
+                    const image = document.createElement('img');
+                    image.setAttribute('alt', this.alt);
+                    image.setAttribute('draggable', 'false');
+                    this.ratio && (image.style.maxWidth = image.style.width = '100%');
+                    image.style.width = '100%';
+                    image.style.height = '100%';
+                    image.style.objectFit = 'contain';
+                    image.style.userSelect = 'none';
+                    image.style.display = 'none';  // Initially hidden
+                    
+                    // Copy all attributes from original IMG to our new one
+                    if (this.container.tagName === 'IMG') {
+                        const attributes = this.container.attributes;
+                        for (let i = 0; i < attributes.length; i++) {
+                            const attribute = attributes[i];
+                            if (attribute.name !== 'src' && attribute.name !== 'alt') {
+                                image.setAttribute(attribute.name, attribute.value);
+                            }
+                        }
+                    }
+                    
+                    return image;
+                }
+
+                createInnerBox() {
+                    const innerBox = document.createElement('div');
+                    innerBox.className = 'cloudimage-360-inner-box';
+                    innerBox.style.position = 'relative';
+                    innerBox.style.width = '100%';
+                    innerBox.style.height = '100%';
+                    innerBox.style.cursor = 'grab';
+                    
+                    return innerBox;
+                }
+
+                init(options) {
+                    this.options = options || {};
+                    const { folder, filename, imageList, amount, draggable = true } = this.options;
+                    
+                    if (this.container.tagName === 'IMG') {
+                        this.originalImage = this.container;
+                        const parentElement = this.container.parentElement;
+                        const wrapper = document.createElement('div');
+                        
+                        wrapper.className = this.container.className;
+                        wrapper.setAttribute('style', this.container.getAttribute('style'));
+                        wrapper.className = 'cloudimage-360 initialized';
+                        
+                        this.container.className = '';
+                        this.container.removeAttribute('style');
+                        
+                        this.container.parentElement.insertBefore(wrapper, this.container);
+                        wrapper.appendChild(this.container);
+                        this.container = wrapper;
+                    }
+                    
+                    this.innerBox = this.createInnerBox();
+                    this.container.appendChild(this.innerBox);
+                    
+                    this.loader = this.createLoader();
+                    
+                    // Read data attributes
+                    this.folder = this.container.getAttribute(ATTR_NAMES.folder) || folder || '';
+                    this.filename = this.container.getAttribute(ATTR_NAMES.filename) || filename || '';
+                    this.imageList = this.container.getAttribute(ATTR_NAMES.imageList) || imageList || '';
+                    this.imageCount = parseInt(this.container.getAttribute(ATTR_NAMES.imageCount) || amount || 0, 10);
+                    this.lazyLoad = this.container.getAttribute(ATTR_NAMES.lazyload) === 'true';
+                    this.lazySelector = this.container.getAttribute(ATTR_NAMES.lazySelector) || null;
+                    this.ratio = this.container.getAttribute(ATTR_NAMES.ratio) || this.ratio;
+                    this.spinReverse = this.container.getAttribute(ATTR_NAMES.spinReverse) === 'true';
+                    this.smoothPlaying = this.container.getAttribute(ATTR_NAMES.smoothPlaying) === 'true';
+                    this.draggable = this.container.getAttribute(ATTR_NAMES.draggable) === 'false' ? false : draggable;
+                    this.keys = this.container.getAttribute(ATTR_NAMES.keys) !== 'false';
+                    this.bottomCircle = this.container.getAttribute(ATTR_NAMES.bottomCircle) === 'true';
+                    this.magnifier = this.container.getAttribute(ATTR_NAMES.magnifier) || false;
+                    this.boxShadow = this.container.getAttribute(ATTR_NAMES.boxShadow) || '';
+                    this.bottomCircleOffset = parseInt(this.container.getAttribute(ATTR_NAMES.bottomCircleOffset) || this.bottomCircleOffset, 10);
+                    this.fullScreen = this.container.getAttribute(ATTR_NAMES.fullScreen) === 'true';
+                    this.magnifierSize = this.magnifier !== 'false' ? parseInt(this.magnifier, 10) : 0;
+                    this.magnifyFactor = parseInt(this.container.getAttribute(ATTR_NAMES.magnifyFactor) || 3, 10);
+                    this.speed = parseInt(this.container.getAttribute(ATTR_NAMES.speed) || 150, 10);
+                    this.dragSpeed = parseInt(this.container.getAttribute(ATTR_NAMES.dragSpeed) || this.dragSpeed, 10);
+                    this.autoplay = this.container.getAttribute(ATTR_NAMES.autoplay) === 'true';
+                    this.autoplayReverse = this.container.getAttribute(ATTR_NAMES.autoplayReverse) === 'true';
+                    this.stopAutoplayOnClick = this.container.getAttribute(ATTR_NAMES.stopAutoplayOnClick) === 'true';
+                    this.autoplaySpeed = parseInt(this.container.getAttribute(ATTR_NAMES.autoplaySpeed) || this.autoplaySpeed, 10);
+                    this.controlReverse = this.container.getAttribute(ATTR_NAMES.controlReverse) === 'true';
+                    this.stopAtEdges = this.container.getAttribute(ATTR_NAMES.stopAtEdges) === 'true';
+                    this.alt = this.container.getAttribute(ATTR_NAMES.alt) || 'Product 360 view';
+                    this.view360Icon = this.container.getAttribute(ATTR_NAMES.static) !== 'true';
+                    
+                    this.initData();
+                    
+                    if (draggable) {
+                        this.container.classList.add('initialized');
+                        this.initEvents();
+                    }
+                }
+
+                initData() {
+                    this.imageData = [];
+                    
+                    if (this.imageList) {
+                        const imgs = this.imageList.split(',');
+                        const count = imgs.length;
+                        
+                        for (let i = 0; i < count; i++) {
+                            this.imageData.push(imgs[i]);
+                        }
+                    } else {
+                        for (let i = 1; i <= this.imageCount; i++) {
+                            let suffix = '';
+                            if (i < 10) {
+                                suffix = `00${i}`;
+                            } else if (i < 100) {
+                                suffix = `0${i}`;
+                            } else {
+                                suffix = `${i}`;
+                            }
+                            
+                            const fileName = this.filename.replace('{index}', suffix);
+                            const imageUrl = this.folder ? `${this.folder}/${fileName}` : fileName;
+                            this.imageData.push(imageUrl);
+                        }
+                    }
+                    
+                    for (let i = 0; i < this.imageData.length; i++) {
+                        this.loadImage(i);
+                    }
+                }
+
+                initEvents() {
+                    this.innerBox.addEventListener('mousedown', this.mousedown.bind(this));
+                    this.innerBox.addEventListener('mouseup', this.mouseup.bind(this));
+                    this.innerBox.addEventListener('mousemove', this.mousemove.bind(this));
+                    
+                    this.innerBox.addEventListener('touchstart', this.mousedown.bind(this), { passive: true });
+                    this.innerBox.addEventListener('touchend', this.mouseup.bind(this), { passive: true });
+                    this.innerBox.addEventListener('touchmove', this.mousemove.bind(this), { passive: true });
+                    
+                    if (this.keys) {
+                        document.addEventListener('keyup', this.keyup.bind(this));
+                    }
+                    
+                    if (this.bottomCircle) {
+                        this.add360ViewCircleIcon();
+                    }
+                }
+            }
+
+            function initializeCloudimage360() {
+                const autoInitElements = document.querySelectorAll('[data-ci-js-360-view]:not(.initialized)');
+                
+                autoInitElements.forEach(container => {
+                    const viewer = new CI360Viewer(container);
+                    window.CI360.instances.push(viewer);
+                });
+            }
+
+            window.CI360.init = function() {
+                initializeCloudimage360();
+            };
+
+            if (!window.CI360.disableAutoInit && !window.CI360.notInitOnLoad) {
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', initializeCloudimage360);
+                } else {
+                    initializeCloudimage360();
+                }
+            }
+
+            window.CI360.viewer = function(container, options) {
+                return new CI360Viewer(container, options);
+            };
+        })();
+    </script>
+    
+    <!-- Zusätzliche Steuerung -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Knöpfe mit der Viewer-Instanz verbinden
+            const container = document.getElementById('viewer-container');
+            const viewer = window.CI360.instances[0];
+            
+            // Play/Pause Button
+            const playBtn = document.getElementById('play-btn');
+            if (playBtn) {
+                playBtn.addEventListener('click', function() {
+                    if (viewer.autoplay) {
+                        viewer.stop();
+                    } else {
+                        viewer.play();
+                    }
+                });
+            }
+            
+            // Richtung ändern
+            const reverseBtn = document.getElementById('reverse-btn');
+            if (reverseBtn) {
+                reverseBtn.addEventListener('click', function() {
+                    viewer.spinReverse = !viewer.spinReverse;
+                    if (viewer.autoplay) {
+                        viewer.stop();
+                        viewer.play(); // Neustart mit neuer Richtung
+                    }
+                });
+            }
+            
+            // Reset Button
+            const resetBtn = document.getElementById('reset-btn');
+            if (resetBtn) {
+                resetBtn.addEventListener('click', function() {
+                    viewer.activeImage = 1;
+                    viewer.update();
+                });
+            }
+        });
+    </script>
+</body>
+</html>

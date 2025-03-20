@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>360° Cloudimage Viewer - {{ project.name }}</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="/static/css/viewer.css">
+    <link rel="stylesheet" href="/static/css/cloudimage-360.css">
+    <style>
+        .viewer-container {
+            height: 500px;
+            background-color: #f5f5f5;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        
+        #viewer-container {
+            width: 100%;
+            height: 100%;
+        }
+        
+        #controls {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+            gap: 10px;
+        }
+        
+        .viewer-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+        
+        .export-section {
+            margin-top: 30px;
+            border-top: 1px solid #ddd;
+            padding-top: 20px;
+        }
+        
+        .code-block {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>360° Drehteller Steuerung</h1>
+        <nav>
+            <a href="/">Startseite</a>
+            <a href="/projects">Projekte</a>
+            <a href="/settings">Einstellungen</a>
+            <a href="/viewer" class="active">360° Viewer</a>
+        </nav>
+    </header>
+    
+    <main>
+        <div class="card">
+            <h2>Cloud-Image 360° Viewer</h2>
+            
+            <div class="viewer-info">
+                <div>
+                    <h3>Projekt: <span id="project-name">{{ project.name }}</span></h3>
+                    <p>Ausgewählte Bilder: <span id="selected-images-count">{{ project.images|length }}</span></p>
+                </div>
+                
+                <div class="control-buttons">
+                    <a href="/viewer" class="btn btn-secondary">Zurück zur Übersicht</a>
+                    <button id="export-btn" class="btn btn-primary">Export für Web</button>
+                </div>
+            </div>
+            
+            <div class="viewer-container">
+                <div id="loading-spinner" class="text-center py-5">
+                    <div class="spinner">Wird geladen...</div>
+                </div>
+                
+                <div id="viewer-container" data-ci-js-360-view
+                     data-folder="/projects/image/{{ project.id }}"
+                     data-filename="{index}.jpg"
+                     data-image-list="{% for image in project.images %}{{ '/projects/image/' + project.id + '/' + image.path }}{% if not loop.last %},{% endif %}{% endfor %}"
+                     data-autoplay="true"
+                     data-speed="80"
+                     data-keys="true"
+                     data-box-shadow="0 15px 80px rgba(0,0,0,0.2)"
+                     data-bottom-circle="true"
+                     data-bottom-circle-offset="10"
+                     data-fullscreen="true"
+                     data-spin-reverse="false"
+                     data-static="false"
+                     data-magnifier="600px"
+                     data-ratio="true">
+                </div>
+            </div>
+            
+            <div id="controls">
+                <button id="play-btn" class="btn btn-primary">
+                    <i class="bi bi-play-fill"></i> Pause/Play
+                </button>
+                <button id="reverse-btn" class="btn btn-secondary">
+                    <i class="bi bi-arrow-counterclockwise"></i> Richtung ändern
+                </button>
+                <button id="reset-btn" class="btn btn-secondary">
+                    <i class="bi bi-arrow-repeat"></i> Reset
+                </button>
+            </div>
+            
+            <div class="export-section" id="export-section" style="display: none;">
+                <h3>HTML-Code für Webseiten-Integration</h3>
+                <p>Kopieren Sie diesen Code, um den 360°-Viewer in Ihre Webseite einzubinden:</p>
+                
+                <div style="position: relative;">
+                    <button class="copy-btn" id="copy-embed-btn">Kopieren</button>
+                    <pre class="code-block" id="embed-code"></pre>
+                </div>
+                
+                <h3>Direktlink zum 360°-Viewer</h3>
+                <div style="position: relative;">
+                    <button class="copy-btn" id="copy-link-btn">Kopieren</button>
+                    <pre class="code-block" id="direct-link"></pre>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+        <p>&copy; 2025 Alexander Behrens 360° Drehteller Steuerung</p>
+    </footer>
+    
+    <!-- CloudImage 360 Viewer JS -->
+    <script src="/static/js/cloudimage-360.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Verstecke den Spinner sobald der Viewer geladen ist
+            const loadingSpinner = document.getElementById('loading-spinner');
+            
+            // Initialisiere den Viewer manuell
+            const container = document.getElementById('viewer-container');
+            const viewer = window.CI360.viewer(container);
+            
+            // Dieser Event-Trigger ist nicht Teil der originalen Library, aber wir fügen ihn hinzu
+            container.addEventListener('cloudimage-360-viewer-ready', function() {
+                if (loadingSpinner) {
+                    loadingSpinner.style.display = 'none';
+                }
+            });
+            
+            // Wird auch ausgelöst, wenn alle Bilder geladen sind (Fallback)
+            setTimeout(() => {
+                if (loadingSpinner) {
+                    loadingSpinner.style.display = 'none';
+                }
+            }, 2000);
+
+            // Play/Pause Button
+            const playBtn = document.getElementById('play-btn');
+            if (playBtn) {
+                playBtn.addEventListener('click', function() {
+                    if (viewer.autoplay) {
+                        viewer.stop();
+                    } else {
+                        viewer.play();
+                    }
+                });
+            }
+            
+            // Richtung ändern
+            const reverseBtn = document.getElementById('reverse-btn');
+            if (reverseBtn) {
+                reverseBtn.addEventListener('click', function() {
+                    viewer.spinReverse = !viewer.spinReverse;
+                    if (viewer.autoplay) {
+                        viewer.stop();
+                        viewer.play(); // Neustart mit neuer Richtung
+                    }
+                });
+            }
+            
+            // Reset Button
+            const resetBtn = document.getElementById('reset-btn');
+            if (resetBtn) {
+                resetBtn.addEventListener('click', function() {
+                    viewer.activeImage = 1;
+                    viewer.update();
+                });
+            }
+            
+            // Export-Button
+            const exportBtn = document.getElementById('export-btn');
+            const exportSection = document.getElementById('export-section');
+            const embedCode = document.getElementById('embed-code');
+            const directLink = document.getElementById('direct-link');
+            const copyEmbedBtn = document.getElementById('copy-embed-btn');
+            const copyLinkBtn = document.getElementById('copy-link-btn');
+            
+            if (exportBtn && exportSection && embedCode && directLink) {
+                exportBtn.addEventListener('click', function() {
+                    // Abschnitt einblenden
+                    exportSection.style.display = 'block';
+                    
+                    // Aktuellen Hostname und Pfad extrahieren
+                    const baseUrl = window.location.origin;
+                    
+                    // Direktlink
+                    const viewerUrl = `${baseUrl}/viewer/cloudimage?project={{ project.id }}`;
+                    directLink.textContent = viewerUrl;
+                    
+                    // Embed Code erstellen
+                    const imgList = `{% for image in project.images %}${baseUrl}/projects/image/{{ project.id }}/{{ image.path }}{% if not loop.last %},{% endif %}{% endfor %}`;
+                    
+                    const embedHTML = `<!-- 360° Viewer - generiert von Alexander Behrens 360° Drehteller Steuerung -->
+<!-- CSS-Datei einbinden -->
+<link rel="stylesheet" href="${baseUrl}/static/css/cloudimage-360.css">
+
+<!-- Viewer-Container -->
+<div class="cloudimage-360"
+     data-image-list="${imgList}"
+     data-autoplay="true"
+     data-speed="80"
+     data-keys="true"
+     data-box-shadow="0 15px 80px rgba(0,0,0,0.2)"
+     data-bottom-circle="true"
+     data-fullscreen="true"
+     data-spin-reverse="false"
+     data-magnifier="600px"
+     style="max-width: 700px; margin: 0 auto;">
+</div>
+
+<!-- JS-Datei einbinden -->
+<script src="${baseUrl}/static/js/cloudimage-360.js"></script>`;
+                    
+                    embedCode.textContent = embedHTML;
+                    
+                    // Scroll zum Export-Bereich
+                    exportSection.scrollIntoView({ behavior: 'smooth' });
+                });
+            }
+            
+            // Kopieren-Funktionen
+            if (copyEmbedBtn) {
+                copyEmbedBtn.addEventListener('click', function() {
+                    copyToClipboard(embedCode.textContent);
+                    this.textContent = 'Kopiert!';
+                    setTimeout(() => {
+                        this.textContent = 'Kopieren';
+                    }, 2000);
+                });
+            }
+            
+            if (copyLinkBtn) {
+                copyLinkBtn.addEventListener('click', function() {
+                    copyToClipboard(directLink.textContent);
+                    this.textContent = 'Kopiert!';
+                    setTimeout(() => {
+                        this.textContent = 'Kopieren';
+                    }, 2000);
+                });
+            }
+            
+            function copyToClipboard(text) {
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -235,3 +235,43 @@ def create_embed_code(project, selected_images, base_url):
 </script>"""
 
     return embed_code
+
+# Diese Funktion zur Datei /app/blueprints/viewer/routes.py hinzufügen
+
+@viewer_bp.route('/cloudimage')
+def cloudimage_viewer():
+    """
+    Zeigt den CloudImage 360° Viewer für ein Projekt an
+    """
+    try:
+        # Projekt-ID aus URL-Parameter lesen
+        project_id = request.args.get('project')
+        if not project_id:
+            return redirect(url_for('viewer.viewer_overview'))
+        
+        if not validate_project_id(project_id):
+            logger.warning(f"Ungültige Projekt-ID: {project_id}")
+            abort(404)
+        
+        # Projekt laden
+        project = project_manager.get_project(project_id)
+        if not project:
+            return render_template('error.html', message="Projekt nicht gefunden"), 404
+        
+        # Prüfen, ob spezifische Bilder ausgewählt wurden
+        selected_images = request.args.get('images')
+        if selected_images:
+            image_paths = selected_images.split(',')
+            # Nur die angegebenen Bilder behalten
+            filtered_images = []
+            for img in project.images:
+                if img['path'] in image_paths:
+                    filtered_images.append(img)
+            
+            # Temporäre Kopie der Bilder setzen
+            project.images = filtered_images
+        
+        return render_template('viewer/cloudimage-viewer.html', project=project)
+    except Exception as e:
+        logger.error(f"Fehler beim Laden des CloudImage Viewers: {str(e)}")
+        return render_template('error.html', message=f"Fehler beim Laden des CloudImage Viewers: {str(e)}"), 500
