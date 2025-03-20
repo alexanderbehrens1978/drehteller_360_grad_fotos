@@ -3,164 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>360° Cloudimage Viewer - {{ project.name }}</title>
+    <title>360° Drehteller Steuerung - Cloud-Image 360° Viewer</title>
     <link rel="stylesheet" href="/static/css/styles.css">
-    <link rel="stylesheet" href="/static/css/viewer.css">
     <link rel="stylesheet" href="/static/css/cloudimage-360.css">
-    <style>
-        .viewer-container {
-            height: 500px;
-            background-color: #f5f5f5;
-            border-radius: 8px;
-            overflow: hidden;
-            margin-bottom: 20px;
-        }
-        
-        #viewer-container {
-            width: 100%;
-            height: 100%;
-        }
-        
-        #controls {
-            display: flex;
-            justify-content: center;
-            margin-top: 20px;
-            gap: 10px;
-        }
-        
-        .viewer-info {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 1rem;
-        }
-        
-        .export-section {
-            margin-top: 30px;
-            border-top: 1px solid #ddd;
-            padding-top: 20px;
-        }
-        
-        .code-block {
-            max-height: 300px;
-            overflow-y: auto;
-        }
-    </style>
+    <script src="/static/js/cloudimage-360.js" defer></script>
 </head>
 <body>
     <header>
         <h1>360° Drehteller Steuerung</h1>
         <nav>
             <a href="/">Startseite</a>
-            <a href="/projects">Projekte</a>
-            <a href="/settings">Einstellungen</a>
+            <a href="/projekte">Projekte</a>
+            <a href="/einstellungen">Einstellungen</a>
             <a href="/viewer" class="active">360° Viewer</a>
         </nav>
     </header>
-    
+
     <main>
-        <div class="card">
+        <div class="container">
             <h2>Cloud-Image 360° Viewer</h2>
             
-            <div class="viewer-info">
-                <div>
-                    <h3>Projekt: <span id="project-name">{{ project.name }}</span></h3>
-                    <p>Ausgewählte Bilder: <span id="selected-images-count">{{ project.images|length }}</span></p>
-                </div>
-                
-                <div class="control-buttons">
-                    <a href="/viewer" class="btn btn-secondary">Zurück zur Übersicht</a>
-                    <button id="export-btn" class="btn btn-primary">Export für Web</button>
-                </div>
+            <div class="project-info">
+                <h3>Projekt: {{ project.name }}</h3>
+                <p>Ausgewählte Bilder: {{ project.images|length }}</p>
             </div>
             
             <div class="viewer-container">
-                <div id="loading-spinner" class="text-center py-5">
-                    <div class="spinner">Wird geladen...</div>
-                </div>
-                
-                <div id="viewer-container" data-ci-js-360-view
-                     data-folder="/projects/image/{{ project.id }}"
+                <div id="viewer360-container" 
+                     class="cloudimage-360"
+                     data-folder="/static/projects/{{ project.id }}/images/"
                      data-filename="{index}.jpg"
-                     data-image-list="{% for image in project.images %}{{ '/projects/image/' + project.id + '/' + image.path }}{% if not loop.last %},{% endif %}{% endfor %}"
+                     data-image-list="{{ image_list }}"
+                     data-image-count="{{ project.images|length }}"
                      data-autoplay="true"
-                     data-speed="80"
-                     data-keys="true"
-                     data-box-shadow="0 15px 80px rgba(0,0,0,0.2)"
+                     data-speed="50"
+                     data-box-shadow="0 3px 10px rgba(0,0,0,0.3)"
                      data-bottom-circle="true"
-                     data-bottom-circle-offset="10"
-                     data-fullscreen="true"
-                     data-spin-reverse="false"
-                     data-static="false"
-                     data-magnifier="600px"
-                     data-ratio="true">
+                     data-keys="true"
+                     data-drag-speed="150"
+                     data-autoplay-reverse="false"
+                     data-full-screen="true"
+                     data-magnifier="false"
+                     data-ratio="1:1">
                 </div>
             </div>
             
-            <div id="controls">
-                <button id="play-btn" class="btn btn-primary">
-                    <i class="bi bi-play-fill"></i> Pause/Play
-                </button>
-                <button id="reverse-btn" class="btn btn-secondary">
-                    <i class="bi bi-arrow-counterclockwise"></i> Richtung ändern
-                </button>
-                <button id="reset-btn" class="btn btn-secondary">
-                    <i class="bi bi-arrow-repeat"></i> Reset
-                </button>
+            <div class="controls">
+                <button id="pause-play" class="btn btn-primary">Pause/Play</button>
+                <button id="direction" class="btn btn-secondary">Richtung ändern</button>
+                <button id="reset" class="btn btn-secondary">Reset</button>
             </div>
             
-            <div class="export-section" id="export-section" style="display: none;">
-                <h3>HTML-Code für Webseiten-Integration</h3>
-                <p>Kopieren Sie diesen Code, um den 360°-Viewer in Ihre Webseite einzubinden:</p>
+            <div id="export-section" class="export-section" style="display: none;">
+                <h3>Export</h3>
                 
-                <div style="position: relative;">
-                    <button class="copy-btn" id="copy-embed-btn">Kopieren</button>
-                    <pre class="code-block" id="embed-code"></pre>
+                <div class="form-group">
+                    <label for="direct-link">Direktlink:</label>
+                    <div class="code-block">
+                        <pre id="direct-link"></pre>
+                        <button id="copy-link" class="copy-btn">Kopieren</button>
+                    </div>
                 </div>
                 
-                <h3>Direktlink zum 360°-Viewer</h3>
-                <div style="position: relative;">
-                    <button class="copy-btn" id="copy-link-btn">Kopieren</button>
-                    <pre class="code-block" id="direct-link"></pre>
+                <div class="form-group">
+                    <label for="embed-code">Einbettungscode:</label>
+                    <div class="code-block">
+                        <pre id="embed-code"></pre>
+                        <button id="copy-embed" class="copy-btn">Kopieren</button>
+                    </div>
                 </div>
+            </div>
+            
+            <div class="actions">
+                <a href="{{ url_for('viewer.viewer_overview') }}" class="btn btn-secondary">Zurück zur Übersicht</a>
+                <button id="export-btn" class="btn btn-primary">Export für Web</button>
             </div>
         </div>
     </main>
-    
+
     <footer>
         <p>&copy; 2025 Alexander Behrens 360° Drehteller Steuerung</p>
     </footer>
-    
-    <!-- CloudImage 360 Viewer JS -->
-    <script src="/static/js/cloudimage-360.js"></script>
-    
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Verstecke den Spinner sobald der Viewer geladen ist
-            const loadingSpinner = document.getElementById('loading-spinner');
+            // Initialize viewer
+            window.CI360.init();
             
-            // Initialisiere den Viewer manuell
-            const container = document.getElementById('viewer-container');
-            const viewer = window.CI360.viewer(container);
-            
-            // Dieser Event-Trigger ist nicht Teil der originalen Library, aber wir fügen ihn hinzu
-            container.addEventListener('cloudimage-360-viewer-ready', function() {
-                if (loadingSpinner) {
-                    loadingSpinner.style.display = 'none';
-                }
-            });
-            
-            // Wird auch ausgelöst, wenn alle Bilder geladen sind (Fallback)
-            setTimeout(() => {
-                if (loadingSpinner) {
-                    loadingSpinner.style.display = 'none';
-                }
-            }, 2000);
+            // Control buttons
+            const pausePlayBtn = document.getElementById('pause-play');
+            const directionBtn = document.getElementById('direction');
+            const resetBtn = document.getElementById('reset');
+            const exportBtn = document.getElementById('export-btn');
+            const exportSection = document.getElementById('export-section');
+            const directLink = document.getElementById('direct-link');
+            const embedCode = document.getElementById('embed-code');
+            const copyLinkBtn = document.getElementById('copy-link');
+            const copyEmbedBtn = document.getElementById('copy-embed');
 
-            // Play/Pause Button
-            const playBtn = document.getElementById('play-btn');
-            if (playBtn) {
-                playBtn.addEventListener('click', function() {
+            // Get viewer instance
+            const viewer = window.CI360.instances[0];
+            
+            if (pausePlayBtn && viewer) {
+                pausePlayBtn.addEventListener('click', function() {
                     if (viewer.autoplay) {
                         viewer.stop();
                     } else {
@@ -169,86 +114,73 @@
                 });
             }
             
-            // Richtung ändern
-            const reverseBtn = document.getElementById('reverse-btn');
-            if (reverseBtn) {
-                reverseBtn.addEventListener('click', function() {
-                    viewer.spinReverse = !viewer.spinReverse;
-                    if (viewer.autoplay) {
-                        viewer.stop();
-                        viewer.play(); // Neustart mit neuer Richtung
-                    }
+            if (directionBtn && viewer) {
+                directionBtn.addEventListener('click', function() {
+                    viewer.reversed = !viewer.reversed;
                 });
             }
             
-            // Reset Button
-            const resetBtn = document.getElementById('reset-btn');
-            if (resetBtn) {
+            if (resetBtn && viewer) {
                 resetBtn.addEventListener('click', function() {
                     viewer.activeImage = 1;
                     viewer.update();
                 });
             }
             
-            // Export-Button
-            const exportBtn = document.getElementById('export-btn');
-            const exportSection = document.getElementById('export-section');
-            const embedCode = document.getElementById('embed-code');
-            const directLink = document.getElementById('direct-link');
-            const copyEmbedBtn = document.getElementById('copy-embed-btn');
-            const copyLinkBtn = document.getElementById('copy-link-btn');
-            
-            if (exportBtn && exportSection && embedCode && directLink) {
+            // Export functionality
+            if (exportBtn) {
                 exportBtn.addEventListener('click', function() {
-                    // Abschnitt einblenden
+                    // Show export section
                     exportSection.style.display = 'block';
                     
-                    // Aktuellen Hostname und Pfad extrahieren
+                    // Generate direct link
                     const baseUrl = window.location.origin;
+                    const projectId = '{{ project.id }}';
+                    const directLinkUrl = `${baseUrl}/viewer/cloudimage?project=${projectId}`;
+                    directLink.textContent = directLinkUrl;
                     
-                    // Direktlink
-                    const viewerUrl = `${baseUrl}/viewer/cloudimage?project={{ project.id }}`;
-                    directLink.textContent = viewerUrl;
-                    
-                    // Embed Code erstellen
-                    const imgList = `{% for image in project.images %}${baseUrl}/projects/image/{{ project.id }}/{{ image.path }}{% if not loop.last %},{% endif %}{% endfor %}`;
-                    
-                    const embedHTML = `<!-- 360° Viewer - generiert von Alexander Behrens 360° Drehteller Steuerung -->
-<!-- CSS-Datei einbinden -->
-<link rel="stylesheet" href="${baseUrl}/static/css/cloudimage-360.css">
-
-<!-- Viewer-Container -->
-<div class="cloudimage-360"
-     data-image-list="${imgList}"
-     data-autoplay="true"
-     data-speed="80"
-     data-keys="true"
-     data-box-shadow="0 15px 80px rgba(0,0,0,0.2)"
-     data-bottom-circle="true"
-     data-fullscreen="true"
-     data-spin-reverse="false"
-     data-magnifier="600px"
-     style="max-width: 700px; margin: 0 auto;">
-</div>
-
-<!-- JS-Datei einbinden -->
-<script src="${baseUrl}/static/js/cloudimage-360.js"></script>`;
+                    // Generate embed code
+                    const embedHTML = `<!-- 360° Produktansicht -->
+<div id="product-360-view" style="width: 100%; height: 400px; position: relative;">
+    <script src="${baseUrl}/static/js/cloudimage-360.js"></script>
+    <link rel="stylesheet" href="${baseUrl}/static/css/cloudimage-360.css">
+    <div 
+        class="cloudimage-360"
+        data-folder="${baseUrl}/static/projects/${projectId}/images/"
+        data-filename="{index}.jpg"
+        data-image-list="{{ image_list }}"
+        data-image-count="{{ project.images|length }}"
+        data-autoplay="true"
+        data-speed="50"
+        data-box-shadow="0 3px 10px rgba(0,0,0,0.3)"
+        data-bottom-circle="true"
+        data-keys="true"
+        data-drag-speed="150"
+        data-autoplay-reverse="false"
+        data-full-screen="true"
+        data-magnifier="false"
+        data-ratio="1:1">
+    </div>
+    <script>
+        window.addEventListener('load', function() {
+            window.CI360.init();
+        });
+    </script>
+</div>`;
                     
                     embedCode.textContent = embedHTML;
                     
-                    // Scroll zum Export-Bereich
+                    // Scroll to export section
                     exportSection.scrollIntoView({ behavior: 'smooth' });
                 });
             }
             
-            // Kopieren-Funktionen
+            // Copy functions
             if (copyEmbedBtn) {
                 copyEmbedBtn.addEventListener('click', function() {
                     copyToClipboard(embedCode.textContent);
                     this.textContent = 'Kopiert!';
-                    setTimeout(() => {
-                        this.textContent = 'Kopieren';
-                    }, 2000);
+                    setTimeout(() => { this.textContent = 'Kopieren'; }, 2000);
                 });
             }
             
@@ -256,9 +188,7 @@
                 copyLinkBtn.addEventListener('click', function() {
                     copyToClipboard(directLink.textContent);
                     this.textContent = 'Kopiert!';
-                    setTimeout(() => {
-                        this.textContent = 'Kopieren';
-                    }, 2000);
+                    setTimeout(() => { this.textContent = 'Kopieren'; }, 2000);
                 });
             }
             

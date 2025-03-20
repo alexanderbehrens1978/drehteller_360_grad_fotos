@@ -1,0 +1,223 @@
+"""
+app/blueprints/viewer/routes.py
+Enthält die Routen für den 360° Viewer
+"""
+
+import os
+import json
+import logging
+from flask import render_template, request, redirect, url_for, jsonify, abort
+from app.blueprints.viewer import viewer_bp
+from app.models.project import ProjectManager
+from app.utils.path_manager import PathManager
+from app.utils.secure_path import validate_project_id
+
+logger = logging.getLogger(__name__)
+
+path_manager = PathManager()
+project_manager = ProjectManager(path_manager.projects_dir)
+
+@viewer_bp.route('/')
+def viewer_overview():
+    """
+    Zeigt eine Übersicht aller Projekte und den 360° Viewer für ein ausgewähltes Projekt
+    - Bei Auswahl eines Projekts wird direkt der CloudImage 360° Viewer angezeigt
+    """
+    try:
+        # Projekte aus dem ProjectManager laden
+        projects = project_manager.get_all_projects()
+        
+        # Ausgewähltes Projekt (falls vorhanden)
+        project_id = request.args.get('project')
+        
+        if project_id:
+            # Direktes Umleiten zum CloudImage Viewer wenn ein Projekt ausgewählt wurde
+            return redirect(url_for('viewer.cloudimage_viewer', project=project_id))
+        
+        # Ansonsten die Übersichtsseite anzeigen
+        return render_template('viewer/overview.html', projects=projects)
+    except Exception as e:
+        logger.error(f"Fehler beim Laden der Viewer-Übersicht: {str(e)}")
+        return render_template('error.html', message=f"Fehler beim Laden der Viewer-Übersicht: {str(e)}"), 500
+
+@viewer_bp.route('/sphere')
+def sphere_viewer():
+    """
+    Zeigt den 360° Sphere Viewer für ein Projekt
+    """
+    try:
+        # Projekt-ID aus URL-Parameter lesen
+        project_id = request.args.get('project')
+        if not project_id:
+            return redirect(url_for('viewer.viewer_overview'))
+        
+        if not validate_project_id(project_id):
+            logger.warning(f"Ungültige Projekt-ID: {project_id}")
+            abort(404)
+        
+        # Projekt laden
+        project = project_manager.get_project(project_id)
+        if not project:
+            return render_template('error.html', message="Projekt nicht gefunden"), 404
+        
+        # Prüfen, ob spezifische Bilder ausgewählt wurden
+        selected_images = request.args.get('images')
+        if selected_images:
+            image_paths = selected_images.split(',')
+            # Nur die angegebenen Bilder behalten
+            filtered_images = []
+            for img in project.images:
+                if isinstance(img, dict) and img.get('path') in image_paths:
+                    filtered_images.append(img)
+                elif img in image_paths:
+                    filtered_images.append(img)
+            
+            # Temporäre Kopie der Bilder setzen
+            project.images = filtered_images
+        
+        return render_template('viewer/sphere_viewer.html', project=project)
+    except Exception as e:
+        logger.error(f"Fehler beim Laden des Sphere Viewers: {str(e)}")
+        return render_template('error.html', message=f"Fehler beim Laden des Sphere Viewers: {str(e)}"), 500
+
+@viewer_bp.route('/cloudimage')
+def cloudimage_viewer():
+    """
+    Zeigt den CloudImage 360° Viewer für ein Projekt an
+    """
+    try:
+        # Projekt-ID aus URL-Parameter lesen
+        project_id = request.args.get('project')
+        if not project_id:
+            return redirect(url_for('viewer.viewer_overview'))
+        
+        if not validate_project_id(project_id):
+            logger.warning(f"Ungültige Projekt-ID: {project_id}")
+            abort(404)
+        
+        # Projekt laden
+        project = project_manager.get_project(project_id)
+        if not project:
+            return render_template('error.html', message="Projekt nicht gefunden"), 404
+        
+        # Prüfen, ob spezifische Bilder ausgewählt wurden
+        selected_images = request.args.get('images')
+        if selected_images:
+            image_paths = selected_images.split(',')
+            # Nur die angegebenen Bilder behalten
+            filtered_images = []
+            for img in project.images:
+                if isinstance(img, dict) and img.get('path') in image_paths:
+                    filtered_images.append(img)
+                elif img in image_paths:
+                    filtered_images.append(img)
+            
+            # Temporäre Kopie der Bilder setzen
+            project.images = filtered_images
+        
+        # Liste der Bilder als Komma-getrennten String für den Viewer erstellen
+        image_list = ""
+        if project.images:
+            image_paths = []
+            for img in project.images:
+                if isinstance(img, dict) and 'path' in img:
+                    image_paths.append(img['path'])
+                elif isinstance(img, str):
+                    image_paths.append(img)
+            
+            image_list = ",".join(image_paths)
+        
+        return render_template('viewer/cloudimage-viewer.html', project=project, image_list=image_list)
+    except Exception as e:
+        logger.error(f"Fehler beim Laden des CloudImage Viewers: {str(e)}")
+        return render_template('error.html', message=f"Fehler beim Laden des CloudImage Viewers: {str(e)}"), 500
+
+@viewer_bp.route('/export', methods=['POST'])
+def export_viewer():
+    """
+    Exportiert die ausgewählten Bilder für den Viewer
+    """
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({"status": "error", "message": "Keine Daten empfangen"}), 400
+        
+        project_id = data.get('project_id')
+        selected_images = data.get('selected_images', [])
+        
+        if not project_id or not validate_project_id(project_id):
+            return jsonify({"status": "error", "message": "Ungültige Projekt-ID"}), 400
+        
+        # Projekt laden
+        project = project_manager.get_project(project_id)
+        if not project:
+            return jsonify({"status": "error", "message": "Projekt nicht gefunden"}), 404
+        
+        # Export-URL erstellen
+        base_url = request.host_url.rstrip('/')
+        export_url = f"{base_url}/viewer/cloudimage?project={project_id}"
+        
+        # Wenn Bilder explizit ausgewählt wurden, diese hinzufügen
+        if selected_images:
+            export_url += f"&images={','.join(selected_images)}"
+        
+        # Export-Code-Template für CloudImage-Viewer erstellen
+        embed_code = create_cloudimage_embed_code(project, selected_images, base_url)
+        
+        return jsonify({
+            "status": "success",
+            "export_url": export_url,
+            "embed_code": embed_code
+        })
+    except Exception as e:
+        logger.error(f"Fehler beim Exportieren des Viewers: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+def create_cloudimage_embed_code(project, selected_images, base_url):
+    """
+    Erstellt den HTML-Embed-Code für den CloudImage-Viewer
+    """
+    # Bildliste erstellen
+    image_list = ""
+    if project.images:
+        image_paths = []
+        for img in project.images:
+            if isinstance(img, dict) and 'path' in img:
+                if not selected_images or img['path'] in selected_images:
+                    image_paths.append(img['path'])
+            elif isinstance(img, str):
+                if not selected_images or img in selected_images:
+                    image_paths.append(img)
+        
+        image_list = ",".join(image_paths)
+    
+    # Embed-Code erstellen
+    embed_code = f'''<!-- 360° Produkt Viewer - erstellt mit dem 360° Drehteller Steuerungssystem -->
+<div id="product-360-view" style="width: 100%; height: 400px; position: relative;">
+    <script src="{base_url}/static/js/cloudimage-360.js"></script>
+    <link rel="stylesheet" href="{base_url}/static/css/cloudimage-360.css">
+    <div 
+        class="cloudimage-360"
+        data-folder="{base_url}/static/projects/{project.id}/"
+        data-image-list="{image_list}"
+        data-image-count="{len(image_paths)}"
+        data-autoplay="true"
+        data-speed="50"
+        data-box-shadow="0 3px 10px rgba(0,0,0,0.3)"
+        data-bottom-circle="true"
+        data-keys="true"
+        data-drag-speed="150"
+        data-autoplay-reverse="false"
+        data-full-screen="true"
+        data-magnifier="false"
+        data-ratio="1:1">
+    </div>
+    <script>
+        window.addEventListener('load', function() {{
+            window.CI360.init();
+        }});
+    </script>
+</div>'''
+    
+    return embed_code
