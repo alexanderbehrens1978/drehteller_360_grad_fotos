@@ -61,12 +61,16 @@ def viewer_overview():
         logger.error(f"Fehler beim Laden der Viewer-Übersicht: {str(e)}")
         return render_template('error.html', message=f"Fehler beim Laden der Viewer-Übersicht: {str(e)}"), 500
 
+
+
 @viewer_bp.route('/cloudimage')
 def cloudimage_viewer():
     """Zeigt den CloudImage 360° Viewer für ein Projekt"""
+    logger.warning("=== CLOUDIMAGE VIEWER ROUTE CALLED ===")
     try:
         # Projekt-ID aus URL-Parameter lesen
         project_id = request.args.get('project')
+        print(f"DEBUG: Received project_id={project_id}")  # Debug-Ausgabe
         if not project_id:
             return redirect(url_for('viewer.viewer_overview'))
         
@@ -97,44 +101,9 @@ def cloudimage_viewer():
         logger.error(f"Fehler beim Laden des CloudImage Viewers: {str(e)}")
         return render_template('error.html', message=f"Fehler beim Laden des CloudImage Viewers: {str(e)}"), 500
 
-@viewer_bp.route('/sphere')
-def sphere_viewer():
-    """Zeigt den 360° Sphere Viewer für ein Projekt"""
-    try:
-        # Projekt-ID aus URL-Parameter lesen
-        project_id = request.args.get('project')
-        if not project_id:
-            return redirect(url_for('viewer.viewer_overview'))
-        
-        if not validate_project_id(project_id):
-            logger.warning(f"Ungültige Projekt-ID: {project_id}")
-            abort(404)
-        
-        # Projekt laden
-        project = project_manager.get_project(project_id)
-        if not project:
-            return render_template('error.html', message="Projekt nicht gefunden"), 404
-        
-        # Prüfen, ob spezifische Bilder ausgewählt wurden
-        selected_images = request.args.get('images')
-        if selected_images:
-            image_paths = selected_images.split(',')
-            # Nur die angegebenen Bilder behalten
-            filtered_images = []
-            for img in project.images:
-                if isinstance(img, dict) and 'path' in img:
-                    if img['path'] in image_paths:
-                        filtered_images.append(img)
-                elif img in image_paths:
-                    filtered_images.append(img)
-            
-            # Temporäre Kopie der Bilder setzen
-            project.images = filtered_images
-        
-        return render_template('viewer/sphere_viewer.html', project=project)
-    except Exception as e:
-        logger.error(f"Fehler beim Laden des Sphere Viewers: {str(e)}")
-        return render_template('error.html', message=f"Fehler beim Laden des Sphere Viewers: {str(e)}"), 500
+
+
+
 
 @viewer_bp.route('/export', methods=['POST'])
 def export_viewer():
@@ -158,7 +127,7 @@ def export_viewer():
         
         # Export-URL erstellen
         base_url = request.host_url.rstrip('/')
-        export_url = f"{base_url}/viewer/sphere?project={project_id}"
+        export_url = f"{base_url}/viewer/cloudimage?project={project_id}"
         
         # Wenn Bilder explizit ausgewählt wurden, diese hinzufügen
         if selected_images:

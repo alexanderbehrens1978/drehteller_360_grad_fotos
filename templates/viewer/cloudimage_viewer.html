@@ -3,131 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>360° Drehteller Ansicht - {{ project.name }}</title>
+    <title>{{ project.name }} - 360° Drehteller Steuerung</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f5f5f5;
-            color: #333;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        header {
-            background-color: #2c3e50;
-            color: white;
-            padding: 1rem 2rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
-        }
-        h1 {
-            margin: 0;
-            font-size: 1.8rem;
-        }
-        nav {
-            margin-top: 1rem;
-            display: flex;
-            flex-wrap: wrap;
-        }
-        nav a {
-            color: white;
-            margin-right: 1.5rem;
-            text-decoration: none;
-            padding: 0.5rem 0;
-            border-bottom: 2px solid transparent;
-            transition: border-color 0.3s;
-        }
-        nav a:hover, nav a.active {
-            border-color: white;
-        }
         .viewer-container {
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            position: relative;
+            width: 100%;
+            height: 500px;
             margin-bottom: 20px;
-        }
-        .viewer-controls {
-            display: flex;
-            justify-content: center;
-            margin-top: 15px;
-            gap: 10px;
-        }
-        .btn {
-            display: inline-block;
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            text-decoration: none;
-            text-align: center;
-            transition: background-color 0.3s, transform 0.1s;
-            margin-right: 5px;
-            margin-bottom: 5px;
-            background-color: #3498db;
-            color: white;
-        }
-        .btn:hover {
-            background-color: #2980b9;
-        }
-        .btn:active {
-            transform: translateY(1px);
+            border-radius: 8px;
+            overflow: hidden;
         }
         .control-btn {
-            padding: 8px;
-            background: rgba(255, 255, 255, 0.5);
+            margin: 5px;
+            padding: 8px 15px;
+            background-color: #3498db;
+            color: white;
             border: none;
             border-radius: 4px;
             cursor: pointer;
         }
-        .control-btn:focus {
-            outline: none;
+        .control-btn:hover {
+            background-color: #2980b9;
         }
-        .control-left {
-            position: absolute;
-            z-index: 100;
-            top: calc(50% - 15px);
-            left: 20px;
-        }
-        .control-right {
-            position: absolute;
-            z-index: 100;
-            top: calc(50% - 15px);
-            right: 20px;
-        }
-        .control-btn:before {
-            content: '';
-            display: block;
-            width: 30px;
-            height: 30px;
-            background: 50% 50% / cover no-repeat;
-        }
-        .control-left:before {
-            background-image: url('https://cdn.scaleflex.it/plugins/js-cloudimage-360-view/assets/img/arrow-left.svg');
-        }
-        .control-right:before {
-            background-image: url('https://cdn.scaleflex.it/plugins/js-cloudimage-360-view/assets/img/arrow-right.svg');
-        }
-        .viewer-info {
+        .image-container {
+            width: 100%;
+            height: 100%;
             display: flex;
-            justify-content: space-between;
+            justify-content: center;
             align-items: center;
-            margin-bottom: 15px;
+            background-color: #f5f5f5;
+            position: relative;
         }
-        .project-info {
-            margin-bottom: 10px;
+        .product-image {
+            max-width: 100%;
+            max-height: 100%;
+            display: none;
         }
-        footer {
+        .product-image.active {
+            display: block;
+        }
+        .controls {
             text-align: center;
-            padding: 20px;
-            margin-top: 20px;
-            background-color: #2c3e50;
-            color: white;
+            margin-top: 10px;
         }
     </style>
 </head>
@@ -141,182 +59,205 @@
             <a href="/viewer" class="active">360° Viewer</a>
         </nav>
     </header>
-
-    <div class="container">
-        <div class="viewer-container">
-            <div class="viewer-info">
-                <div>
-                    <h2>{{ project.name }}</h2>
-                    <p class="project-info">{{ project.description or "360° Ansicht Ihres Produkts" }}</p>
-                </div>
-                <div>
-                    <button id="fullscreen-btn" class="btn">Vollbild</button>
-                    <a href="/projects/{{ project.id }}" class="btn">Zurück zum Projekt</a>
+    
+    <main>
+        <div class="card">
+            <h2>{{ project.name }}</h2>
+            <p>360° Ansicht Ihres Produkts</p>
+            
+            <div class="viewer-container">
+                <div class="image-container" id="product-viewer">
+                    {% for image in project.images %}
+                        <img 
+                            src="/projects/image/{{ project.id }}/{{ image.path }}" 
+                            class="product-image {% if loop.first %}active{% endif %}" 
+                            alt="Ansicht {{ loop.index }}"
+                            data-angle="{{ image.angle if image.angle is defined else loop.index0 * 360 // project.images|length }}"
+                        >
+                    {% endfor %}
                 </div>
             </div>
-
-            <!-- CloudImage 360-Grad-Viewer Container -->
-            <div 
-                class="cloudimage-360"
-                id="product-viewer"
-                data-folder=""
-                data-filename-x=""
-                data-amount-x="{{ project.images|length }}"
-                data-autoplay
-                data-bottom-circle
-                data-hide-360-logo="false"
-                data-speed="120"
-                data-drag-speed="150"
-                data-keys="true"
-                data-box-shadow="inset 0 0 100px rgba(0,0,0,0.2)"
-                data-responsive="scaleflex"
-            >
-                <button class="cloudimage-360-left control-btn control-left"></button>
-                <button class="cloudimage-360-right control-btn control-right"></button>
-            </div>
-
-            <div class="viewer-controls">
-                <button id="play-btn" class="btn">
-                    <span id="play-icon">⏸</span> Pause
-                </button>
-                <button id="reset-btn" class="btn">
-                    ↺ Zurücksetzen
-                </button>
-                <button id="zoom-in-btn" class="btn">
-                    🔍+ Vergrößern
-                </button>
-                <button id="zoom-out-btn" class="btn">
-                    🔍- Verkleinern
-                </button>
+            
+            <div class="controls">
+                <button id="pause-btn" class="control-btn">⏸ Pause</button>
+                <button id="reset-btn" class="control-btn">↺ Zurücksetzen</button>
+                <button id="zoom-in-btn" class="control-btn">🔍+ Vergrößern</button>
+                <button id="zoom-out-btn" class="control-btn">🔍- Verkleinern</button>
+                <a href="/projects/{{ project.id }}" class="btn">Zurück zum Projekt</a>
+                <a href="/viewer" class="btn">Zurück zur Übersicht</a>
             </div>
         </div>
-    </div>
-
+    </main>
+    
     <footer>
-        <p>&copy; 2025 Alexander Behrens - 360° Drehteller Steuerung</p>
+        <p>&copy; 2025 Alexander Behrens 360° Drehteller Steuerung</p>
     </footer>
-
-    <!-- CloudImage 360 View Script -->
-    <script src="https://scaleflex.cloudimg.io/v7/plugins/js-cloudimage-360-view/latest/js-cloudimage-360-view.min.js?func=proxy"></script>
     
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Projekt-Daten
-            const projectId = "{{ project.id }}";
-            const images = [
-                {% for image in project.images %}
-                "/projects/image/{{ project.id }}/{{ image.path }}"{% if not loop.last %},{% endif %}
-                {% endfor %}
-            ];
-            
-            // CloudImage-Viewer konfigurieren
-            const viewer = document.getElementById('product-viewer');
-            
-            // Da wir keine CloudImage-Folder verwenden, sondern lokale Bilder,
-            // bereiten wir die Bilder manuell vor
-            const CI360 = window.CI360;
-            
-            // CloudImage 360 initialisieren
-            CI360.init();
-            
-            // Manuell die Bilder laden und anzeigen
-            const viewerInstance = CI360.getObject('product-viewer');
-            if (viewerInstance) {
-                // Bilder laden
-                for (let i = 0; i < images.length; i++) {
-                    const img = new Image();
-                    img.src = images[i];
-                    img.onload = function() {
-                        // Alle Bilder geladen
-                        if (i === images.length - 1) {
-                            // Viewer aktualisieren
-                            CI360.update('product-viewer');
-                        }
-                    };
-                    // Bild zu potenzieller Bilder-Liste hinzufügen
-                    if (viewerInstance.images) {
-                        viewerInstance.images.push(img);
-                    }
-                }
-            }
-            
-            // Elemente abrufen
-            const playBtn = document.getElementById('play-btn');
-            const playIcon = document.getElementById('play-icon');
+            const viewerContainer = document.getElementById('product-viewer');
+            const images = viewerContainer.querySelectorAll('.product-image');
+            const pauseBtn = document.getElementById('pause-btn');
             const resetBtn = document.getElementById('reset-btn');
             const zoomInBtn = document.getElementById('zoom-in-btn');
             const zoomOutBtn = document.getElementById('zoom-out-btn');
-            const fullscreenBtn = document.getElementById('fullscreen-btn');
             
-            // Autoplay-Status verfolgen
+            let currentIndex = 0;
             let isPlaying = true;
+            let autoRotateTimer = null;
+            let zoom = 1.0;
+            let isDragging = false;
+            let startX = 0;
             
-            // Event-Listener für Buttons
-            playBtn.addEventListener('click', function() {
+            // Funktion zum Anzeigen eines bestimmten Bildes
+            function showImage(index) {
+                // Aktuelles Bild ausblenden
+                images[currentIndex].classList.remove('active');
+                
+                // Neues Bild anzeigen
+                currentIndex = index;
+                images[currentIndex].classList.add('active');
+            }
+            
+            // Auto-Rotation starten
+            function startAutoRotate() {
+                if (autoRotateTimer) return;
+                
+                autoRotateTimer = setInterval(function() {
+                    const nextIndex = (currentIndex + 1) % images.length;
+                    showImage(nextIndex);
+                }, 100);
+                
+                pauseBtn.textContent = "⏸ Pause";
+                isPlaying = true;
+            }
+            
+            // Auto-Rotation stoppen
+            function stopAutoRotate() {
+                if (autoRotateTimer) {
+                    clearInterval(autoRotateTimer);
+                    autoRotateTimer = null;
+                }
+                
+                pauseBtn.textContent = "▶ Abspielen";
+                isPlaying = false;
+            }
+            
+            // Zoom anwenden
+            function applyZoom() {
+                images.forEach(img => {
+                    img.style.transform = `scale(${zoom})`;
+                });
+            }
+            
+            // Event-Listener
+            pauseBtn.addEventListener('click', function() {
                 if (isPlaying) {
-                    // Animation stoppen
-                    playIcon.textContent = '▶';
-                    playBtn.querySelector('span:last-child').textContent = ' Abspielen';
-                    isPlaying = false;
-                    // Auto-Rotation stoppen
-                    if (viewerInstance && viewerInstance.stopAutorotate) {
-                        viewerInstance.stopAutorotate();
-                    }
+                    stopAutoRotate();
                 } else {
-                    // Animation starten
-                    playIcon.textContent = '⏸';
-                    playBtn.querySelector('span:last-child').textContent = ' Pause';
-                    isPlaying = true;
-                    // Auto-Rotation starten
-                    if (viewerInstance && viewerInstance.startAutorotate) {
-                        viewerInstance.startAutorotate();
-                    }
+                    startAutoRotate();
                 }
             });
             
             resetBtn.addEventListener('click', function() {
-                // Viewer zurücksetzen
-                CI360.destroy();
-                CI360.init();
+                showImage(0);
+                zoom = 1.0;
+                applyZoom();
             });
             
-            // Zoom-Funktionalität
-            let zoomLevel = 1;
             zoomInBtn.addEventListener('click', function() {
-                if (zoomLevel < 3) {
-                    zoomLevel += 0.5;
+                if (zoom < 3.0) {
+                    zoom += 0.1;
                     applyZoom();
                 }
             });
             
             zoomOutBtn.addEventListener('click', function() {
-                if (zoomLevel > 1) {
-                    zoomLevel -= 0.5;
+                if (zoom > 0.5) {
+                    zoom -= 0.1;
                     applyZoom();
                 }
             });
             
-            function applyZoom() {
-                const imgElements = document.querySelectorAll('.cloudimage-360 img');
-                imgElements.forEach(img => {
-                    img.style.transform = `scale(${zoomLevel})`;
-                });
-            }
-            
-            // Vollbild-Funktion
-            fullscreenBtn.addEventListener('click', function() {
-                const viewerContainer = document.querySelector('.viewer-container');
+            // Maus-Events für die Rotation
+            viewerContainer.addEventListener('mousedown', function(e) {
+                isDragging = true;
+                startX = e.clientX;
+                viewerContainer.style.cursor = 'grabbing';
                 
-                if (!document.fullscreenElement) {
-                    viewerContainer.requestFullscreen().catch(err => {
-                        console.error(`Fehler beim Aktivieren des Vollbildmodus: ${err.message}`);
-                    });
-                    fullscreenBtn.textContent = 'Vollbild beenden';
-                } else {
-                    document.exitFullscreen();
-                    fullscreenBtn.textContent = 'Vollbild';
+                if (isPlaying) {
+                    stopAutoRotate();
                 }
             });
+            
+            document.addEventListener('mousemove', function(e) {
+                if (!isDragging) return;
+                
+                const deltaX = e.clientX - startX;
+                if (Math.abs(deltaX) > 20) {
+                    // Richtung bestimmen: nach rechts = rückwärts, nach links = vorwärts
+                    const direction = Math.sign(deltaX);
+                    const newIndex = (currentIndex - direction + images.length) % images.length;
+                    
+                    showImage(newIndex);
+                    startX = e.clientX;
+                }
+            });
+            
+            document.addEventListener('mouseup', function() {
+                isDragging = false;
+                viewerContainer.style.cursor = 'grab';
+            });
+            
+            // Touch-Events für mobile Geräte
+            viewerContainer.addEventListener('touchstart', function(e) {
+                isDragging = true;
+                startX = e.touches[0].clientX;
+                
+                if (isPlaying) {
+                    stopAutoRotate();
+                }
+            });
+            
+            document.addEventListener('touchmove', function(e) {
+                if (!isDragging) return;
+                
+                const deltaX = e.touches[0].clientX - startX;
+                if (Math.abs(deltaX) > 20) {
+                    const direction = Math.sign(deltaX);
+                    const newIndex = (currentIndex - direction + images.length) % images.length;
+                    
+                    showImage(newIndex);
+                    startX = e.touches[0].clientX;
+                }
+            });
+            
+            document.addEventListener('touchend', function() {
+                isDragging = false;
+            });
+            
+            // Mausrad-Zoom
+            viewerContainer.addEventListener('wheel', function(e) {
+                e.preventDefault();
+                
+                if (e.deltaY < 0) {
+                    // Zoom in
+                    if (zoom < 3.0) {
+                        zoom += 0.1;
+                        applyZoom();
+                    }
+                } else {
+                    // Zoom out
+                    if (zoom > 0.5) {
+                        zoom -= 0.1;
+                        applyZoom();
+                    }
+                }
+            });
+            
+            // Initialisierung
+            viewerContainer.style.cursor = 'grab';
+            startAutoRotate();
         });
     </script>
 </body>
