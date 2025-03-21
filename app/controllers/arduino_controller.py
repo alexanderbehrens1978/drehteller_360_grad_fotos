@@ -98,6 +98,7 @@ class ArduinoController:
 
         try:
             # Befehl senden
+            self.logger.debug(f"Sende Befehl an Arduino: {command}")
             self.serial.write(f"{command}\n".encode())
 
             # Auf Antwort warten
@@ -140,6 +141,46 @@ class ArduinoController:
         else:
             self.logger.error("Fehler beim Ausschalten des Motors")
         return success
+
+    def rotate_for_duration(self, duration_ms):
+        """
+        Dreht den Motor für eine bestimmte Zeit
+    
+        Args:
+            duration_ms: Dauer in Millisekunden
+            
+        Returns:
+            True bei Erfolg, False bei Fehler
+        """
+        try:
+            self.logger.debug(f"Rotiere Motor für {duration_ms} ms")
+        
+            # Motor einschalten und Erfolg prüfen
+            motor_on_success = self.turn_motor_on()
+            if not motor_on_success:
+                self.logger.error("Motor konnte nicht eingeschaltet werden, Rotation abgebrochen")
+                return False
+            
+            # Warten für die berechnete Zeit
+            self.logger.debug(f"Warte für {duration_ms/1000.0} Sekunden")
+            time.sleep(duration_ms / 1000.0)
+        
+            # Motor ausschalten
+            motor_off_success = self.turn_motor_off()
+            if not motor_off_success:
+                self.logger.error("Motor konnte nicht ausgeschaltet werden")
+                return False
+            
+            self.logger.debug(f"Rotation für {duration_ms} ms erfolgreich abgeschlossen")
+            return True
+        except Exception as e:
+            self.logger.error(f"Fehler während der Motordrehung: {str(e)}")
+            # Im Fehlerfall unbedingt versuchen, den Motor auszuschalten
+            try:
+                self.turn_motor_off()
+            except Exception as e2:
+                self.logger.error(f"Fehler beim Ausschalten nach fehlgeschlagener Rotation: {str(e2)}")
+            return False
 
     def rotate_for_duration(self, duration_ms):
         """

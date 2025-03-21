@@ -1,49 +1,61 @@
 /*
- * Drehteller-Steuerung über Solid State Relais
+ * Drehteller-Controller für 360-Grad-Fotografie
  * 
- * Steuert einen Motor mit einem Solid State Relais an.
- * Kommandos über die serielle Schnittstelle:
- * 1 = Motor einschalten (Relais schließen)
- * 0 = Motor ausschalten (Relais öffnen)
+ * Dieser Sketch steuert ein Relais, welches einen Motor für einen Drehteller antreibt.
+ * Kommunikation erfolgt über serielle Schnittstelle.
+ * 
+ * Befehle:
+ * - "ON": Schaltet das Relais ein (Motor läuft)
+ * - "OFF": Schaltet das Relais aus (Motor stoppt)
+ * 
+ * Bei jedem erfolgreichen Befehl antwortet der Arduino mit "OK"
  */
 
-const int RELAY_PIN = 8;  // Pin an dem das Relais angeschlossen ist (ggf. anpassen)
+// Pin-Konfiguration
+const int RELAY_PIN = 8;  // Das Relais ist an Pin 3 angeschlossen
+
+// Status-Variablen
+bool motorRunning = false;
 
 void setup() {
-  // Initialisierung der seriellen Kommunikation
+  // Serielle Verbindung initialisieren
   Serial.begin(9600);
   
-  // Relay-Pin als Ausgang konfigurieren
+  // Pin-Konfiguration
   pinMode(RELAY_PIN, OUTPUT);
   
-  // Relay initial ausschalten
+  // Relais zu Beginn ausschalten
   digitalWrite(RELAY_PIN, LOW);
   
-  // Status-Meldung
-  Serial.println("Drehteller-Steuerung bereit");
+  // Status ausgeben
+  Serial.println("Drehteller-Controller bereit");
 }
 
 void loop() {
-  // Auf Befehle von der seriellen Schnittstelle warten
+  // Auf Befehle über serielle Schnittstelle prüfen
   if (Serial.available() > 0) {
-    // Befehl lesen
     String command = Serial.readStringUntil('\n');
-    command.trim(); // Leerzeichen und Zeilenumbrüche entfernen
+    command.trim();  // Entfernt Leerzeichen und Zeilenumbrüche
     
     // Befehl verarbeiten
-    if (command == "1") {
-      // Motor einschalten
+    if (command == "ON") {
+      // Relais einschalten (Motor starten)
       digitalWrite(RELAY_PIN, HIGH);
+      motorRunning = true;
       Serial.println("OK");
     } 
-    else if (command == "0") {
-      // Motor ausschalten
+    else if (command == "OFF") {
+      // Relais ausschalten (Motor stoppen)
       digitalWrite(RELAY_PIN, LOW);
+      motorRunning = false;
       Serial.println("OK");
     }
     else {
       // Unbekannter Befehl
-      Serial.println("ERROR: Unknown command");
+      Serial.println("ERROR: Unbekannter Befehl. Verwende 'ON' zum Einschalten und 'OFF' zum Ausschalten.");
     }
   }
+  
+  // Kurze Pause zur Vermeidung von CPU-Last
+//  delay(50);
 }
