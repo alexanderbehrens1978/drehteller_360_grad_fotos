@@ -657,15 +657,15 @@ function generateViewer() {
     .then(data => {
         debug(`Antwort vom Server: ${JSON.stringify(data)}`);
         if (data.status === 'success') {
-            alert(`360°-Viewer erfolgreich erstellt! Sie werden weitergeleitet.`);
+            alert(`360°-CloudImage-Viewer erfolgreich erstellt! Sie werden weitergeleitet.`);
             window.location.href = data.url;
         } else {
             console.error('Fehler beim Generieren des Viewers:', data.error);
-            alert(`Fehler beim Generieren des 360°-Viewers: ${data.error}`);
+            alert(`Fehler beim Generieren des 360°-CloudImage-Viewers: ${data.error}`);
         }
     })
     .catch(error => {
         console.error('Netzwerkfehler:', error);
-        alert(`Netzwerkfehler beim Generieren des 360°-Viewers: ${error.message}`);
+        alert(`Netzwerkfehler beim Generieren des 360°-CloudImage-Viewers: ${error.message}`);
     });
 }

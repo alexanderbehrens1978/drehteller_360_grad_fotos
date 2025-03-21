@@ -20,7 +20,7 @@ camera_controller = None
 turntable_controller = None
 
 logging.basicConfig(
-    filename='/home/alex/drehteller_360_grad_fotos-dev/drehteller_360_grad_fotos/logs/app.log',
+    filename='/home/alex/development/drehteller_360_grad_fotos/logs/app.log',
     level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )

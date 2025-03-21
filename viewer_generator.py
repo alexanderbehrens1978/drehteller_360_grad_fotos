@@ -109,7 +109,7 @@ class ViewerGenerator:
         with open(metadata_path, "w") as f:
             json.dump(project_metadata, f)
 
-        return f"/viewer?project={project_name}"
+        return f"/viewer/cloudimage?project={project_name}"
 
 
 # Globale Instanz für die Anwendung

@@ -219,4 +219,4 @@ def view_360(project_id):
         return render_template('error.html', message="Projekt nicht gefunden"), 404
     
     # Weiterleitung zum Viewer
-    return redirect(f'/viewer?project={project_id}')
+    return redirect(f'/viewer/cloudimage?project={project_id}')
