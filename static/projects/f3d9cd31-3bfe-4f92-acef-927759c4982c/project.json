@@ -4,7 +4,7 @@
     "description": "",
     "angle_step": 1,
     "created_at": 1742577163.4246848,
-    "updated_at": 1742577247.3367243,
+    "updated_at": 1742586145.979907,
     "sessions": [],
     "path": "/home/alex/development/drehteller_360_grad_fotos/static/projects/f3d9cd31-3bfe-4f92-acef-927759c4982c",
     "images": [
@@ -32,6 +32,356 @@
             "path": "images/photo_1742577238_4.jpg",
             "timestamp": 1742577238,
             "angle": 4
+        },
+        {
+            "path": "images/photo_1742584715_1.jpg",
+            "timestamp": 1742584715,
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1742584733_1.jpg",
+            "timestamp": 1742584733,
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1742584750_2.jpg",
+            "timestamp": 1742584750,
+            "angle": 2
+        },
+        {
+            "path": "images/photo_1742584768_3.jpg",
+            "timestamp": 1742584768,
+            "angle": 3
+        },
+        {
+            "path": "images/photo_1742584785_4.jpg",
+            "timestamp": 1742584785,
+            "angle": 4
+        },
+        {
+            "path": "images/photo_1742584803_5.jpg",
+            "timestamp": 1742584803,
+            "angle": 5
+        },
+        {
+            "path": "images/photo_1742584821_6.jpg",
+            "timestamp": 1742584821,
+            "angle": 6
+        },
+        {
+            "path": "images/photo_1742584838_7.jpg",
+            "timestamp": 1742584838,
+            "angle": 7
+        },
+        {
+            "path": "images/photo_1742584856_8.jpg",
+            "timestamp": 1742584856,
+            "angle": 8
+        },
+        {
+            "path": "images/photo_1742584874_9.jpg",
+            "timestamp": 1742584874,
+            "angle": 9
+        },
+        {
+            "path": "images/photo_1742584891_10.jpg",
+            "timestamp": 1742584891,
+            "angle": 10
+        },
+        {
+            "path": "images/photo_1742584909_11.jpg",
+            "timestamp": 1742584909,
+            "angle": 11
+        },
+        {
+            "path": "images/photo_1742584927_12.jpg",
+            "timestamp": 1742584927,
+            "angle": 12
+        },
+        {
+            "path": "images/photo_1742584944_13.jpg",
+            "timestamp": 1742584944,
+            "angle": 13
+        },
+        {
+            "path": "images/photo_1742584962_14.jpg",
+            "timestamp": 1742584962,
+            "angle": 14
+        },
+        {
+            "path": "images/photo_1742584979_15.jpg",
+            "timestamp": 1742584979,
+            "angle": 15
+        },
+        {
+            "path": "images/photo_1742584997_16.jpg",
+            "timestamp": 1742584997,
+            "angle": 16
+        },
+        {
+            "path": "images/photo_1742585015_17.jpg",
+            "timestamp": 1742585015,
+            "angle": 17
+        },
+        {
+            "path": "images/photo_1742585032_18.jpg",
+            "timestamp": 1742585032,
+            "angle": 18
+        },
+        {
+            "path": "images/photo_1742585053_19.jpg",
+            "timestamp": 1742585053,
+            "angle": 19
+        },
+        {
+            "path": "images/photo_1742585072_20.jpg",
+            "timestamp": 1742585072,
+            "angle": 20
+        },
+        {
+            "path": "images/photo_1742585091_21.jpg",
+            "timestamp": 1742585091,
+            "angle": 21
+        },
+        {
+            "path": "images/photo_1742585110_22.jpg",
+            "timestamp": 1742585110,
+            "angle": 22
+        },
+        {
+            "path": "images/photo_1742585129_23.jpg",
+            "timestamp": 1742585129,
+            "angle": 23
+        },
+        {
+            "path": "images/photo_1742585148_24.jpg",
+            "timestamp": 1742585148,
+            "angle": 24
+        },
+        {
+            "path": "images/photo_1742585167_25.jpg",
+            "timestamp": 1742585167,
+            "angle": 25
+        },
+        {
+            "path": "images/photo_1742585186_26.jpg",
+            "timestamp": 1742585186,
+            "angle": 26
+        },
+        {
+            "path": "images/photo_1742585205_27.jpg",
+            "timestamp": 1742585205,
+            "angle": 27
+        },
+        {
+            "path": "images/photo_1742585224_28.jpg",
+            "timestamp": 1742585224,
+            "angle": 28
+        },
+        {
+            "path": "images/photo_1742585243_29.jpg",
+            "timestamp": 1742585243,
+            "angle": 29
+        },
+        {
+            "path": "images/photo_1742585262_30.jpg",
+            "timestamp": 1742585262,
+            "angle": 30
+        },
+        {
+            "path": "images/photo_1742585281_31.jpg",
+            "timestamp": 1742585281,
+            "angle": 31
+        },
+        {
+            "path": "images/photo_1742585300_32.jpg",
+            "timestamp": 1742585300,
+            "angle": 32
+        },
+        {
+            "path": "images/photo_1742585325_33.jpg",
+            "timestamp": 1742585325,
+            "angle": 33
+        },
+        {
+            "path": "images/photo_1742585352_34.jpg",
+            "timestamp": 1742585352,
+            "angle": 34
+        },
+        {
+            "path": "images/photo_1742585378_35.jpg",
+            "timestamp": 1742585378,
+            "angle": 35
+        },
+        {
+            "path": "images/photo_1742585404_36.jpg",
+            "timestamp": 1742585404,
+            "angle": 36
+        },
+        {
+            "path": "images/photo_1742585431_37.jpg",
+            "timestamp": 1742585431,
+            "angle": 37
+        },
+        {
+            "path": "images/photo_1742585457_38.jpg",
+            "timestamp": 1742585457,
+            "angle": 38
+        },
+        {
+            "path": "images/photo_1742585483_39.jpg",
+            "timestamp": 1742585483,
+            "angle": 39
+        },
+        {
+            "path": "images/photo_1742585510_40.jpg",
+            "timestamp": 1742585510,
+            "angle": 40
+        },
+        {
+            "path": "images/photo_1742585536_41.jpg",
+            "timestamp": 1742585536,
+            "angle": 41
+        },
+        {
+            "path": "images/photo_1742585562_42.jpg",
+            "timestamp": 1742585562,
+            "angle": 42
+        },
+        {
+            "path": "images/photo_1742585589_43.jpg",
+            "timestamp": 1742585589,
+            "angle": 43
+        },
+        {
+            "path": "images/photo_1742585615_44.jpg",
+            "timestamp": 1742585615,
+            "angle": 44
+        },
+        {
+            "path": "images/photo_1742585641_45.jpg",
+            "timestamp": 1742585641,
+            "angle": 45
+        },
+        {
+            "path": "images/photo_1742585668_46.jpg",
+            "timestamp": 1742585668,
+            "angle": 46
+        },
+        {
+            "path": "images/photo_1742585694_47.jpg",
+            "timestamp": 1742585694,
+            "angle": 47
+        },
+        {
+            "path": "images/photo_1742585720_48.jpg",
+            "timestamp": 1742585720,
+            "angle": 48
+        },
+        {
+            "path": "images/photo_1742585747_49.jpg",
+            "timestamp": 1742585747,
+            "angle": 49
+        },
+        {
+            "path": "images/photo_1742585774_50.jpg",
+            "timestamp": 1742585774,
+            "angle": 50
+        },
+        {
+            "path": "images/photo_1742585794_51.jpg",
+            "timestamp": 1742585794,
+            "angle": 51
+        },
+        {
+            "path": "images/photo_1742585813_52.jpg",
+            "timestamp": 1742585813,
+            "angle": 52
+        },
+        {
+            "path": "images/photo_1742585832_53.jpg",
+            "timestamp": 1742585832,
+            "angle": 53
+        },
+        {
+            "path": "images/photo_1742585851_54.jpg",
+            "timestamp": 1742585851,
+            "angle": 54
+        },
+        {
+            "path": "images/photo_1742585870_55.jpg",
+            "timestamp": 1742585870,
+            "angle": 55
+        },
+        {
+            "path": "images/photo_1742585889_56.jpg",
+            "timestamp": 1742585889,
+            "angle": 56
+        },
+        {
+            "path": "images/photo_1742585908_57.jpg",
+            "timestamp": 1742585908,
+            "angle": 57
+        },
+        {
+            "path": "images/photo_1742585927_58.jpg",
+            "timestamp": 1742585927,
+            "angle": 58
+        },
+        {
+            "path": "images/photo_1742585946_59.jpg",
+            "timestamp": 1742585946,
+            "angle": 59
+        },
+        {
+            "path": "images/photo_1742585965_60.jpg",
+            "timestamp": 1742585965,
+            "angle": 60
+        },
+        {
+            "path": "images/photo_1742585984_61.jpg",
+            "timestamp": 1742585984,
+            "angle": 61
+        },
+        {
+            "path": "images/photo_1742586003_62.jpg",
+            "timestamp": 1742586003,
+            "angle": 62
+        },
+        {
+            "path": "images/photo_1742586022_63.jpg",
+            "timestamp": 1742586022,
+            "angle": 63
+        },
+        {
+            "path": "images/photo_1742586041_64.jpg",
+            "timestamp": 1742586041,
+            "angle": 64
+        },
+        {
+            "path": "images/photo_1742586060_65.jpg",
+            "timestamp": 1742586060,
+            "angle": 65
+        },
+        {
+            "path": "images/photo_1742586079_66.jpg",
+            "timestamp": 1742586079,
+            "angle": 66
+        },
+        {
+            "path": "images/photo_1742586098_67.jpg",
+            "timestamp": 1742586098,
+            "angle": 67
+        },
+        {
+            "path": "images/photo_1742586117_68.jpg",
+            "timestamp": 1742586117,
+            "angle": 68
+        },
+        {
+            "path": "images/photo_1742586136_69.jpg",
+            "timestamp": 1742586136,
+            "angle": 69
         }
     ]
 }
