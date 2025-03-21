@@ -1,0 +1,300 @@
+{% extends "base.html" %}
+
+{% block title %}{{ project.name }} - 360° Drehteller Steuerung{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/viewer.css">
+<style>
+    /* Styles für die Navigation-Kontrollen */
+    .cloudimage-360 .cloudimage-360-left, 
+    .cloudimage-360 .cloudimage-360-right,
+    .cloudimage-360 .cloudimage-360-top,
+    .cloudimage-360 .cloudimage-360-bottom {
+        padding: 8px;
+        background: rgba(255, 255, 255, 0.5);
+        border: none;
+        border-radius: 4px;
+        position: absolute;
+        z-index: 100;
+        display: none;
+    }
+    
+    .cloudimage-360 .cloudimage-360-left:focus, 
+    .cloudimage-360 .cloudimage-360-right:focus,
+    .cloudimage-360 .cloudimage-360-top:focus,
+    .cloudimage-360 .cloudimage-360-bottom:focus {
+        outline: none;
+    }
+    
+    .cloudimage-360 .cloudimage-360-left {
+        top: calc(50% - 15px);
+        left: 20px;
+    }
+    
+    .cloudimage-360 .cloudimage-360-right {
+        top: calc(50% - 15px);
+        right: 20px;
+    }
+    
+    .cloudimage-360 .cloudimage-360-top {
+        left: calc(50% - 15px);
+        top: 20px;
+    }
+    
+    .cloudimage-360 .cloudimage-360-bottom {
+        left: calc(50% - 15px);
+        bottom: 20px;
+    }
+    
+    .cloudimage-360 .cloudimage-360-left:before, 
+    .cloudimage-360 .cloudimage-360-right:before,
+    .cloudimage-360 .cloudimage-360-top:before,
+    .cloudimage-360 .cloudimage-360-bottom:before {
+        content: '';
+        display: block;
+        width: 30px;
+        height: 30px;
+        background: 50% 50% / cover no-repeat;
+    }
+    
+    .cloudimage-360 .cloudimage-360-left:before {
+        background-image: url('https://cdn.scaleflex.it/plugins/js-cloudimage-360-view/assets/img/arrow-left.svg');
+    }
+    
+    .cloudimage-360 .cloudimage-360-right:before {
+        background-image: url('https://cdn.scaleflex.it/plugins/js-cloudimage-360-view/assets/img/arrow-right.svg');
+    }
+    
+    .cloudimage-360 .cloudimage-360-top:before {
+        background-image: url('https://cdn.scaleflex.it/plugins/js-cloudimage-360-view/assets/img/arrow-up.svg');
+    }
+    
+    .cloudimage-360 .cloudimage-360-bottom:before {
+        background-image: url('https://cdn.scaleflex.it/plugins/js-cloudimage-360-view/assets/img/arrow-down.svg');
+    }
+    
+    .cloudimage-360 .cloudimage-360-left.not-active, 
+    .cloudimage-360 .cloudimage-360-right.not-active,
+    .cloudimage-360 .cloudimage-360-top.not-active,
+    .cloudimage-360 .cloudimage-360-bottom.not-active {
+        opacity: 0.4;
+        cursor: default;
+    }
+    
+    /* Zusätzliche Steuerelemente */
+    .viewer-controls {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin-top: 15px;
+    }
+    
+    .control-btn {
+        padding: 8px 15px;
+        background-color: #3498db;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+    
+    .control-btn:hover {
+        background-color: #2980b9;
+    }
+    
+    .control-btn i {
+        font-size: 1.2rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>{{ project.name }}</h2>
+    <p>360° Ansicht Ihres Produkts</p>
+    
+    <div class="viewer-container">
+        <div 
+            class="cloudimage-360" 
+            id="product-viewer-{{ project.id }}"
+            data-folder="/projects/image/{{ project.id }}/"
+            {% if project.images|length > 0 %}
+            data-amount-x="{{ project.images|length }}"
+            data-filename-x="{{ project.images[0].path|replace('{index}', '{index}') }}"
+            {% endif %}
+            data-bottom-circle="true"
+            data-keys="true"
+            data-drag-speed="150"
+            data-autoplay="false"
+            data-speed="120"
+            data-magnifier="3"
+        >
+            <!-- Navigationspfeile -->
+            <button class="cloudimage-360-left"></button>
+            <button class="cloudimage-360-right"></button>
+            <button class="cloudimage-360-top"></button>
+            <button class="cloudimage-360-bottom"></button>
+        </div>
+    </div>
+    
+    <div class="viewer-controls">
+        <button id="play-btn" class="control-btn">
+            <i class="bi bi-play-fill"></i> Auto-Rotation
+        </button>
+        <button id="reset-btn" class="control-btn">
+            <i class="bi bi-arrow-counterclockwise"></i> Zurücksetzen
+        </button>
+        <button id="zoom-in-btn" class="control-btn">
+            <i class="bi bi-zoom-in"></i> Vergrößern
+        </button>
+        <button id="zoom-out-btn" class="control-btn">
+            <i class="bi bi-zoom-out"></i> Verkleinern
+        </button>
+        <button id="fullscreen-btn" class="control-btn">
+            <i class="bi bi-fullscreen"></i> Vollbild
+        </button>
+        <a href="/projects/{{ project.id }}" class="btn">Zurück zum Projekt</a>
+        <a href="/viewer" class="btn">Zurück zur Übersicht</a>
+    </div>
+    
+    <div class="viewer-info">
+        <div>
+            <h4>Projekt: <span id="project-name">{{ project.name }}</span></h4>
+            <p>Bilder: <span id="image-count">{{ project.images|length }}</span></p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://scaleflex.cloudimg.io/v7/plugins/js-cloudimage-360-view/latest/js-cloudimage-360-view.min.js?func=proxy"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // CloudImage initialisieren
+    window.CI360.init();
+    
+    const playBtn = document.getElementById('play-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const zoomInBtn = document.getElementById('zoom-in-btn');
+    const zoomOutBtn = document.getElementById('zoom-out-btn');
+    const fullscreenBtn = document.getElementById('fullscreen-btn');
+    
+    const viewerId = 'product-viewer-{{ project.id }}';
+    let isPlaying = false;
+    let zoom = 1.0;
+    const maxZoom = 5.0;
+    const minZoom = 0.5;
+    const zoomStep = 0.5;
+    
+    // Play/Pause-Button
+    playBtn.addEventListener('click', function() {
+        const viewerInstance = window.CI360.getActiveInstance(viewerId);
+        
+        if (viewerInstance) {
+            if (isPlaying) {
+                viewerInstance.stop();
+                playBtn.innerHTML = '<i class="bi bi-play-fill"></i> Auto-Rotation';
+            } else {
+                viewerInstance.play();
+                playBtn.innerHTML = '<i class="bi bi-pause-fill"></i> Pause';
+            }
+            isPlaying = !isPlaying;
+        }
+    });
+    
+    // Reset-Button
+    resetBtn.addEventListener('click', function() {
+        const viewerInstance = window.CI360.getActiveInstance(viewerId);
+        
+        if (viewerInstance) {
+            // CloudImage hat keine direkte reset-Methode, aber wir können
+            // zum ersten Bild springen und die Rotation stoppen
+            viewerInstance.stop();
+            viewerInstance.goTo(0);
+            
+            // UI aktualisieren
+            isPlaying = false;
+            playBtn.innerHTML = '<i class="bi bi-play-fill"></i> Auto-Rotation';
+            
+            // Auch den Zoom zurücksetzen
+            zoom = 1.0;
+            applyZoom();
+        }
+    });
+    
+    // Zoom-In Button
+    zoomInBtn.addEventListener('click', function() {
+        if (zoom < maxZoom) {
+            zoom += zoomStep;
+            applyZoom();
+        }
+    });
+    
+    // Zoom-Out Button
+    zoomOutBtn.addEventListener('click', function() {
+        if (zoom > minZoom) {
+            zoom -= zoomStep;
+            applyZoom();
+        }
+    });
+    
+    // Vollbild-Button
+    fullscreenBtn.addEventListener('click', function() {
+        const viewerContainer = document.querySelector('.viewer-container');
+        
+        if (!document.fullscreenElement) {
+            if (viewerContainer.requestFullscreen) {
+                viewerContainer.requestFullscreen().catch(err => {
+                    console.error(`Fehler beim Wechseln in den Vollbildmodus: ${err.message}`);
+                });
+                fullscreenBtn.innerHTML = '<i class="bi bi-fullscreen-exit"></i> Vollbild beenden';
+            }
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+                fullscreenBtn.innerHTML = '<i class="bi bi-fullscreen"></i> Vollbild';
+            }
+        }
+    });
+    
+    // Zoom anwenden
+    function applyZoom() {
+        const viewerContainer = document.querySelector('.cloudimage-360');
+        const images = viewerContainer.querySelectorAll('img');
+        
+        images.forEach(img => {
+            img.style.transform = `scale(${zoom})`;
+        });
+    }
+    
+    // Event-Listener für Fullscreen-Änderungen
+    document.addEventListener('fullscreenchange', function() {
+        if (!document.fullscreenElement) {
+            fullscreenBtn.innerHTML = '<i class="bi bi-fullscreen"></i> Vollbild';
+        }
+    });
+    
+    // Mausrad-Zoom
+    document.querySelector('.cloudimage-360').addEventListener('wheel', function(e) {
+        e.preventDefault();
+        
+        if (e.deltaY < 0) {
+            // Zoom in
+            if (zoom < maxZoom) {
+                zoom += zoomStep;
+                applyZoom();
+            }
+        } else {
+            // Zoom out
+            if (zoom > minZoom) {
+                zoom -= zoomStep;
+                applyZoom();
+            }
+        }
+    });
+});
+</script>
+{% endblock %}
