@@ -53,13 +53,49 @@ def viewer_overview():
             
             # Wenn ein Projekt gefunden wurde, direkt zum Viewer
             if selected_project:
-                return render_template('viewer/sphere_viewer.html', project=selected_project)
+                return render_template('viewer/cloudimage_viewer.html', project=selected_project)
         
         # Ansonsten die Übersichtsseite anzeigen
         return render_template('viewer/overview.html', projects=projects)
     except Exception as e:
         logger.error(f"Fehler beim Laden der Viewer-Übersicht: {str(e)}")
         return render_template('error.html', message=f"Fehler beim Laden der Viewer-Übersicht: {str(e)}"), 500
+
+@viewer_bp.route('/cloudimage')
+def cloudimage_viewer():
+    """Zeigt den CloudImage 360° Viewer für ein Projekt"""
+    try:
+        # Projekt-ID aus URL-Parameter lesen
+        project_id = request.args.get('project')
+        if not project_id:
+            return redirect(url_for('viewer.viewer_overview'))
+        
+        if not validate_project_id(project_id):
+            logger.warning(f"Ungültige Projekt-ID: {project_id}")
+            abort(404)
+        
+        # Projekt laden
+        project = project_manager.get_project(project_id)
+        if not project:
+            return render_template('error.html', message="Projekt nicht gefunden"), 404
+        
+        # Prüfen, ob spezifische Bilder ausgewählt wurden
+        selected_images = request.args.get('images')
+        if selected_images:
+            image_paths = selected_images.split(',')
+            # Nur die angegebenen Bilder behalten
+            filtered_images = []
+            for img in project.images:
+                if img['path'] in image_paths:
+                    filtered_images.append(img)
+            
+            # Temporäre Kopie der Bilder setzen
+            project.images = filtered_images
+        
+        return render_template('viewer/cloudimage_viewer.html', project=project)
+    except Exception as e:
+        logger.error(f"Fehler beim Laden des CloudImage Viewers: {str(e)}")
+        return render_template('error.html', message=f"Fehler beim Laden des CloudImage Viewers: {str(e)}"), 500
 
 @viewer_bp.route('/sphere')
 def sphere_viewer():
@@ -86,7 +122,10 @@ def sphere_viewer():
             # Nur die angegebenen Bilder behalten
             filtered_images = []
             for img in project.images:
-                if img['path'] in image_paths:
+                if isinstance(img, dict) and 'path' in img:
+                    if img['path'] in image_paths:
+                        filtered_images.append(img)
+                elif img in image_paths:
                     filtered_images.append(img)
             
             # Temporäre Kopie der Bilder setzen
@@ -143,19 +182,28 @@ def create_embed_code(project, selected_images, base_url):
     image_objects = []
     if selected_images:
         for img in project.images:
-            if img['path'] in selected_images:
+            if isinstance(img, dict) and 'path' in img:
+                if img['path'] in selected_images:
+                    image_objects.append(img)
+            elif img in selected_images:
                 image_objects.append(img)
     else:
         image_objects = project.images
     
     # Nach Winkel sortieren
-    image_objects.sort(key=lambda x: x.get('angle', 0))
+    if all(isinstance(img, dict) and 'angle' in img for img in image_objects):
+        image_objects.sort(key=lambda x: x.get('angle', 0))
     
     # JavaScript-Teil für die Bilder erstellen
     images_js = []
     for img in image_objects:
-        angle = img.get('angle', 0)
-        path = img.get('path', '')
+        if isinstance(img, dict) and 'path' in img:
+            angle = img.get('angle', 0)
+            path = img.get('path', '')
+        else:
+            angle = 0
+            path = img
+            
         images_js.append(f"""{{
             id: '{angle}',
             name: 'Winkel {angle}°',

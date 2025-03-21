@@ -5,6 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>360° Viewer Übersicht - Drehteller Steuerung</title>
     <link rel="stylesheet" href="/static/css/styles.css">
+// Diese JavaScript-Funktion im <head> Bereich von templates/viewer/overview.html einfügen
+
+<script>
+function openViewer(projectId) {
+    // Direkte URL zum Sphere-Viewer
+    window.location.href = '/viewer/sphere?project=' + projectId;
+    
+    // Falls das nicht funktioniert, versuchen wir einen Fallback mit der Basis-Route
+    setTimeout(function() {
+        window.location.href = '/viewer?project=' + projectId;
+    }, 1000);
+    
+    return false; // Verhindert das Standard-Link-Verhalten
+}
+</script>
+
+<!-- Dann im Projektkartenbereich den Button so ändern: -->
+<a href="#" onclick="return openViewer('{{ project.id }}')" class="btn btn-primary">
+    360° Ansicht öffnen
+</a>
 </head>
 <body>
     <header>
@@ -45,7 +65,8 @@
                             
                             <div class="project-actions">
                                 {% if project.images and project.images|length > 0 %}
-                                    <a href="/viewer?project={{ project.id }}" class="btn btn-primary">360° Ansicht öffnen</a>
+
+                                    <a href="/viewer/sphere?project={{ project.id }}" class="btn btn-primary">360° Ansicht öffnen</a>
                                 {% else %}
                                     <button class="btn btn-secondary" disabled>Keine Bilder vorhanden</button>
                                 {% endif %}
@@ -65,5 +86,69 @@
     <footer>
         <p>&copy; 2025 Alexander Behrens 360° Drehteller Steuerung</p>
     </footer>
+
+<!-- Fügen Sie diesen Code direkt am Ende von templates/viewer/overview.html ein, 
+     direkt vor dem schließenden </body> Tag -->
+
+<div style="margin-top: 20px; padding: 20px; background-color: #f8f9fa; border: 1px solid #ddd; border-radius: 5px;">
+    <h3>Debug-Bereich</h3>
+    <p>Klicken Sie auf die folgenden Links, um direkt zu den verschiedenen Viewer-Routen zu navigieren:</p>
+    
+    <div style="margin-top: 10px;">
+        <p><strong>Projekt-ID:</strong> <span id="debug-project-id"></span></p>
+        
+        {% if projects and projects|length > 0 and projects[0].id %}
+            <button onclick="debugInfo('{{ projects[0].id }}')" class="btn btn-secondary">Debug-Info anzeigen</button>
+            <br><br>
+            <a href="/viewer/sphere?project={{ projects[0].id }}" class="btn btn-primary" target="_blank">
+                Direkter Link: /viewer/sphere
+            </a>
+            <br><br>
+            <a href="/viewer/cloudimage?project={{ projects[0].id }}" class="btn btn-primary" target="_blank">
+                Direkter Link: /viewer/cloudimage
+            </a>
+            <br><br>
+            <a href="/viewer?project={{ projects[0].id }}" class="btn btn-primary" target="_blank">
+                Direkter Link: /viewer (Hauptroute)
+            </a>
+        {% else %}
+            <p>Keine Projekte verfügbar für Debug-Links.</p>
+        {% endif %}
+        
+        <div id="debug-output" style="margin-top: 15px; padding: 10px; background-color: #eee; border-radius: 5px; display: none;">
+            <h4>Route-Debug-Info:</h4>
+            <pre id="debug-routes"></pre>
+        </div>
+    </div>
+</div>
+
+<script>
+    function debugInfo(projectId) {
+        document.getElementById('debug-project-id').textContent = projectId;
+        
+        // Test-Anfrage an alle relevanten Routen
+        const routes = [
+            `/viewer?project=${projectId}`,
+            `/viewer/sphere?project=${projectId}`,
+            `/viewer/cloudimage?project=${projectId}`
+        ];
+        
+        document.getElementById('debug-routes').innerHTML = 'Testing routes...\n';
+        document.getElementById('debug-output').style.display = 'block';
+        
+        routes.forEach(route => {
+            // Einfache Ping-Anfrage ohne Seitennavigation
+            fetch(route, {method: 'HEAD'})
+                .then(response => {
+                    document.getElementById('debug-routes').innerHTML += 
+                        `${route}: ${response.status} ${response.ok ? 'OK' : 'FAIL'}\n`;
+                })
+                .catch(error => {
+                    document.getElementById('debug-routes').innerHTML += 
+                        `${route}: ERROR - ${error.message}\n`;
+                });
+        });
+    }
+</script>
 </body>
 </html>

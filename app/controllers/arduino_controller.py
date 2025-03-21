@@ -138,8 +138,8 @@ class ArduinoController:
         success = self.send_command("0")
         if success:
             self.logger.debug("Motor erfolgreich ausgeschaltet")
-        else:
-            self.logger.error("Fehler beim Ausschalten des Motors")
+#        else:
+#            self.logger.error("Fehler beim Ausschalten des Motors")
         return success
 
     def rotate_for_duration(self, duration_ms):
