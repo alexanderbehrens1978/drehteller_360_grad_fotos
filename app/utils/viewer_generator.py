@@ -115,7 +115,7 @@ class ViewerGenerator:
             json.dump(project_metadata, f, indent=4)
 
         self.logger.info(f"Viewer für Projekt {project_name} mit {len(processed_images)} Bildern erstellt")
-        return f"/viewer?project={project_name}"
+        return f"/viewer/cloudimage?project={project_name}"
 
 
 # Globale Instanz für einfachen Zugriff

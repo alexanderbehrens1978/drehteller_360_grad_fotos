@@ -329,7 +329,7 @@ def generate_360():
         return jsonify({
             "status": "success",
             "message": f"360°-CloudImage-Viewer für {project.name} ist verfügbar",
-            "url": f"/viewer?project={project_id}"
+            "url": f"/viewer/cloudimage?project={project_id}"
         })
     except Exception as e:
         logger.error(f"Fehler beim Generieren des 360°-Viewers: {str(e)}")

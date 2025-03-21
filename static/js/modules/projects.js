@@ -89,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
         imageCountElement.textContent = `${imageCount} Bilder`;
         
         // Link zum Viewer
-        viewButton.href = `/viewer?project=${project.id}`;
+        viewButton.href = `/viewer/cloudimage?project=${project.id}`;
         
         // Lösch-Button
         if (deleteButton) {
