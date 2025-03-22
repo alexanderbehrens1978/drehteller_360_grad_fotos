@@ -161,7 +161,7 @@ chmod -R u+rwX "$PROJECT_DIR/myenv"
 # 3. Verzeichnisstruktur erstellen
 echo -e "\n${GREEN}3. Erstelle Verzeichnisstruktur...${NC}"
 mkdir -p "$PROJECT_DIR/static/photos"
-mkdir -p "$PROJECT_DIR/projects"
+mkdir -p "$PROJECT_DIR/static/projects"
 mkdir -p "$PROJECT_DIR/logs"
 
 # Berechtigungen setzen

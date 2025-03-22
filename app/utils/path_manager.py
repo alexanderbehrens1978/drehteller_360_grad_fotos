@@ -20,7 +20,6 @@ class PathManager:
         # Wichtige Verzeichnisse
         self.static_dir = os.path.join(self.base_dir, 'static')
         self.photos_dir = os.path.join(self.static_dir, 'photos')
-        self.sample_images_dir = os.path.join(self.static_dir, 'sample_images')
         self.projects_dir = os.path.join(self.static_dir, 'projects')
         self.temp_dir = os.path.join(self.static_dir, 'temp')
         
@@ -31,7 +30,6 @@ class PathManager:
         dirs_to_create = [
             self.static_dir,
             self.photos_dir,
-            self.sample_images_dir,
             self.projects_dir,
             self.temp_dir
         ]
@@ -75,20 +73,6 @@ class PathManager:
                 
             return secure_join(self.projects_dir, project_id)
         return self.projects_dir
-    
-    def get_sample_image_path(self, filename=None):
-        """
-        Gibt den vollständigen Pfad zu einem Beispielbild zurück
-        
-        Args:
-            filename: Name der Datei (optional)
-            
-        Returns:
-            Vollständiger Pfad zum Beispielbild oder zum Beispielbilder-Verzeichnis
-        """
-        if filename:
-            return secure_join(self.sample_images_dir, filename)
-        return self.sample_images_dir
     
     def get_project_photo_path(self, project_id, session_id, filename):
         """
