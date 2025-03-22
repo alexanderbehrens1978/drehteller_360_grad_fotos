@@ -29,9 +29,7 @@ instance/
 
 # Captured Images and Generated Files
 static/photos/*
-static/sample_images/*
 !static/photos/.gitkeep
-!static/sample_images/.gitkeep
 
 # Environment
 .env

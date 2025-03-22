@@ -63,9 +63,7 @@ instance/
 
 # Captured Images and Generated Files
 static/photos/*
-static/sample_images/*
 !static/photos/.gitkeep
-!static/sample_images/.gitkeep
 
 # Environment
 .env
@@ -94,8 +92,8 @@ Thumbs.db
 EOL
 
 # Leere .gitkeep Dateien für Verzeichnisse erstellen
-mkdir -p static/photos static/sample_images
-touch static/photos/.gitkeep static/sample_images/.gitkeep
+mkdir -p static/photos
+touch static/photos/.gitkeep 
 
 # Dateien stagen
 echo -e "${YELLOW}Füge Dateien zum Commit hinzu...${NC}"
