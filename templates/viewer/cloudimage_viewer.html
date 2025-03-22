@@ -5,49 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ project.name }} - 360° Drehteller Steuerung</title>
     <link rel="stylesheet" href="/static/css/styles.css">
-    <style>
-        .viewer-container {
-            position: relative;
-            width: 100%;
-            height: 500px;
-            margin-bottom: 20px;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        .control-btn {
-            margin: 5px;
-            padding: 8px 15px;
-            background-color: #3498db;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        .control-btn:hover {
-            background-color: #2980b9;
-        }
-        .image-container {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background-color: #f5f5f5;
-            position: relative;
-        }
-        .product-image {
-            max-width: 100%;
-            max-height: 100%;
-            display: none;
-        }
-        .product-image.active {
-            display: block;
-        }
-        .controls {
-            text-align: center;
-            margin-top: 10px;
-        }
-    </style>
+    <link rel="stylesheet" href="/static/css/cloudimage-viewer.css">
 </head>
 <body>
     <header>
@@ -75,6 +33,9 @@
                             data-angle="{{ image.angle if image.angle is defined else loop.index0 * 360 // project.images|length }}"
                         >
                     {% endfor %}
+                    <div class="bottom-circle">
+                        <div class="circle-indicator" id="circle-indicator"></div>
+                    </div>
                 </div>
             </div>
             
@@ -86,6 +47,61 @@
                 <a href="/projects/{{ project.id }}" class="btn">Zurück zum Projekt</a>
                 <a href="/viewer" class="btn">Zurück zur Übersicht</a>
             </div>
+            
+            <div class="viewer-settings">
+                <h3>Viewer-Einstellungen</h3>
+                <div class="settings-group">
+                    <div class="settings-item">
+                        <label for="auto-play-behavior">Auto Play Verhalten:</label>
+                        <select id="auto-play-behavior">
+                            <option value="spin-x" selected>Horizontal (spin-x)</option>
+                            <option value="spin-xy">Horizontal und Vertikal (spin-xy)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="settings-item">
+                        <label for="auto-play-speed">Auto Play Geschwindigkeit (ms):</label>
+                        <input type="number" id="auto-play-speed" value="100" min="50" max="500">
+                    </div>
+                    
+                    <div class="settings-item">
+                        <label for="drag-speed">Drag Geschwindigkeit:</label>
+                        <input type="number" id="drag-speed" value="120" min="50" max="300">
+                    </div>
+                </div>
+                
+                <div class="settings-group">
+                    <div class="settings-item">
+                        <input type="checkbox" id="auto-play" checked>
+                        <label for="auto-play">Auto Play</label>
+                    </div>
+                    
+                    <div class="settings-item">
+                        <input type="checkbox" id="auto-play-once">
+                        <label for="auto-play-once">Einmal abspielen</label>
+                    </div>
+                    
+                    <div class="settings-item">
+                        <input type="checkbox" id="auto-play-reverse">
+                        <label for="auto-play-reverse">Rückwärts abspielen</label>
+                    </div>
+                    
+                    <div class="settings-item">
+                        <input type="checkbox" id="draggable" checked>
+                        <label for="draggable">Drag-Funktion</label>
+                    </div>
+                    
+                    <div class="settings-item">
+                        <input type="checkbox" id="fullscreen">
+                        <label for="fullscreen">Vollbild</label>
+                    </div>
+                    
+                    <div class="settings-item">
+                        <input type="checkbox" id="magnifier">
+                        <label for="magnifier">Lupe</label>
+                    </div>
+                </div>
+            </div>
         </div>
     </main>
     
@@ -93,172 +109,6 @@
         <p>&copy; 2025 Alexander Behrens 360° Drehteller Steuerung</p>
     </footer>
     
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const viewerContainer = document.getElementById('product-viewer');
-            const images = viewerContainer.querySelectorAll('.product-image');
-            const pauseBtn = document.getElementById('pause-btn');
-            const resetBtn = document.getElementById('reset-btn');
-            const zoomInBtn = document.getElementById('zoom-in-btn');
-            const zoomOutBtn = document.getElementById('zoom-out-btn');
-            
-            let currentIndex = 0;
-            let isPlaying = true;
-            let autoRotateTimer = null;
-            let zoom = 1.0;
-            let isDragging = false;
-            let startX = 0;
-            
-            // Funktion zum Anzeigen eines bestimmten Bildes
-            function showImage(index) {
-                // Aktuelles Bild ausblenden
-                images[currentIndex].classList.remove('active');
-                
-                // Neues Bild anzeigen
-                currentIndex = index;
-                images[currentIndex].classList.add('active');
-            }
-            
-            // Auto-Rotation starten
-            function startAutoRotate() {
-                if (autoRotateTimer) return;
-                
-                autoRotateTimer = setInterval(function() {
-                    const nextIndex = (currentIndex + 1) % images.length;
-                    showImage(nextIndex);
-                }, 100);
-                
-                pauseBtn.textContent = "⏸ Pause";
-                isPlaying = true;
-            }
-            
-            // Auto-Rotation stoppen
-            function stopAutoRotate() {
-                if (autoRotateTimer) {
-                    clearInterval(autoRotateTimer);
-                    autoRotateTimer = null;
-                }
-                
-                pauseBtn.textContent = "▶ Abspielen";
-                isPlaying = false;
-            }
-            
-            // Zoom anwenden
-            function applyZoom() {
-                images.forEach(img => {
-                    img.style.transform = `scale(${zoom})`;
-                });
-            }
-            
-            // Event-Listener
-            pauseBtn.addEventListener('click', function() {
-                if (isPlaying) {
-                    stopAutoRotate();
-                } else {
-                    startAutoRotate();
-                }
-            });
-            
-            resetBtn.addEventListener('click', function() {
-                showImage(0);
-                zoom = 1.0;
-                applyZoom();
-            });
-            
-            zoomInBtn.addEventListener('click', function() {
-                if (zoom < 3.0) {
-                    zoom += 0.1;
-                    applyZoom();
-                }
-            });
-            
-            zoomOutBtn.addEventListener('click', function() {
-                if (zoom > 0.5) {
-                    zoom -= 0.1;
-                    applyZoom();
-                }
-            });
-            
-            // Maus-Events für die Rotation
-            viewerContainer.addEventListener('mousedown', function(e) {
-                isDragging = true;
-                startX = e.clientX;
-                viewerContainer.style.cursor = 'grabbing';
-                
-                if (isPlaying) {
-                    stopAutoRotate();
-                }
-            });
-            
-            document.addEventListener('mousemove', function(e) {
-                if (!isDragging) return;
-                
-                const deltaX = e.clientX - startX;
-                if (Math.abs(deltaX) > 20) {
-                    // Richtung bestimmen: nach rechts = rückwärts, nach links = vorwärts
-                    const direction = Math.sign(deltaX);
-                    const newIndex = (currentIndex - direction + images.length) % images.length;
-                    
-                    showImage(newIndex);
-                    startX = e.clientX;
-                }
-            });
-            
-            document.addEventListener('mouseup', function() {
-                isDragging = false;
-                viewerContainer.style.cursor = 'grab';
-            });
-            
-            // Touch-Events für mobile Geräte
-            viewerContainer.addEventListener('touchstart', function(e) {
-                isDragging = true;
-                startX = e.touches[0].clientX;
-                
-                if (isPlaying) {
-                    stopAutoRotate();
-                }
-            });
-            
-            document.addEventListener('touchmove', function(e) {
-                if (!isDragging) return;
-                
-                const deltaX = e.touches[0].clientX - startX;
-                if (Math.abs(deltaX) > 20) {
-                    const direction = Math.sign(deltaX);
-                    const newIndex = (currentIndex - direction + images.length) % images.length;
-                    
-                    showImage(newIndex);
-                    startX = e.touches[0].clientX;
-                }
-            });
-            
-            document.addEventListener('touchend', function() {
-                isDragging = false;
-            });
-            
-            // Mausrad-Zoom
-            viewerContainer.addEventListener('wheel', function(e) {
-                e.preventDefault();
-                
-                if (e.deltaY < 0) {
-                    // Zoom in
-                    if (zoom < 3.0) {
-                        zoom += 0.1;
-                        applyZoom();
-                    }
-                } else {
-                    // Zoom out
-                    if (zoom > 0.5) {
-                        zoom -= 0.1;
-                        applyZoom();
-                    }
-                }
-            });
-            
-            // Initialisierung
-            viewerContainer.style.cursor = 'grab';
-            startAutoRotate();
-        });
-    </script>
+    <script src="/static/js/cloudimage-viewer.js"></script>
 </body>
 </html>

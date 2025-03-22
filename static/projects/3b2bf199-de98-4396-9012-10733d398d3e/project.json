@@ -1,0 +1,42 @@
+{
+    "id": "3b2bf199-de98-4396-9012-10733d398d3e",
+    "name": "VSF T300",
+    "description": "",
+    "angle_step": 1,
+    "created_at": 1742663001.8741438,
+    "updated_at": 1742663110.7059042,
+    "sessions": [],
+    "path": "/d360/dev/static/projects/3b2bf199-de98-4396-9012-10733d398d3e",
+    "images": [
+        {
+            "path": "images/photo_1742663005_1.jpg",
+            "timestamp": 1742663005,
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1742663030_1.jpg",
+            "timestamp": 1742663030,
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1742663047_2.jpg",
+            "timestamp": 1742663047,
+            "angle": 2
+        },
+        {
+            "path": "images/photo_1742663065_3.jpg",
+            "timestamp": 1742663065,
+            "angle": 3
+        },
+        {
+            "path": "images/photo_1742663083_4.jpg",
+            "timestamp": 1742663083,
+            "angle": 4
+        },
+        {
+            "path": "images/photo_1742663101_5.jpg",
+            "timestamp": 1742663101,
+            "angle": 5
+        }
+    ]
+}
