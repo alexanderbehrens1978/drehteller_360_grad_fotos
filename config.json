@@ -3,8 +3,8 @@
         "device_path": "/dev/video0",
         "type": "gphoto2",
         "resolution": {
-            "width": 1280,
-            "height": 720
+            "width": 2000,
+            "height": 1000
         }
     },
     "gphoto2_profiles": {

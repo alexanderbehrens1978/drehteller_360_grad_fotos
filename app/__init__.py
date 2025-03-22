@@ -5,7 +5,6 @@ app/__init__.py
 Initialisiert die Flask-Anwendung und registriert alle Blueprints.
 """
 
-import os
 import logging
 from flask import Flask
 from app.utils.config_manager import config_manager
@@ -74,7 +73,7 @@ def create_app(config_name=None):
         try:
             date = datetime.fromtimestamp(timestamp)
             return date.strftime('%d.%m.%Y %H:%M')
-        except Exception as e:
+        except Exception:
             return "Ungültiges Datum"
 
     # Sicherheits-Header hinzufügen
@@ -131,8 +130,8 @@ def configure_logging(app):
     log_level = logging.DEBUG if app.config['DEBUG'] else logging.INFO
     log_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     
-    # File Handler
-    file_handler = logging.FileHandler('drehteller360.log')
+    # File Handler - auf den korrekten Pfad geändert
+    file_handler = logging.FileHandler('/d360/dev/logs/app.log')
     file_handler.setLevel(log_level)
     file_handler.setFormatter(log_formatter)
     
@@ -144,6 +143,12 @@ def configure_logging(app):
     # Root Logger konfigurieren
     root_logger = logging.getLogger()
     root_logger.setLevel(log_level)
+    
+    # Alle bestehenden Handler entfernen um Doppeleinträge zu vermeiden
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+    
+    # Neue Handler hinzufügen
     root_logger.addHandler(file_handler)
     root_logger.addHandler(console_handler)
     
