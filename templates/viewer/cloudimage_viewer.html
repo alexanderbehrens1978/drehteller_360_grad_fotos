@@ -3,112 +3,200 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ project.name }} - 360° Drehteller Steuerung</title>
-    <link rel="stylesheet" href="/static/css/styles.css">
-    <link rel="stylesheet" href="/static/css/cloudimage-viewer.css">
+    <meta name="project-id" content="{{ project.id }}">
+    <title>{{ project.name }} - 360° Ansicht</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/cloudimage-viewer.css') }}">
+    <script src="{{ url_for('static', filename='js/cloudimage-viewer.js') }}" defer></script>
 </head>
 <body>
-    <header>
-        <h1>360° Drehteller Steuerung</h1>
-        <nav>
-            <a href="/">Startseite</a>
-            <a href="/projects">Projekte</a>
-            <a href="/settings">Einstellungen</a>
-            <a href="/viewer" class="active">360° Viewer</a>
-        </nav>
-    </header>
-    
-    <main>
-        <div class="card">
-            <h2>{{ project.name }}</h2>
+    <div class="container">
+        <header>
+            <h1>{{ project.name }}</h1>
             <p>360° Ansicht Ihres Produkts</p>
-            
-            <div class="viewer-container">
-                <div class="image-container" id="product-viewer">
-                    {% for image in project.images %}
-                        <img 
-                            src="/projects/image/{{ project.id }}/{{ image.path }}" 
-                            class="product-image {% if loop.first %}active{% endif %}" 
-                            alt="Ansicht {{ loop.index }}"
-                            data-angle="{{ image.angle if image.angle is defined else loop.index0 * 360 // project.images|length }}"
-                        >
+        </header>
+        
+        <main>
+            <!-- 360° Viewer Container -->
+            <div id="viewer-container" class="viewer-container">
+                <!-- Bottom Circle Indicator -->
+                <div class="bottom-circle"></div>
+                
+                <div id="viewer" class="cloudimage-360" 
+                     data-folder="{{ url_for('static', filename='projects/' + project.id + '/') }}"
+                     data-filename-pattern="image_{index}.jpg"
+                     data-amount="{{ project.images|length }}"
+                     data-spin-reverse="false"
+                     data-full-screen="true"
+                     data-magnifier="true"
+                     data-ratio="1">
+                    <!-- Debug: Hier die Bilder direkt anzeigen, falls JS nicht funktioniert -->
+                    {% for img in project.images %}
+                        <img class="product-image {% if loop.first %}active{% endif %}" 
+                             src="{{ url_for('static', filename='projects/' + project.id + '/') }}{{ img['path'] }}" 
+                             alt="Bild {{ loop.index }} von {{ project.images|length }}"
+                             {% if not loop.first %}style="display: none;"{% endif %}>
                     {% endfor %}
-                    <div class="bottom-circle">
-                        <div class="circle-indicator" id="circle-indicator"></div>
-                    </div>
+                </div>
+                
+                <!-- Magnifier-Glas -->
+                <div class="img-magnifier-glass" style="display: none; position: absolute; border: 2px solid #ccc; border-radius: 50%; cursor: none; width: 150px; height: 150px; background-repeat: no-repeat;"></div>
+                
+                <!-- Viewer Steuerelemente -->
+                <div class="viewer-controls">
+                    <button id="play-btn" class="control-btn" title="Wiedergabe starten/pausieren">
+                        <span id="play-icon">▶</span>
+                    </button>
+                    <button id="fullscreen-btn" class="control-btn" title="Vollbildmodus">
+                        <span>⛶</span>
+                    </button>
+                    <button id="magnifier-btn" class="control-btn" title="Lupe aktivieren">
+                        <span>🔍</span>
+                    </button>
+                    <button id="export-btn" class="control-btn" title="Viewer exportieren">
+                        <span>⤴</span>
+                    </button>
+                    <button id="settings-btn" class="control-btn" title="Einstellungen">
+                        <span>⚙</span>
+                    </button>
                 </div>
             </div>
             
-            <div class="controls">
-                <button id="pause-btn" class="control-btn">⏸ Pause</button>
-                <button id="reset-btn" class="control-btn">↺ Zurücksetzen</button>
-                <button id="zoom-in-btn" class="control-btn">🔍+ Vergrößern</button>
-                <button id="zoom-out-btn" class="control-btn">🔍- Verkleinern</button>
-                <a href="/projects/{{ project.id }}" class="btn">Zurück zum Projekt</a>
-                <a href="/viewer" class="btn">Zurück zur Übersicht</a>
-            </div>
-            
+            <!-- Viewer-Einstellungen -->
             <div class="viewer-settings">
                 <h3>Viewer-Einstellungen</h3>
-                <div class="settings-group">
-                    <div class="settings-item">
-                        <label for="auto-play-behavior">Auto Play Verhalten:</label>
-                        <select id="auto-play-behavior">
-                            <option value="spin-x" selected>Horizontal (spin-x)</option>
-                            <option value="spin-xy">Horizontal und Vertikal (spin-xy)</option>
-                        </select>
-                    </div>
-                    
-                    <div class="settings-item">
-                        <label for="auto-play-speed">Auto Play Geschwindigkeit (ms):</label>
-                        <input type="number" id="auto-play-speed" value="100" min="50" max="500">
-                    </div>
-                    
-                    <div class="settings-item">
-                        <label for="drag-speed">Drag Geschwindigkeit:</label>
-                        <input type="number" id="drag-speed" value="120" min="50" max="300">
+                
+                <div class="settings-row">
+                    <label for="auto-play-behavior">Auto Play Verhalten:</label>
+                    <select id="auto-play-behavior">
+                        <option value="spin-x">Horizontal drehen</option>
+                        <option value="spin-y">Vertikal drehen</option>
+                        <option value="spin-xy">Horizontal & Vertikal</option>
+                    </select>
+                </div>
+                
+                <div class="settings-row">
+                    <label for="auto-play-speed">Auto Play Geschwindigkeit (ms):</label>
+                    <input type="number" id="auto-play-speed" min="50" max="5000" value="100">
+                </div>
+                
+                <div class="settings-row">
+                    <label for="drag-speed">Drag Geschwindigkeit:</label>
+                    <input type="number" id="drag-speed" min="50" max="500" value="120">
+                </div>
+                
+                <div class="settings-checkbox">
+                    <input type="checkbox" id="auto-play" checked>
+                    <label for="auto-play">Auto Play</label>
+                </div>
+                
+                <div class="settings-checkbox">
+                    <input type="checkbox" id="auto-play-once">
+                    <label for="auto-play-once">Auto Play Once</label>
+                </div>
+                
+                <div class="settings-checkbox">
+                    <input type="checkbox" id="auto-play-reverse">
+                    <label for="auto-play-reverse">Auto Play Reverse</label>
+                </div>
+                
+                <div class="settings-checkbox">
+                    <input type="checkbox" id="draggable" checked>
+                    <label for="draggable">Draggable</label>
+                </div>
+                
+                <div class="settings-checkbox">
+                    <input type="checkbox" id="fullscreen-enabled" checked>
+                    <label for="fullscreen-enabled">Fullscreen</label>
+                </div>
+                
+                <div class="settings-checkbox">
+                    <input type="checkbox" id="magnifier-enabled" checked>
+                    <label for="magnifier-enabled">Magnifier</label>
+                </div>
+                
+                <div class="actions" style="display: flex; justify-content: center; gap: 50px; margin-top: 30px;">
+                    <a href="{{ url_for('viewer.viewer_overview', project=project.id) }}" class="button">Zurück zur Übersicht</a>
+                    <a href="{{ url_for('export.export_options', project_id=project.id) }}" class="button" style="background-color: #4CAF50;">Exportieren</a>
+                </div>
+            </div>
+        </main>
+        
+        <!-- Export Modal -->
+        <div id="export-modal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>360° Ansicht exportieren</h2>
+                
+                <div class="export-section">
+                    <h3>Export URL</h3>
+                    <p>Teilen Sie diese URL, um die 360° Ansicht direkt zu öffnen:</p>
+                    <div class="copy-container">
+                        <input type="text" id="export-url" readonly>
+                        <button id="copy-url-btn" class="copy-btn">Kopieren</button>
                     </div>
                 </div>
                 
-                <div class="settings-group">
-                    <div class="settings-item">
-                        <input type="checkbox" id="auto-play" checked>
-                        <label for="auto-play">Auto Play</label>
-                    </div>
-                    
-                    <div class="settings-item">
-                        <input type="checkbox" id="auto-play-once">
-                        <label for="auto-play-once">Einmal abspielen</label>
-                    </div>
-                    
-                    <div class="settings-item">
-                        <input type="checkbox" id="auto-play-reverse">
-                        <label for="auto-play-reverse">Rückwärts abspielen</label>
-                    </div>
-                    
-                    <div class="settings-item">
-                        <input type="checkbox" id="draggable" checked>
-                        <label for="draggable">Drag-Funktion</label>
-                    </div>
-                    
-                    <div class="settings-item">
-                        <input type="checkbox" id="fullscreen">
-                        <label for="fullscreen">Vollbild</label>
-                    </div>
-                    
-                    <div class="settings-item">
-                        <input type="checkbox" id="magnifier">
-                        <label for="magnifier">Lupe</label>
+                <div class="export-section">
+                    <h3>Einbettungscode</h3>
+                    <p>Fügen Sie diesen Code in Ihre Website ein, um die 360° Ansicht einzubetten:</p>
+                    <div class="copy-container">
+                        <textarea id="embed-code" readonly rows="8"></textarea>
+                        <button id="copy-embed-btn" class="copy-btn">Kopieren</button>
                     </div>
                 </div>
             </div>
         </div>
-    </main>
+        
+        <!-- Settings Modal -->
+        <div id="settings-modal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Viewer-Einstellungen</h2>
+                
+                <div class="settings-section">
+                    <h3>Einstellungen speichern</h3>
+                    <div class="input-group">
+                        <input type="text" id="settings-name" placeholder="Name der Einstellung">
+                        <button id="save-settings-btn">Speichern</button>
+                    </div>
+                </div>
+                
+                <div class="settings-section">
+                    <h3>Gespeicherte Einstellungen</h3>
+                    <div id="settings-list" class="settings-list">
+                        <p>Keine gespeicherten Einstellungen vorhanden</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>&copy; {{ current_year }} 360° Drehteller Steuerung. Alle Rechte vorbehalten.</p>
+        </footer>
+    </div>
     
-    <footer>
-        <p>&copy; 2025 Alexander Behrens 360° Drehteller Steuerung</p>
-    </footer>
-    
-    <script src="/static/js/cloudimage-viewer.js"></script>
+    <script>
+        // Setze die Projekt-ID für JavaScript
+        window.projectId = "{{ project.id }}";
+        
+        // Debug: Drucke Projekt-Informationen
+        console.log("Projekt-ID:", "{{ project.id }}");
+        console.log("Projekt-Name:", "{{ project.name }}");
+        console.log("Anzahl Bilder:", {{ project.images|length }});
+        
+        // Debug der Bildpfade
+        {% for img in project.images %}
+        console.log("Bild {{ loop.index }} Pfad:", "{{ img['path'] }}");
+        {% endfor %}
+        
+        // CSRF-Token für API-Anfragen (falls verwendet)
+        const csrfToken = "{{ csrf_token() if csrf_token is defined else '' }}";
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialisiere den Viewer
+            const cloudimageViewer = new CloudimageViewer('viewer');
+        });
+    </script>
 </body>
 </html>

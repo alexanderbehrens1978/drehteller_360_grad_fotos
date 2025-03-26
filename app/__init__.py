@@ -176,3 +176,7 @@ def register_blueprints(app):
     # Blueprint für den 360° Viewer
     from app.blueprints.viewer import viewer_bp
     app.register_blueprint(viewer_bp, url_prefix='/viewer')
+    
+    # Blueprint für Export-Funktionalität
+    from app.blueprints.export import export_bp
+    app.register_blueprint(export_bp, url_prefix='/export')
