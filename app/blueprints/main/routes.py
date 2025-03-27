@@ -42,6 +42,31 @@ def viewer_overview():
     # Umleitung zur korrekten Route in der viewer Blueprint
     return redirect(url_for('viewer.viewer_overview'))
 
+@main_bp.route('/turntable-status', methods=['GET'])
+def turntable_status():
+    """
+    Gibt den aktuellen Status und die Status-Historie des Drehtellers zurück
+    """
+    global turntable_controller
+    
+    try:
+        if not turntable_controller:
+            return jsonify({"error": "Drehteller ist nicht initialisiert"}), 500
+            
+        # Status und Historie abrufen
+        current_status = turntable_controller.get_current_status()
+        status_history = turntable_controller.get_status_history()
+        
+        return jsonify({
+            "current": current_status,
+            "history": status_history,
+            "is_running": turntable_controller.is_session_running
+        })
+        
+    except Exception as e:
+        logger.error(f"Fehler beim Abrufen des Drehteller-Status: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
 @main_bp.route('/rotate', methods=['POST'])
 def rotate():
     """Nimmt ein Foto auf und dreht dann den Teller zur nächsten Position

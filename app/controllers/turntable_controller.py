@@ -12,6 +12,8 @@ import os
 import uuid
 from pathlib import Path
 from app.models.photo_session import PhotoSession
+import json
+import datetime
 
 # Logger einrichten
 logger = logging.getLogger(__name__)
@@ -37,8 +39,45 @@ class TurntableController:
         self.arduino = arduino_controller
         self.default_angle_step = default_angle_step
         self.current_position = 0  # Aktuelle Position in Grad (0-360)
+        self.status_history = []
+        self.current_status = {
+            "status": "idle",
+            "start_time": None,
+            "end_time": None,
+            "message": "Bereit",
+            "angle": 0,
+            "progress": 0
+        }
         
         self.logger.debug(f"TurntableController initialisiert: Winkelschritt={self.default_angle_step}°")
+
+    def _update_status(self, status, message="", angle=None, progress=None):
+        """
+        Aktualisiert den aktuellen Status und fügt ihn zur History hinzu
+        
+        Args:
+            status: Status ("idle", "rotating", "taking_photo", "paused", "error")
+            message: Optionale Statusmeldung
+            angle: Aktuelle Winkelposition (optional)
+            progress: Fortschritt in Prozent (optional)
+        """
+        # Beende den vorherigen Status
+        if self.current_status["start_time"]:
+            self.current_status["end_time"] = datetime.datetime.now().isoformat()
+            # Kopiere den vorherigen Status in die History
+            self.status_history.append(self.current_status.copy())
+            
+        # Neuen Status erstellen
+        self.current_status = {
+            "status": status,
+            "start_time": datetime.datetime.now().isoformat(),
+            "end_time": None,
+            "message": message,
+            "angle": angle if angle is not None else self.current_position,
+            "progress": progress
+        }
+        
+        self.logger.debug(f"Status aktualisiert: {status} - {message}")
 
     def calculate_rotation_time(self, degrees):
         """
@@ -191,6 +230,7 @@ class TurntableController:
 
                 # Foto aufnehmen
                 self.logger.info(f"Nehme Foto bei {angle}° auf")
+                self._update_status("taking_photo", f"Foto bei {angle}°", angle=angle, progress=int(100 * step / total_steps))
                 photo_success = camera_controller.capture_photo(photo_filename)
                 
                 if not photo_success:
@@ -213,6 +253,7 @@ class TurntableController:
                 # Wenn wir nicht beim letzten Schritt sind, drehen wir weiter
                 if step < total_steps - 1 and self.is_session_running:
                     self.logger.debug(f"Drehe um {project.angle_step}° zur nächsten Position")
+                    self._update_status("rotating", f"Drehe um {project.angle_step}° zur nächsten Position", angle=angle, progress=int(100 * step / total_steps))
                     # WICHTIG: Hier den Arduino direkt ansteuern, wenn die Standard-Methode versagt
                     turn_success = self.move_degrees(project.angle_step)
                     
@@ -237,6 +278,7 @@ class TurntableController:
                             self.logger.error(f"Auch direkte Motorsteuerung fehlgeschlagen: {str(e)}")
                     
                     # Kurze Pause für Stabilisierung
+                    self._update_status("paused", "Stabilisierungspause", angle=self.current_position, progress=int(100 * step / total_steps))
                     time.sleep(2)
 
             # Session als abgeschlossen markieren, wenn sie nicht manuell gestoppt wurde
@@ -253,3 +295,28 @@ class TurntableController:
             self.logger.error(f"Fehler während der Fotosession: {str(e)}")
             self.is_session_running = False
             return False
+
+    def get_status_history(self):
+        """
+        Gibt die Statusverlaufshistorie zurück
+        
+        Returns:
+            Liste mit allen Statusupdates
+        """
+        history = self.status_history.copy()
+        # Füge den aktuellen Status hinzu, wenn vorhanden
+        if self.current_status["start_time"]:
+            current = self.current_status.copy()
+            if not current["end_time"]:
+                current["end_time"] = datetime.datetime.now().isoformat()
+            history.append(current)
+        return history
+        
+    def get_current_status(self):
+        """
+        Gibt den aktuellen Status zurück
+        
+        Returns:
+            Dict mit aktuellem Status
+        """
+        return self.current_status.copy()
