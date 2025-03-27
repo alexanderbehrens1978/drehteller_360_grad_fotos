@@ -1,105 +1,334 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Alexander Behrens 360° Drehteller Steuerung</title>
-    <link rel="stylesheet" href="/static/css/base.css">
-    <link rel="stylesheet" href="/static/css/index.css">
-</head>
-<body data-project-id="{{ project.id if project else '' }}">
-    <header>
-        <h1>360° Drehteller Steuerung</h1>
-        <nav>
-            <a href="/" class="active">Startseite</a>
-            <a href="/projects">Projekte</a>
-            <a href="/settings">Einstellungen</a>
-            <a href="/viewer">360° Viewer</a>
-        </nav>
-    </header>
+{% extends "base.html" %}
+
+{% block title %}360° Drehteller Steuerung - Startseite{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card {
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
     
-    <main>
-        <div class="container">
-            <div class="control-panel card">
-                <h2>{% if project %}Projekt: {{ project.name }}{% else %}Drehteller steuern{% endif %}</h2>
-                
-                {% if not project %}
-                <div class="project-selection">
-                    <label for="projectSelect">Projekt auswählen:</label>
-                    <select id="projectSelect">
-                        <option value="">Bitte wählen...</option>
-                        <option value="new">+ Neues Projekt erstellen</option>
-                        <!-- Projekte werden per JavaScript geladen -->
-                    </select>
-                </div>
-                {% endif %}
-                
-                <div class="rotation-settings">
-                    <div class="form-group">
-                        <label for="intervalInput">Foto-Intervall (Sekunden):</label>
-                        <input type="number" id="intervalInput" value="5" min="1" max="60">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="angleInput">Drehwinkel pro Schritt:</label>
-                        <input type="number" id="angleInput" value="{{ project.angle_step|default(15) }}" min="1" max="90">
-                    </div>
-                </div>
-                
-                <div class="controls">
-                    <button id="startBtn" class="btn btn-primary">Start 360°</button>
-                    <button id="stopBtn" class="btn btn-danger" disabled>Stop</button>
-                    <button id="rotateBtn" class="btn btn-secondary">Manuell drehen</button>
-                </div>
-                
-                <div id="rotationStatus" class="status-message" style="display: none;"></div>
-            </div>
-            
-            <div class="preview card">
-                <h2>Vorschau</h2>
-                <div id="imagePreview" class="image-preview">
-                    <div class="no-image">Kein Bild verfügbar</div>
-                </div>
-            </div>
+    .card h2 {
+        margin-top: 0;
+        margin-bottom: 1rem;
+        border-bottom: 1px solid #e9ecef;
+        padding-bottom: 0.75rem;
+        font-size: 1.5rem;
+        word-break: break-word;
+    }
+    
+    .two-column-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+    }
+    
+    @media (max-width: 768px) {
+        .two-column-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .card {
+            padding: 1rem;
+        }
+        
+        .card h2 {
+            font-size: 1.3rem;
+        }
+    }
+    
+    .project-selection {
+        margin-bottom: 1.5rem;
+    }
+    
+    .project-selection label {
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+    
+    .project-selection select {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #ced4da;
+        border-radius: 6px;
+        font-size: 16px;
+        background-color: white;
+        -webkit-appearance: none;
+        appearance: none;
+        background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24'%3E%3Cpath fill='%23333' d='M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 0.75rem center;
+        background-size: 16px;
+        min-height: 44px;
+    }
+    
+    .controls-container {
+        margin-top: 1rem;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+    
+    @media (max-width: 576px) {
+        .controls-container {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    .settings-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    @media (max-width: 480px) {
+        .settings-row {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+        
+        .card {
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .notice {
+            font-size: 14px;
+            padding: 0.75rem;
+        }
+    }
+    
+    .setting-item {
+        margin-bottom: 1rem;
+    }
+    
+    .setting-item label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        font-size: 16px;
+    }
+    
+    .setting-item input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #ced4da;
+        border-radius: 6px;
+        font-size: 16px;
+        box-sizing: border-box;
+        min-height: 44px;
+    }
+    
+    .buttons-row {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        margin-top: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    @media (max-width: 480px) {
+        .buttons-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+        
+        .buttons-row .btn {
+            margin: 0;
+            font-size: 16px;
+            padding: 0.8rem 1rem;
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+            min-height: 44px;
+        }
+    }
+    
+    .status-box {
+        background-color: #f8f9fa;
+        border-radius: 6px;
+        padding: 1rem;
+        margin-top: 1rem;
+        border: 1px solid #e9ecef;
+    }
+    
+    .progress-container {
+        margin-top: 0.75rem;
+    }
+    
+    .progress-bar {
+        height: 12px;
+        background-color: #e9ecef;
+        border-radius: 6px;
+        overflow: hidden;
+        margin: 0.5rem 0;
+    }
+    
+    .progress {
+        height: 100%;
+        background-color: #2980b9;
+        width: 0%;
+        transition: width 0.3s;
+    }
+    
+    .preview-container {
+        min-height: 250px;
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+    }
+    
+    /* Verbesserte Vorschaubilder */
+    #imagePreview {
+        width: 100%;
+        overflow: hidden;
+    }
+    
+    #imagePreview img {
+        max-width: 100%;
+        height: auto;
+        display: block;
+        margin: 0 auto;
+        object-fit: contain;
+    }
+    
+    .image-container {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .angle-label {
+        background-color: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+        font-size: 0.9rem;
+    }
+    
+    .log-container {
+        height: 200px;
+        overflow-y: auto;
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        padding: 0.75rem;
+        font-family: monospace;
+        font-size: 0.9rem;
+    }
+    
+    .notice {
+        padding: 0.75rem;
+        margin: 1rem 0;
+        border-radius: 6px;
+        background-color: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeeba;
+    }
+    
+    #progressText, #statusText {
+        margin-top: 0.5rem;
+        font-weight: 500;
+    }
+    
+    /* Zusätzliche mobile Anpassungen */
+    @media (max-width: 480px) {
+        #previewPlaceholder {
+            padding: 1rem;
+            text-align: center;
+        }
+        
+        .preview-container {
+            min-height: 200px;
+        }
+        
+        .log-container {
+            height: 150px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>{% if project %}Projekt: {{ project.name }}{% else %}Drehteller steuern{% endif %}</h2>
+    
+    {% if not project %}
+    <div class="project-selection">
+        <label for="projectSelect">Projekt auswählen:</label>
+        <select id="projectSelect" class="form-control">
+            <option value="">Bitte wählen...</option>
+            <option value="new">+ Neues Projekt erstellen</option>
+            <!-- Projekte werden per JavaScript geladen -->
+        </select>
+    </div>
+    <div id="noProjectNotice" class="notice" style="display: none;">
+        Bitte wählen Sie zuerst ein Projekt aus, bevor Sie den Drehteller starten.
+    </div>
+    {% endif %}
+    
+    <div class="settings-row">
+        <div class="setting-item">
+            <label for="intervalInput">Foto-Intervall (Sekunden):</label>
+            <input type="number" id="intervalInput" value="5" min="1" max="60">
         </div>
         
-        <!-- Modal für Projekterstellung -->
-        <div id="projectModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3>Neues Projekt erstellen</h3>
-                </div>
-                <div class="modal-body">
-                    <form id="projectForm" action="{{ url_for('projects.create_project') }}" method="POST">
-                        <div class="form-group">
-                            <label for="name">Projektname:</label>
-                            <input type="text" id="name" name="name" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="description">Beschreibung:</label>
-                            <textarea id="description" name="description" rows="4"></textarea>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="angle_step">Winkelschritt (Grad):</label>
-                            <input type="number" id="angle_step" name="angle_step" min="1" max="90" value="15">
-                        </div>
-                        
-                        <div class="modal-footer">
-                            <button type="button" id="cancelProject" class="btn btn-secondary">Abbrechen</button>
-                            <button type="submit" class="btn btn-primary">Projekt erstellen</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
+        <div class="setting-item">
+            <label for="angleInput">Drehwinkel pro Schritt:</label>
+            <input type="number" id="angleInput" value="{{ project.angle_step|default(15) }}" min="1" max="90">
         </div>
-    </main>
+    </div>
     
-    <footer>
-       <p>&copy; 2025 Alexander Behrens 360° Drehteller Steuerung</p>
-    </footer>
+    <div class="buttons-row">
+        <button id="startBtn" class="btn btn-primary">Start 360°</button>
+        <button id="stopBtn" class="btn btn-secondary" disabled>Stop</button>
+        <button id="rotateBtn" class="btn btn-secondary">Einzelschritt</button>
+        <button id="resetBtn" class="btn btn-secondary">Reset</button>
+    </div>
+    
+    <div class="status-box">
+        <div id="statusText">Bereit.</div>
+        <div class="progress-container">
+            <div class="progress-bar">
+                <div id="progressBar" class="progress"></div>
+            </div>
+            <div id="progressText">0 / 0 Fotos</div>
+        </div>
+    </div>
+</div>
 
-    <script src="/static/js/index.js"></script>
-</body>
-</html>
+<div class="two-column-grid">
+    <div class="card">
+        <h2>Vorschau</h2>
+        <div id="imagePreview" class="preview-container">
+            <div id="previewPlaceholder">Noch kein Bild aufgenommen</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Status-Log</h2>
+        <div id="logBox" class="log-container"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/index.js') }}"></script>
+{% endblock %}

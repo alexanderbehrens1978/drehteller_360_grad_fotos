@@ -1,72 +1,155 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Projekte - 360° Drehteller Steuerung</title>
-    <link rel="stylesheet" href="/static/css/styles.css">
-</head>
-<body>
-    <header>
-        <h1>360° Drehteller Steuerung</h1>
-        <nav>
-            <a href="/">Startseite</a>
-            <a href="/projects" class="active">Projekte</a>
-            <a href="/settings">Einstellungen</a>
-            <a href="/viewer">360° Viewer</a>
-        </nav>
-    </header>
+{% extends "base.html" %}
+
+{% block title %}Projekte - 360° Drehteller Steuerung{% endblock %}
+
+{% block extra_css %}
+<style>
+    .project-actions {
+        margin: 1.5rem 0;
+    }
     
-    <main>
-        <div class="projects-container">
-            <h2>Meine Projekte</h2>
-            <p>Verwalten und organisieren Sie Ihre 360° Drehteller-Aufnahmen</p>
-            
-            <div class="project-actions">
-                <a href="{{ url_for('projects.create_project') }}" class="btn btn-primary">Neues Projekt erstellen</a>
-            </div>
-            
-            <div class="projects-list" id="projectsList">
-                {% if projects %}
-                    {% for proj in projects %}
-                        <div class="project-card">
-                            <h3>{{ proj.name }}</h3>
-                            <div class="project-meta">
-                                {% if proj.description %}
-                                    <p>{{ proj.description }}</p>
-                                {% else %}
-                                    <p class="no-description">Keine Beschreibung</p>
-                                {% endif %}
-                                
-                                <p class="created-date">
-                                    Erstellt: {% if proj.created_at %}{{ proj.created_at|datetime }}{% else %}Unbekannt{% endif %}
-                                </p>
-                                
-                                <p class="image-count">
-                                    Bilder: {{ proj.images|length if proj.images else 0 }}
-                                </p>
-                            </div>
-                            
-                            <div class="project-actions">
-                                <a href="{{ url_for('projects.view_project', project_id=proj.id) }}" class="btn btn-secondary">Anzeigen</a>
-                                <form action="{{ url_for('projects.delete_project', project_id=proj.id) }}" method="POST" class="inline-form"
-                                      onsubmit="return confirm('Möchten Sie das Projekt \"{{ proj.name }}\" wirklich löschen?');">
-                                    <button type="submit" class="btn btn-danger">Löschen</button>
-                                </form>
-                            </div>
-                        </div>
-                    {% endfor %}
-                {% else %}
-                    <div class="no-projects">
-                        <p>Keine Projekte vorhanden. Erstellen Sie ein neues Projekt, um zu beginnen.</p>
+    .projects-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1.5rem;
+        margin-top: 1.5rem;
+    }
+    
+    .project-card {
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        padding: 1.5rem;
+        border: 1px solid var(--border-color);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .project-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+    
+    .project-card h3 {
+        margin-top: 0;
+        color: var(--primary-color);
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 0.5rem;
+        word-break: break-word;
+    }
+    
+    .project-meta {
+        margin: 1rem 0;
+        font-size: 0.9rem;
+    }
+    
+    .no-description {
+        color: #7f8c8d;
+        font-style: italic;
+    }
+    
+    .created-date, .image-count {
+        color: #5f6368;
+        margin: 0.5rem 0;
+    }
+    
+    .project-card .project-actions {
+        margin-top: 1rem;
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        border: 1px dashed var(--border-color);
+    }
+    
+    .empty-state h3 {
+        margin-bottom: 1rem;
+        color: var(--primary-color);
+    }
+    
+    /* Responsive Anpassungen */
+    @media (max-width: 768px) {
+        .projects-list {
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 1rem;
+        }
+        
+        .project-card {
+            padding: 1rem;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .projects-list {
+            grid-template-columns: 1fr;
+        }
+        
+        .project-card .project-actions {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .project-card .project-actions .btn {
+            margin-bottom: 0.5rem;
+            text-align: center;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Meine Projekte</h2>
+    <p>Verwalten und organisieren Sie Ihre 360° Drehteller-Aufnahmen</p>
+    
+    <div class="project-actions">
+        <a href="{{ url_for('projects.create_project') }}" class="btn btn-primary">Neues Projekt erstellen</a>
+    </div>
+    
+    <div class="projects-list" id="projectsList">
+        {% if projects %}
+            {% for proj in projects %}
+                <div class="project-card">
+                    <h3>{{ proj.name }}</h3>
+                    <div class="project-meta">
+                        {% if proj.description %}
+                            <p>{{ proj.description }}</p>
+                        {% else %}
+                            <p class="no-description">Keine Beschreibung</p>
+                        {% endif %}
+                        
+                        <p class="created-date">
+                            Erstellt: {% if proj.created_at %}{{ proj.created_at|datetime }}{% else %}Unbekannt{% endif %}
+                        </p>
+                        
+                        <p class="image-count">
+                            Bilder: {{ proj.images|length if proj.images else 0 }}
+                        </p>
                     </div>
-                {% endif %}
+                    
+                    <div class="project-actions">
+                        <a href="{{ url_for('projects.view_project', project_id=proj.id) }}" class="btn btn-secondary">Anzeigen</a>
+                        <a href="{{ url_for('main.index') }}?project={{ proj.id }}" class="btn btn-primary">Bearbeiten</a>
+                        <button class="btn btn-danger delete-project" data-id="{{ proj.id }}">Löschen</button>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <h3>Keine Projekte vorhanden</h3>
+                <p>Sie haben noch keine Projekte erstellt. Klicken Sie auf "Neues Projekt erstellen", um zu beginnen.</p>
+                <a href="{{ url_for('projects.create_project') }}" class="btn btn-primary mt-3">Neues Projekt erstellen</a>
             </div>
-        </div>
-    </main>
-    
-    <footer>
-       <p>&copy; 2025 Alexander Behrens 360° Drehteller Steuerung</p>
-    </footer>
-</body>
-</html>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/projects.js') }}"></script>
+{% endblock %}

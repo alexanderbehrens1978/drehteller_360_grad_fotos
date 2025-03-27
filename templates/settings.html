@@ -1,145 +1,206 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Einstellungen - 360° Drehteller Steuerung</title>
-    <link rel="stylesheet" href="/static/css/styles.css">
-</head>
-<body>
-    <header>
-        <h1>360° Drehteller Steuerung</h1>
-        <nav>
-            <a href="/">Startseite</a>
-            <a href="/projects">Projekte</a>
-            <a href="/settings" class="active">Einstellungen</a>
-            <a href="/viewer">360° Viewer</a>
-        </nav>
-    </header>
-    
-    <main>
-        <div class="settings-container">
-            <h1>Einstellungen</h1>
-            
-            <div id="statusMessage" class="status-message" style="display: none;"></div>
-            
-            <form id="settingsForm">
+{% extends "base.html" %}
 
-                <div class="settings-group">
-                    <h2>Kamera-Einstellungen</h2>
+{% block title %}Einstellungen - 360° Drehteller Steuerung{% endblock %}
+
+{% block extra_css %}
+<style>
+    .settings-group {
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
     
-                    <div class="setting-row">
-                        <div class="setting-label">Kamera-Typ</div>
-                        <div class="setting-control">
-                            <select id="cameraType" name="camera.type">
-                                <option value="webcam">Webcam</option>
-                                <option value="gphoto2">DSLR (gphoto2)</option>
-                            </select>
-                            <div class="setting-description">Art der verwendeten Kamera</div>
-                        </div>
-                    </div>
-                    
-                    <div class="setting-row">
-                        <div class="setting-label">Geräte-Pfad</div>
-                        <div class="setting-control">
-                            <input type="text" id="cameraPath" name="camera.device_path" placeholder="/dev/video0">
-                            <div class="setting-description">Pfad zum Kameragerät (z.B. /dev/video0)</div>
-                        </div>
-                    </div>
-                    
-                    <div class="setting-row">
-                        <div class="setting-label">Auflösung</div>
-                        <div class="setting-control" style="display: flex; gap: 10px;">
-                            <input type="number" id="resolutionWidth" name="camera.resolution.width" placeholder="Breite" min="320" max="4096" style="width: 100px;">
-                            <span>×</span>
-                            <input type="number" id="resolutionHeight" name="camera.resolution.height" placeholder="Höhe" min="240" max="3072" style="width: 100px;">
-                            <div class="setting-description" style="width: 100%">Bildauflösung in Pixeln</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="settings-group">
-                    <h2>Arduino-Einstellungen</h2>
-                    
-                    <div class="setting-row">
-                        <div class="setting-label">Serial-Port</div>
-                        <div class="setting-control">
-                            <input type="text" id="arduinoPort" name="arduino.port" placeholder="/dev/ttyACM0">
-                            <div class="setting-description">Pfad zum Arduino-Serial-Port (z.B. /dev/ttyACM0)</div>
-                        </div>
-                    </div>
-                    
-                    <div class="setting-row">
-                        <div class="setting-label">Baudrate</div>
-                        <div class="setting-control">
-                            <select id="arduinoBaudrate" name="arduino.baudrate">
-                                <option value="9600">9600</option>
-                                <option value="19200">19200</option>
-                                <option value="38400">38400</option>
-                                <option value="57600">57600</option>
-                                <option value="115200">115200</option>
-                            </select>
-                            <div class="setting-description">Baudrate für die Arduino-Kommunikation</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="settings-group">
-                    <h2>Drehteller-Einstellungen</h2>
-                    
-                    <div class="setting-row">
-                        <div class="setting-label">Standard-Winkelschritt</div>
-                        <div class="setting-control">
-                            <input type="number" id="defaultDegrees" name="rotation.default_degrees" min="1" max="90">
-                            <div class="setting-description">Standardmäßiger Winkel pro Schritt in Grad</div>
-                        </div>
-                    </div>
-                    
-                    <div class="setting-row">
-                        <div class="setting-label">Standard-Intervall</div>
-                        <div class="setting-control">
-                            <input type="number" id="defaultInterval" name="rotation.default_interval" min="1" max="60">
-                            <div class="setting-description">Standardintervall zwischen Fotos in Sekunden</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <button type="submit" class="save-btn">Einstellungen speichern</button>
-            </form>
-        </div>
-    </main>
+    .settings-group h2 {
+        margin-top: 0;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--border-color);
+        color: var(--primary-color);
+    }
     
-    <footer>
-        <p>&copy; 2025 360° Drehteller Steuerung</p>
-    </footer>
+    .setting-row {
+        display: flex;
+        margin: 1rem 0;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #f5f5f5;
+    }
     
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const settingsForm = document.getElementById('settingsForm');
-            const statusMessage = document.getElementById('statusMessage');
+    .setting-label {
+        flex: 0 0 30%;
+        font-weight: 500;
+    }
+    
+    .setting-control {
+        flex: 0 0 70%;
+    }
+    
+    .setting-control input[type="text"],
+    .setting-control input[type="number"],
+    .setting-control select {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        margin-bottom: 0.25rem;
+    }
+    
+    .setting-description {
+        font-size: 0.85rem;
+        color: #666;
+        margin-top: 0.25rem;
+    }
+    
+    .button-row {
+        margin-top: 1.5rem;
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
+    }
+    
+    .status-message {
+        padding: 1rem;
+        margin: 1rem 0;
+        border-radius: 4px;
+        font-weight: 500;
+    }
+    
+    .success {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+    
+    .error {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Einstellungen</h2>
+    <p>Konfigurieren Sie die Hardware- und Softwareeinstellungen für Ihren 360° Drehteller</p>
+    
+    <div id="statusMessage" class="status-message" style="display: none;"></div>
+    
+    <form id="settingsForm">
+        <div class="settings-group">
+            <h2>Kamera-Einstellungen</h2>
+
+            <div class="setting-row">
+                <div class="setting-label">Kamera-Typ</div>
+                <div class="setting-control">
+                    <select id="cameraType" name="camera.type">
+                        <option value="webcam">Webcam</option>
+                        <option value="gphoto2">DSLR (gphoto2)</option>
+                    </select>
+                    <div class="setting-description">Art der verwendeten Kamera</div>
+                </div>
+            </div>
             
-            // Aktuelle Konfiguration laden
-            fetch('/get_config')
-                .then(response => response.json())
-                .then(config => {
-                    // Formularfelder mit aktuellen Werten füllen
-                    document.getElementById('cameraType').value = config?.camera?.type || 'webcam';
-                    document.getElementById('cameraPath').value = config?.camera?.device_path || '/dev/video0';
-                    document.getElementById('resolutionWidth').value = config?.camera?.resolution?.width || 1280;
-                    document.getElementById('resolutionHeight').value = config?.camera?.resolution?.height || 720;
-                    
-                    document.getElementById('arduinoPort').value = config?.arduino?.port || '/dev/ttyACM0';
-                    document.getElementById('arduinoBaudrate').value = config?.arduino?.baudrate || 9600;
-                    
-                    document.getElementById('defaultDegrees').value = config?.rotation?.default_degrees || 15;
-                    document.getElementById('defaultInterval').value = config?.rotation?.default_interval || 5;
-                    
-                })
-                .catch(error => {
-                    console.error('Fehler beim Laden der Konfiguration:', error);
-                    showStatus('Fehler beim Laden der Konfiguration. Bitte versuchen Sie es später erneut.', 'error');
-                });
+            <div class="setting-row">
+                <div class="setting-label">Geräte-Pfad</div>
+                <div class="setting-control">
+                    <input type="text" id="cameraPath" name="camera.device_path" placeholder="/dev/video0">
+                    <div class="setting-description">Pfad zum Kameragerät (z.B. /dev/video0)</div>
+                </div>
+            </div>
+            
+            <div class="setting-row">
+                <div class="setting-label">Auflösung</div>
+                <div class="setting-control" style="display: flex; gap: 10px;">
+                    <input type="number" id="resolutionWidth" name="camera.resolution.width" placeholder="Breite" min="320" max="4096" style="width: 100px;">
+                    <span>×</span>
+                    <input type="number" id="resolutionHeight" name="camera.resolution.height" placeholder="Höhe" min="240" max="3072" style="width: 100px;">
+                    <div class="setting-description" style="width: 100%">Bildauflösung in Pixeln</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="settings-group">
+            <h2>Arduino-Einstellungen</h2>
+            
+            <div class="setting-row">
+                <div class="setting-label">Serial-Port</div>
+                <div class="setting-control">
+                    <input type="text" id="arduinoPort" name="arduino.port" placeholder="/dev/ttyACM0">
+                    <div class="setting-description">Pfad zum Arduino-Serial-Port (z.B. /dev/ttyACM0)</div>
+                </div>
+            </div>
+            
+            <div class="setting-row">
+                <div class="setting-label">Baudrate</div>
+                <div class="setting-control">
+                    <select id="arduinoBaudrate" name="arduino.baudrate">
+                        <option value="9600">9600</option>
+                        <option value="19200">19200</option>
+                        <option value="38400">38400</option>
+                        <option value="57600">57600</option>
+                        <option value="115200">115200</option>
+                    </select>
+                    <div class="setting-description">Baudrate für die Arduino-Kommunikation</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="settings-group">
+            <h2>Drehteller-Einstellungen</h2>
+            
+            <div class="setting-row">
+                <div class="setting-label">Standard-Winkelschritt</div>
+                <div class="setting-control">
+                    <input type="number" id="defaultDegrees" name="rotation.default_degrees" min="1" max="90">
+                    <div class="setting-description">Standardmäßiger Winkel pro Schritt in Grad</div>
+                </div>
+            </div>
+            
+            <div class="setting-row">
+                <div class="setting-label">Standard-Intervall</div>
+                <div class="setting-control">
+                    <input type="number" id="defaultInterval" name="rotation.default_interval" min="1" max="60">
+                    <div class="setting-description">Standardintervall zwischen Fotos in Sekunden</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="button-row">
+            <button type="submit" class="save-btn">Einstellungen speichern</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const settingsForm = document.getElementById('settingsForm');
+        const statusMessage = document.getElementById('statusMessage');
+        
+        // Aktuelle Konfiguration laden
+        fetch('/get_config')
+            .then(response => response.json())
+            .then(config => {
+                // Formularfelder mit aktuellen Werten füllen
+                document.getElementById('cameraType').value = config?.camera?.type || 'webcam';
+                document.getElementById('cameraPath').value = config?.camera?.device_path || '/dev/video0';
+                document.getElementById('resolutionWidth').value = config?.camera?.resolution?.width || 1280;
+                document.getElementById('resolutionHeight').value = config?.camera?.resolution?.height || 720;
                 
+                document.getElementById('arduinoPort').value = config?.arduino?.port || '/dev/ttyACM0';
+                document.getElementById('arduinoBaudrate').value = config?.arduino?.baudrate || 9600;
+                
+                document.getElementById('defaultDegrees').value = config?.rotation?.default_degrees || 15;
+                document.getElementById('defaultInterval').value = config?.rotation?.default_interval || 5;
+                
+            })
+            .catch(error => {
+                console.error('Fehler beim Laden der Konfiguration:', error);
+                showStatus('Fehler beim Laden der Konfiguration. Bitte versuchen Sie es später erneut.', 'error');
+            });
+            
             // Formular absenden
             settingsForm.addEventListener('submit', function(event) {
                 event.preventDefault();
@@ -206,5 +267,4 @@
             }
         });
     </script>
-</body>
-</html>
+{% endblock %}

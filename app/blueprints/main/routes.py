@@ -9,7 +9,7 @@ import os
 import json
 import time
 import logging
-from flask import render_template, request, send_from_directory, jsonify, current_app
+from flask import render_template, request, send_from_directory, jsonify, current_app, redirect, url_for
 from app.blueprints.main import main_bp
 from app.utils.config_manager import config_manager
 from app import arduino_controller, camera_controller, turntable_controller
@@ -38,26 +38,9 @@ def index():
 
 @main_bp.route('/viewer')
 def viewer_overview():
-    """Zeigt eine Übersicht aller Projekte und den 360° Viewer für ein ausgewähltes Projekt"""
-    # Projekte aus dem ProjectManager laden
-    from app.models.project import ProjectManager
-    from app.utils.path_manager import PathManager
-    
-    path_manager = PathManager()
-    project_manager = ProjectManager(path_manager.projects_dir)
-    
-    projects = project_manager.get_all_projects()
-    
-    # Ausgewähltes Projekt (falls vorhanden)
-    project_id = request.args.get('project')
-    selected_project = None
-    
-    if project_id:
-        selected_project = project_manager.get_project(project_id)
-    
-    return render_template('viewer_overview.html', 
-                          projects=projects,
-                          selected_project=selected_project)
+    """Zeigt eine Übersicht aller Projekte für den 360° Viewer"""
+    # Umleitung zur korrekten Route in der viewer Blueprint
+    return redirect(url_for('viewer.viewer_overview'))
 
 @main_bp.route('/rotate', methods=['POST'])
 def rotate():
