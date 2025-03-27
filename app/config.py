@@ -19,7 +19,6 @@ class Config:
     # Standardkonfigurationen
     DEFAULT_ROTATION_DEGREES = 15
     DEFAULT_ROTATION_INTERVAL = 5
-    #DEFAULT_CAMERA_TYPE = 'webcam'
     DEFAULT_CAMERA_TYPE = 'gphoto2'
     DEFAULT_RESOLUTION = {
         'width': 1920,

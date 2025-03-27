@@ -3,8 +3,8 @@
         "device_path": "/dev/video0",
         "type": "gphoto2",
         "resolution": {
-            "width": 2000,
-            "height": 1000
+            "width": "3840",
+            "height": "2160"
         }
     },
     "gphoto2_profiles": {
@@ -30,10 +30,15 @@
     },
     "arduino": {
         "port": "/dev/ttyACM0",
-        "baudrate": 9600
+        "baudrate": "9600"
     },
     "rotation": {
-        "default_degrees": 15,
-        "default_interval": 5
+        "default_degrees": "15",
+        "default_interval": "5"
+    },
+    "resolution_preset": "3840x2160",
+    "white_balance": {
+        "enabled": "on",
+        "strength": "0.8"
     }
 }

@@ -76,6 +76,158 @@
         color: #721c24;
         border: 1px solid #f5c6cb;
     }
+    
+    /* Stil für die Auflösungs-Wahlräder */
+    .resolution-selector {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+    
+    .resolution-selector select {
+        width: auto;
+        padding: 0.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        background-color: white;
+        cursor: pointer;
+    }
+    
+    /* Stile für den Weißabgleich-KI-Bereich */
+    .switch-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 50px;
+        height: 24px;
+    }
+    
+    .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: .4s;
+    }
+    
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 16px;
+        width: 16px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: .4s;
+    }
+    
+    input:checked + .slider {
+        background-color: var(--primary-color, #2196F3);
+    }
+    
+    input:focus + .slider {
+        box-shadow: 0 0 1px var(--primary-color, #2196F3);
+    }
+    
+    input:checked + .slider:before {
+        transform: translateX(26px);
+    }
+    
+    .slider.round {
+        border-radius: 24px;
+    }
+    
+    .slider.round:before {
+        border-radius: 50%;
+    }
+    
+    .switch-label {
+        font-weight: normal;
+    }
+    
+    .range-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .range-container input[type="range"] {
+        flex: 1;
+    }
+    
+    .reference-image-container {
+        border: 1px dashed var(--border-color);
+        padding: 15px;
+        border-radius: 4px;
+        margin-bottom: 10px;
+    }
+    
+    .reference-image-actions {
+        margin-top: 10px;
+        display: flex;
+        gap: 10px;
+    }
+    
+    #referenceImageInfo {
+        color: #666;
+        font-style: italic;
+        margin-bottom: 10px;
+    }
+    
+    #referenceImagePreview {
+        max-width: 100%;
+        max-height: 200px;
+        margin-top: 10px;
+        border-radius: 4px;
+        display: none;
+    }
+    
+    .hidden-file-input {
+        display: none;
+    }
+    
+    .image-preview {
+        display: none;
+    }
+    
+    .hide-section {
+        display: none;
+    }
+    
+    .white-balance-control {
+        background-color: #f0f0f0;
+        padding: 5px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    
+    @media (max-width: 768px) {
+        .setting-row {
+            flex-direction: column;
+        }
+        
+        .setting-label, .setting-control {
+            flex: 0 0 100%;
+        }
+        
+        .setting-label {
+            margin-bottom: 0.5rem;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -93,7 +245,7 @@
             <div class="setting-row">
                 <div class="setting-label">Kamera-Typ</div>
                 <div class="setting-control">
-                    <select id="cameraType" name="camera.type">
+                    <select id="cameraType" name="camera.type" aria-label="Kamera-Typ">
                         <option value="webcam">Webcam</option>
                         <option value="gphoto2">DSLR (gphoto2)</option>
                     </select>
@@ -104,18 +256,32 @@
             <div class="setting-row">
                 <div class="setting-label">Geräte-Pfad</div>
                 <div class="setting-control">
-                    <input type="text" id="cameraPath" name="camera.device_path" placeholder="/dev/video0">
+                    <input type="text" id="cameraPath" name="camera.device_path" placeholder="/dev/video0" aria-label="Geräte-Pfad">
                     <div class="setting-description">Pfad zum Kameragerät (z.B. /dev/video0)</div>
                 </div>
             </div>
             
             <div class="setting-row">
                 <div class="setting-label">Auflösung</div>
-                <div class="setting-control" style="display: flex; gap: 10px;">
-                    <input type="number" id="resolutionWidth" name="camera.resolution.width" placeholder="Breite" min="320" max="4096" style="width: 100px;">
-                    <span>×</span>
-                    <input type="number" id="resolutionHeight" name="camera.resolution.height" placeholder="Höhe" min="240" max="3072" style="width: 100px;">
-                    <div class="setting-description" style="width: 100%">Bildauflösung in Pixeln</div>
+                <div class="setting-control">
+                    <div class="resolution-selector">
+                        <select id="resolutionPreset" name="resolution_preset" aria-label="Auflösung">
+                            <option value="custom">Benutzerdefiniert</option>
+                            <option value="640x480">640 × 480 (VGA)</option>
+                            <option value="800x600">800 × 600 (SVGA)</option>
+                            <option value="1024x768">1024 × 768 (XGA)</option>
+                            <option value="1280x720">1280 × 720 (HD)</option>
+                            <option value="1920x1080">1920 × 1080 (Full HD)</option>
+                            <option value="2560x1440">2560 × 1440 (QHD)</option>
+                            <option value="3840x2160">3840 × 2160 (4K UHD)</option>
+                        </select>
+                    </div>
+                    <div class="resolution-custom" style="display: flex; gap: 10px; margin-top: 10px;">
+                        <input type="number" id="resolutionWidth" name="camera.resolution.width" placeholder="Breite" min="320" max="4096" style="width: 100px;" aria-label="Breite">
+                        <span>×</span>
+                        <input type="number" id="resolutionHeight" name="camera.resolution.height" placeholder="Höhe" min="240" max="3072" style="width: 100px;" aria-label="Höhe">
+                    </div>
+                    <div class="setting-description">Bildauflösung in Pixeln</div>
                 </div>
             </div>
         </div>
@@ -126,7 +292,7 @@
             <div class="setting-row">
                 <div class="setting-label">Serial-Port</div>
                 <div class="setting-control">
-                    <input type="text" id="arduinoPort" name="arduino.port" placeholder="/dev/ttyACM0">
+                    <input type="text" id="arduinoPort" name="arduino.port" placeholder="/dev/ttyACM0" aria-label="Serial-Port">
                     <div class="setting-description">Pfad zum Arduino-Serial-Port (z.B. /dev/ttyACM0)</div>
                 </div>
             </div>
@@ -134,7 +300,7 @@
             <div class="setting-row">
                 <div class="setting-label">Baudrate</div>
                 <div class="setting-control">
-                    <select id="arduinoBaudrate" name="arduino.baudrate">
+                    <select id="arduinoBaudrate" name="arduino.baudrate" aria-label="Baudrate">
                         <option value="9600">9600</option>
                         <option value="19200">19200</option>
                         <option value="38400">38400</option>
@@ -152,7 +318,7 @@
             <div class="setting-row">
                 <div class="setting-label">Standard-Winkelschritt</div>
                 <div class="setting-control">
-                    <input type="number" id="defaultDegrees" name="rotation.default_degrees" min="1" max="90">
+                    <input type="number" id="defaultDegrees" name="rotation.default_degrees" min="1" max="90" aria-label="Standard-Winkelschritt">
                     <div class="setting-description">Standardmäßiger Winkel pro Schritt in Grad</div>
                 </div>
             </div>
@@ -160,8 +326,68 @@
             <div class="setting-row">
                 <div class="setting-label">Standard-Intervall</div>
                 <div class="setting-control">
-                    <input type="number" id="defaultInterval" name="rotation.default_interval" min="1" max="60">
+                    <input type="number" id="defaultInterval" name="rotation.default_interval" min="1" max="60" aria-label="Standard-Intervall">
                     <div class="setting-description">Standardintervall zwischen Fotos in Sekunden</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="settings-group">
+            <h2>Weißabgleich-KI</h2>
+            
+            <div class="setting-row">
+                <div class="setting-label">KI-Weißabgleich aktivieren</div>
+                <div class="setting-control">
+                    <div class="switch-container">
+                        <label class="switch">
+                            <input type="checkbox" id="whiteBalanceEnabled" name="white_balance.enabled" aria-label="KI-Weißabgleich aktivieren">
+                            <span class="slider round"></span>
+                        </label>
+                        <span class="switch-label" style="margin-left: 10px;">Einheitlichen Weißabgleich für alle Fotos anwenden</span>
+                    </div>
+                    <div class="setting-description">Automatische KI-basierte Korrektur für konsistente Farbtemperatur bei allen Fotos</div>
+                </div>
+            </div>
+            
+            <div class="setting-row">
+                <div class="setting-label">Korrekturstärke</div>
+                <div class="setting-control">
+                    <div class="range-container">
+                        <input type="range" id="whiteBalanceStrength" name="white_balance.strength" 
+                               min="0" max="1" step="0.1" value="0.8" title="Stärke des Weißabgleichs" 
+                               aria-label="Korrekturstärke" class="white-balance-control">
+                        <span id="strengthValue">0.8</span>
+                    </div>
+                    <div class="setting-description">Stärke der Weißabgleichkorrektur (0.0 = keine Korrektur, 1.0 = volle Korrektur)</div>
+                </div>
+            </div>
+            
+            <div class="setting-row">
+                <div class="setting-label">Referenzbild</div>
+                <div class="setting-control">
+                    <div class="reference-image-container">
+                        <div id="referenceImageInfo">
+                            Kein Referenzbild gesetzt. Bitte wählen Sie ein Bild mit korrektem Weißabgleich.
+                        </div>
+                        <div class="reference-image-actions">
+                            <label for="referenceImageUpload" class="btn btn-secondary white-balance-control">Bild auswählen</label>
+                            <input type="file" id="referenceImageUpload" class="hidden-file-input white-balance-control" accept="image/*" title="Referenzbild auswählen" aria-label="Referenzbild auswählen">
+                            <button type="button" id="useFirstProjectImage" class="btn btn-secondary white-balance-control">Erstes Projektbild verwenden</button>
+                        </div>
+                        <img id="referenceImagePreview" alt="Vorschau Referenzbild" class="image-preview">
+                    </div>
+                    <div class="setting-description">Bild mit korrektem Weißabgleich als Referenz für alle anderen Bilder</div>
+                </div>
+            </div>
+            
+            <div class="setting-row" id="projectCorrectSection">
+                <div class="setting-label">Bestehendes Projekt korrigieren</div>
+                <div class="setting-control">
+                    <select id="correctProjectSelect" title="Projekt für Weißabgleichkorrektur auswählen" aria-label="Projekt für Weißabgleichkorrektur auswählen" class="white-balance-control">
+                        <option value="">-- Projekt auswählen --</option>
+                    </select>
+                    <button type="button" id="applyCorrection" class="btn btn-primary white-balance-control">Weißabgleich anwenden</button>
+                    <div class="setting-description">Wenden Sie die Weißabgleichkorrektur auf alle Bilder eines bestehenden Projekts an</div>
                 </div>
             </div>
         </div>
@@ -178,6 +404,31 @@
     document.addEventListener('DOMContentLoaded', function() {
         const settingsForm = document.getElementById('settingsForm');
         const statusMessage = document.getElementById('statusMessage');
+        const resolutionPreset = document.getElementById('resolutionPreset');
+        const resolutionWidth = document.getElementById('resolutionWidth');
+        const resolutionHeight = document.getElementById('resolutionHeight');
+        
+        // Auflösungs-Preset Dropdown Handling
+        resolutionPreset.addEventListener('change', function() {
+            const value = this.value;
+            if (value === 'custom') {
+                // Nichts tun, benutzerdefinierte Werte beibehalten
+            } else {
+                // Auflösung aus Preset setzen
+                const dimensions = value.split('x');
+                resolutionWidth.value = dimensions[0];
+                resolutionHeight.value = dimensions[1];
+            }
+        });
+        
+        // Wenn die Benutzerfelder geändert werden, auf "Benutzerdefiniert" umschalten
+        resolutionWidth.addEventListener('change', function() {
+            resolutionPreset.value = 'custom';
+        });
+        
+        resolutionHeight.addEventListener('change', function() {
+            resolutionPreset.value = 'custom';
+        });
         
         // Aktuelle Konfiguration laden
         fetch('/get_config')
@@ -186,8 +437,26 @@
                 // Formularfelder mit aktuellen Werten füllen
                 document.getElementById('cameraType').value = config?.camera?.type || 'webcam';
                 document.getElementById('cameraPath').value = config?.camera?.device_path || '/dev/video0';
-                document.getElementById('resolutionWidth').value = config?.camera?.resolution?.width || 1280;
-                document.getElementById('resolutionHeight').value = config?.camera?.resolution?.height || 720;
+                
+                const width = config?.camera?.resolution?.width || 1280;
+                const height = config?.camera?.resolution?.height || 720;
+                
+                resolutionWidth.value = width;
+                resolutionHeight.value = height;
+                
+                // Versuche, ein passendes Preset zu finden
+                const resolutionString = `${width}x${height}`;
+                for (const option of resolutionPreset.options) {
+                    if (option.value === resolutionString) {
+                        resolutionPreset.value = resolutionString;
+                        break;
+                    }
+                }
+                
+                // Wenn kein Preset gefunden wurde, setze auf "Benutzerdefiniert"
+                if (resolutionPreset.value !== resolutionString && resolutionString !== "1280x720") {
+                    resolutionPreset.value = 'custom';
+                }
                 
                 document.getElementById('arduinoPort').value = config?.arduino?.port || '/dev/ttyACM0';
                 document.getElementById('arduinoBaudrate').value = config?.arduino?.baudrate || 9600;
@@ -200,71 +469,66 @@
                 console.error('Fehler beim Laden der Konfiguration:', error);
                 showStatus('Fehler beim Laden der Konfiguration. Bitte versuchen Sie es später erneut.', 'error');
             });
+        
+        // Speichern der Einstellungen
+        settingsForm.addEventListener('submit', function(e) {
+            e.preventDefault();
             
-            // Formular absenden
-            settingsForm.addEventListener('submit', function(event) {
-                event.preventDefault();
-                
-                // Formulardaten sammeln
-                const formData = new FormData(settingsForm);
-                const configData = {};
-                
-                // FormData in verschachtelte Objekte umwandeln
-                formData.forEach((value, key) => {
-                    // Checkbox-Werte in boolesche Werte umwandeln
+            const formData = new FormData(this);
+            const jsonData = {};
+            
+            // FormData in JSON-Struktur umwandeln
+            formData.forEach((value, key) => {
+                // Punkt-Notation in verschachtelte Objekte umwandeln (z.B. camera.type -> { camera: { type: value } })
+                if (key.includes('.')) {
+                    const parts = key.split('.');
+                    let current = jsonData;
                     
-                    // Zahlen in numerische Werte umwandeln
-                    if (key.includes('resolution') || key.includes('degrees') || key.includes('interval') || key.includes('baudrate')) {
-                        value = Number(value);
-                    }
-                    
-                    // Punkt-Notation in verschachtelte Objekte umwandeln
-                    const keys = key.split('.');
-                    let current = configData;
-                    
-                    for (let i = 0; i < keys.length - 1; i++) {
-                        if (!current[keys[i]]) {
-                            current[keys[i]] = {};
+                    for (let i = 0; i < parts.length - 1; i++) {
+                        if (!current[parts[i]]) {
+                            current[parts[i]] = {};
                         }
-                        current = current[keys[i]];
+                        current = current[parts[i]];
                     }
                     
-                    current[keys[keys.length - 1]] = value;
-                });
-                
-                // Konfiguration speichern
-                fetch('/settings/save_config', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(configData)
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        showStatus('Einstellungen erfolgreich gespeichert!', 'success');
-                    } else {
-                        showStatus('Fehler beim Speichern der Einstellungen: ' + (data.message || 'Unbekannter Fehler'), 'error');
-                    }
-                })
-                .catch(error => {
-                    console.error('Fehler beim Speichern der Konfiguration:', error);
-                    showStatus('Fehler beim Speichern der Konfiguration. Bitte versuchen Sie es später erneut.', 'error');
-                });
+                    current[parts[parts.length - 1]] = value;
+                } else {
+                    jsonData[key] = value;
+                }
             });
             
-            // Hilfsfunktion zum Anzeigen von Statusmeldungen
-            function showStatus(message, type) {
-                statusMessage.textContent = message;
-                statusMessage.className = 'status-message status-' + type;
-                statusMessage.style.display = 'block';
-                
-                // Nach 5 Sekunden ausblenden
-                setTimeout(() => {
-                    statusMessage.style.display = 'none';
-                }, 5000);
-            }
+            // Sende die Daten an den Server
+            fetch('/save_config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(jsonData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showStatus('Einstellungen erfolgreich gespeichert.', 'success');
+                } else {
+                    showStatus('Fehler beim Speichern der Einstellungen: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Fehler beim Speichern der Konfiguration:', error);
+                showStatus('Fehler beim Speichern. Bitte versuchen Sie es später erneut.', 'error');
+            });
         });
-    </script>
+        
+        // Hilfsfunktion zum Anzeigen von Statusmeldungen
+        function showStatus(message, type) {
+            statusMessage.textContent = message;
+            statusMessage.className = 'status-message ' + type;
+            statusMessage.style.display = 'block';
+            
+            setTimeout(() => {
+                statusMessage.style.display = 'none';
+            }, 5000);
+        }
+    });
+</script>
 {% endblock %}

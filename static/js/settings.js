@@ -7,6 +7,16 @@ document.addEventListener('DOMContentLoaded', function() {
     // Finde die wichtigen DOM-Elemente
     const settingsForm = document.getElementById('settingsForm');
     const statusMessage = document.getElementById('statusMessage');
+    const whiteBalanceEnabled = document.getElementById('whiteBalanceEnabled');
+    const whiteBalanceStrength = document.getElementById('whiteBalanceStrength');
+    const strengthValue = document.getElementById('strengthValue');
+    const referenceImageUpload = document.getElementById('referenceImageUpload');
+    const referenceImagePreview = document.getElementById('referenceImagePreview');
+    const referenceImageInfo = document.getElementById('referenceImageInfo');
+    const useFirstProjectImage = document.getElementById('useFirstProjectImage');
+    const correctProjectSelect = document.getElementById('correctProjectSelect');
+    const applyCorrection = document.getElementById('applyCorrection');
+    const projectCorrectSection = document.getElementById('projectCorrectSection');
     
     // Initialen Status ausblenden
     if (statusMessage) {
@@ -16,6 +26,52 @@ document.addEventListener('DOMContentLoaded', function() {
     // Aktuelle Konfiguration laden
     console.log('Lade Konfiguration...');
     loadConfig();
+    
+    // Projekte für Weißabgleichkorrektur laden
+    loadProjects();
+    
+    // Event Listener für KI-Weißabgleich-Aktivierung
+    if (whiteBalanceEnabled) {
+        whiteBalanceEnabled.addEventListener('change', function() {
+            toggleWhiteBalanceSettings(this.checked);
+        });
+    }
+    
+    // Event Listener für Korrekturstärke
+    if (whiteBalanceStrength && strengthValue) {
+        whiteBalanceStrength.addEventListener('input', function() {
+            strengthValue.textContent = this.value;
+        });
+    }
+    
+    // Event Listener für Referenzbild-Upload
+    if (referenceImageUpload) {
+        referenceImageUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                uploadReferenceImage(file);
+            }
+        });
+    }
+    
+    // Event Listener für "Erstes Projektbild verwenden"
+    if (useFirstProjectImage) {
+        useFirstProjectImage.addEventListener('click', function() {
+            useFirstImageAsReference();
+        });
+    }
+    
+    // Event Listener für "Weißabgleich anwenden"
+    if (applyCorrection) {
+        applyCorrection.addEventListener('click', function() {
+            const projectId = correctProjectSelect.value;
+            if (projectId) {
+                applyWhiteBalanceCorrection(projectId);
+            } else {
+                showStatus('Bitte wählen Sie ein Projekt aus', 'error');
+            }
+        });
+    }
     
     // Formular absenden
     if (settingsForm) {
@@ -39,6 +95,18 @@ function loadConfig() {
             if (config) {
                 // Formularwerte setzen
                 setFormValues(config);
+                
+                // Weißabgleich-Einstellungen aktivieren/deaktivieren
+                const whiteBalanceEnabled = document.getElementById('whiteBalanceEnabled');
+                if (whiteBalanceEnabled) {
+                    toggleWhiteBalanceSettings(whiteBalanceEnabled.checked);
+                }
+                
+                // Referenzbild anzeigen, falls vorhanden
+                if (config.white_balance && config.white_balance.reference_image) {
+                    updateReferenceImagePreview(config.white_balance.reference_image);
+                }
+                
                 return true;
             }
         })
@@ -46,6 +114,173 @@ function loadConfig() {
             console.error('Fehler beim Laden der Konfiguration:', error);
             showStatus('Fehler beim Laden der Konfiguration. Bitte versuchen Sie es später erneut.', 'error');
         });
+        
+    // Weißabgleich-Einstellungen laden
+    fetch('/api/white_balance/settings')
+        .then(response => response.json())
+        .then(data => {
+            // Weißabgleich aktivieren/deaktivieren
+            const whiteBalanceEnabled = document.getElementById('whiteBalanceEnabled');
+            if (whiteBalanceEnabled) {
+                whiteBalanceEnabled.checked = data.enabled || false;
+                toggleWhiteBalanceSettings(whiteBalanceEnabled.checked);
+            }
+            
+            // Korrekturstärke setzen
+            const whiteBalanceStrength = document.getElementById('whiteBalanceStrength');
+            const strengthValue = document.getElementById('strengthValue');
+            if (whiteBalanceStrength && data.strength !== undefined) {
+                whiteBalanceStrength.value = data.strength;
+                if (strengthValue) {
+                    strengthValue.textContent = data.strength;
+                }
+            }
+            
+            // Referenzbild anzeigen, falls vorhanden
+            if (data.reference_image_url) {
+                updateReferenceImagePreview(data.reference_image_url);
+            }
+        })
+        .catch(error => {
+            console.error('Fehler beim Laden der Weißabgleich-Einstellungen:', error);
+        });
+}
+
+// Projekte für Weißabgleichkorrektur laden
+function loadProjects() {
+    fetch('/api/projects/list')
+        .then(response => response.json())
+        .then(data => {
+            if (data.projects && data.projects.length > 0) {
+                const correctProjectSelect = document.getElementById('correctProjectSelect');
+                
+                if (correctProjectSelect) {
+                    // Bestehende Optionen entfernen (außer der ersten)
+                    while (correctProjectSelect.options.length > 1) {
+                        correctProjectSelect.remove(1);
+                    }
+                    
+                    // Projekte hinzufügen
+                    data.projects.forEach(project => {
+                        const option = document.createElement('option');
+                        option.value = project.id || project.uuid;
+                        option.textContent = project.name;
+                        correctProjectSelect.appendChild(option);
+                    });
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Fehler beim Laden der Projekte:', error);
+        });
+}
+
+// Weißabgleich-Einstellungen aktivieren/deaktivieren
+function toggleWhiteBalanceSettings(enabled) {
+    const controls = document.querySelectorAll('.white-balance-control');
+    
+    controls.forEach(control => {
+        control.disabled = !enabled;
+    });
+    
+    const projectCorrectSection = document.getElementById('projectCorrectSection');
+    if (projectCorrectSection) {
+        projectCorrectSection.style.display = enabled ? 'flex' : 'none';
+    }
+}
+
+// Referenzbild hochladen
+function uploadReferenceImage(file) {
+    const formData = new FormData();
+    formData.append('reference_image', file);
+    
+    fetch('/api/white_balance/set_reference', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateReferenceImagePreview(data.image_url);
+            showStatus('Referenzbild erfolgreich gesetzt', 'success');
+        } else {
+            showStatus('Fehler beim Setzen des Referenzbildes: ' + (data.error || 'Unbekannter Fehler'), 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Fehler beim Hochladen des Referenzbildes:', error);
+        showStatus('Fehler beim Hochladen des Referenzbildes', 'error');
+    });
+}
+
+// Erstes Bild eines Projekts als Referenz verwenden
+function useFirstImageAsReference() {
+    const correctProjectSelect = document.getElementById('correctProjectSelect');
+    
+    if (!correctProjectSelect.value) {
+        showStatus('Bitte wählen Sie ein Projekt aus', 'error');
+        return;
+    }
+    
+    fetch(`/api/white_balance/use_project_image/${correctProjectSelect.value}`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateReferenceImagePreview(data.image_url);
+            showStatus('Erstes Projektbild als Referenz gesetzt', 'success');
+        } else {
+            showStatus('Fehler beim Setzen des Referenzbildes: ' + (data.error || 'Unbekannter Fehler'), 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Fehler beim Setzen des ersten Projektbildes als Referenz:', error);
+        showStatus('Fehler beim Setzen des ersten Projektbildes als Referenz', 'error');
+    });
+}
+
+// Referenzbild-Vorschau aktualisieren
+function updateReferenceImagePreview(imagePath) {
+    const referenceImagePreview = document.getElementById('referenceImagePreview');
+    const referenceImageInfo = document.getElementById('referenceImageInfo');
+    
+    if (referenceImagePreview && referenceImageInfo) {
+        if (imagePath && imagePath.startsWith('/')) {
+            // Relative URL, muss mit der Basis-URL verbunden werden
+            referenceImagePreview.src = imagePath;
+        } else {
+            // Vollständige URL
+            referenceImagePreview.src = imagePath;
+        }
+        referenceImagePreview.style.display = 'block';
+        referenceImageInfo.textContent = 'Referenzbild gesetzt';
+    }
+}
+
+// Weißabgleichkorrektur auf ein Projekt anwenden
+function applyWhiteBalanceCorrection(projectId) {
+    const strength = document.getElementById('whiteBalanceStrength').value;
+    
+    fetch(`/api/white_balance/correct_project/${projectId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ strength: parseFloat(strength) })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showStatus('Weißabgleichkorrektur erfolgreich angewendet', 'success');
+        } else {
+            showStatus('Fehler bei der Weißabgleichkorrektur: ' + (data.error || 'Unbekannter Fehler'), 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Fehler bei der Weißabgleichkorrektur:', error);
+        showStatus('Fehler bei der Weißabgleichkorrektur', 'error');
+    });
 }
 
 // Formularwerte setzen
@@ -63,6 +298,10 @@ function setFormValues(config) {
     // Drehteller-Einstellungen
     setValue('defaultDegrees', config?.rotation?.default_degrees);
     setValue('defaultInterval', config?.rotation?.default_interval);
+    
+    // Weißabgleich-Einstellungen
+    setValue('whiteBalanceEnabled', config?.white_balance?.enabled);
+    setValue('whiteBalanceStrength', config?.white_balance?.strength);
     
     console.log('Formularwerte wurden gesetzt');
 }
@@ -108,12 +347,12 @@ function saveConfig(form) {
     // FormData in verschachtelte Objekte umwandeln
     formData.forEach((value, key) => {
         // Checkbox-Werte in boolesche Werte umwandeln
-        if (form.elements[key].type === 'checkbox') {
+        if (form.elements[key] && form.elements[key].type === 'checkbox') {
             value = form.elements[key].checked;
         }
         
         // Zahlen in numerische Werte umwandeln
-        if (key.includes('resolution') || key.includes('degrees') || key.includes('interval') || key.includes('baudrate')) {
+        if (key.includes('resolution') || key.includes('degrees') || key.includes('interval') || key.includes('baudrate') || key.includes('strength')) {
             value = Number(value);
         }
         
@@ -130,6 +369,16 @@ function saveConfig(form) {
         
         current[keys[keys.length - 1]] = value;
     });
+    
+    // Weißabgleich-Einstellungen hinzufügen
+    if (!configData.white_balance) {
+        configData.white_balance = {};
+    }
+    
+    configData.white_balance.enabled = document.getElementById('whiteBalanceEnabled').checked;
+    configData.white_balance.strength = parseFloat(document.getElementById('whiteBalanceStrength').value);
+    
+    console.log('Konfigurationsdaten:', configData);
     
     // Konfiguration an den Server senden
     fetch('/settings/save_config', {

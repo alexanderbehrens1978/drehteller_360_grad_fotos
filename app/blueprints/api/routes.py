@@ -14,7 +14,6 @@ from app.blueprints.api import api_bp
 from app.utils.config_manager import config_manager
 from app import arduino_controller, camera_controller, turntable_controller
 from app.utils.device_detector import device_detector
-from app.utils.webcam_detection_helper import get_camera_capabilities
 from app.utils.viewer_generator import viewer_generator
 from app.utils.secure_path import secure_filename, secure_join, validate_project_id
 
@@ -160,8 +159,8 @@ def api_arduino_status():
 @api_bp.route('/status/camera')
 def api_camera_status():
     """API-Endpunkt zum Abrufen des Kamera-Status"""
-    camera_type = config_manager.get('camera.type', 'webcam')
-    camera_device = config_manager.get('camera.device_path', '/dev/video0')
+    camera_type = config_manager.get('camera.type', 'gphoto2')
+    camera_device = config_manager.get('camera.device_path')
     resolution = config_manager.get('camera.resolution', {})
     
     # Test, ob die Kamera verfügbar ist
@@ -196,7 +195,7 @@ def test_camera():
         if not data:
             return jsonify({"status": "error", "message": "Keine Daten empfangen"}), 400
             
-        camera_type = data.get('type', 'webcam')
+        camera_type = data.get('type', 'gphoto2')
         device = data.get('device')
         resolution = data.get('resolution')
         profile = data.get('profile')
@@ -228,7 +227,7 @@ def test_camera():
         
         # Kamera initialisieren und Testfoto aufnehmen
         from app.controllers.camera_controller import CameraController
-        camera = CameraController(camera_type, device, resolution, camera_settings)
+        camera = CameraController(device=device, resolution=resolution)
         
         success = camera.capture_photo(photo_path)
         
@@ -256,7 +255,7 @@ def camera_capabilities():
     try:
         # Parameter abrufen
         device = request.args.get('device')
-        camera_type = request.args.get('type', 'webcam')
+        camera_type = request.args.get('type', 'gphoto2')
         
         if not device:
             return jsonify({
@@ -266,9 +265,9 @@ def camera_capabilities():
             
         # Kamera-Controller verwenden, um Fähigkeiten abzurufen
         from app.controllers.camera_controller import CameraController
-        camera = CameraController(camera_type, device)
+        camera = CameraController(device=device)
         
-        capabilities = camera.get_camera_capabilities(device, camera_type)
+        capabilities = camera.camera_capabilities or {}
         
         return jsonify({
             "status": "success",

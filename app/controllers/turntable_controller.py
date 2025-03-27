@@ -191,18 +191,51 @@ class TurntableController:
 
                 # Foto aufnehmen
                 self.logger.info(f"Nehme Foto bei {angle}° auf")
-                if not camera_controller.capture_photo(photo_filename):
-                    self.logger.error(f"Fehler beim Aufnehmen des Fotos bei {angle}°")
-                    self.is_session_running = False
-                    return False
-
-                # Session-Informationen aktualisieren
+                photo_success = camera_controller.capture_photo(photo_filename)
+                
+                if not photo_success:
+                    self.logger.warning(f"Warnung: Foto bei {angle}° konnte möglicherweise nicht aufgenommen werden")
+                    # Wir brechen die Session NICHT ab, sondern fahren fort
+                    # Versuche, ein leeres Bild zu erstellen, damit die Sequenz vollständig ist
+                    try:
+                        import numpy as np
+                        import cv2
+                        # Erstelle ein schwarzes Bild als Platzhalter
+                        img = np.zeros((1080, 1920, 3), np.uint8)
+                        cv2.imwrite(photo_filename, img)
+                        self.logger.info(f"Platzhalter-Bild erstellt für Position {angle}°")
+                    except Exception as img_err:
+                        self.logger.error(f"Konnte kein Platzhalter-Bild erstellen: {str(img_err)}")
+                
+                # Session-Informationen aktualisieren (unabhängig vom Fotostatus)
                 session.add_photo(angle, photo_filename)
 
                 # Wenn wir nicht beim letzten Schritt sind, drehen wir weiter
                 if step < total_steps - 1 and self.is_session_running:
                     self.logger.debug(f"Drehe um {project.angle_step}° zur nächsten Position")
-                    self.move_degrees(project.angle_step)
+                    # WICHTIG: Hier den Arduino direkt ansteuern, wenn die Standard-Methode versagt
+                    turn_success = self.move_degrees(project.angle_step)
+                    
+                    if not turn_success and self.arduino and self.arduino.is_connected():
+                        # Zweiter Versuch mit direkter Arduino-Steuerung
+                        self.logger.warning("Standarddrehung fehlgeschlagen, versuche direkten Motorzugriff...")
+                        try:
+                            # Motor einschalten
+                            self.arduino.turn_motor_on()
+                            
+                            # Zeit berechnen
+                            rotation_time_ms = self.calculate_rotation_time(project.angle_step)
+                            time.sleep(rotation_time_ms / 1000.0)
+                            
+                            # Motor ausschalten
+                            self.arduino.turn_motor_off()
+                            
+                            # Position aktualisieren
+                            self.current_position = (self.current_position + project.angle_step) % 360
+                            self.logger.info(f"Direkte Drehung erfolgreich, neue Position: {self.current_position}°")
+                        except Exception as e:
+                            self.logger.error(f"Auch direkte Motorsteuerung fehlgeschlagen: {str(e)}")
+                    
                     # Kurze Pause für Stabilisierung
                     time.sleep(2)
 

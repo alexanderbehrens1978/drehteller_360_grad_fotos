@@ -51,7 +51,8 @@ document.addEventListener('DOMContentLoaded', function() {
             if (this.value) {
                 if (this.value === 'new') {
                     debug("Neues Projekt erstellen ausgewählt");
-                    showProjectModal();
+                    // Statt Modal anzeigen, direkt zur Projekterstellungsseite navigieren
+                    window.location.href = '/projects/create';
                 } else {
                     debug(`Projekt mit ID ${this.value} ausgewählt, lade Seite neu`);
                     window.location.href = '/?project_id=' + this.value;

@@ -45,7 +45,7 @@
         }
         .button {
             background-color: #2196F3;
-            color: white;
+            color: black;
             border: none;
             padding: 10px 15px;
             border-radius: 4px;
@@ -56,6 +56,7 @@
         }
         .button:hover {
             background-color: #0b7dda;
+            color: black;
         }
         .export-preview {
             margin-top: 20px;
@@ -76,6 +77,34 @@
             display: flex;
             justify-content: center;
             gap: 50px;
+        }
+        
+        /* Formatierung für Checkboxen */
+        .checkbox-container {
+            display: flex;
+            flex-direction: column;
+            margin: 15px 0;
+        }
+        
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .checkbox-row input[type="checkbox"] {
+            margin-right: 10px;
+        }
+        
+        .checkbox-row label {
+            flex: 1;
+            text-align: left;
+        }
+        
+        /* Konsistente Textausrichtung */
+        .option-details {
+            text-align: left;
+            margin-left: 25px;
         }
     </style>
 </head>

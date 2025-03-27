@@ -127,14 +127,12 @@
                             Erstellt: {% if proj.created_at %}{{ proj.created_at|datetime }}{% else %}Unbekannt{% endif %}
                         </p>
                         
-                        <p class="image-count">
-                            Bilder: {{ proj.images|length if proj.images else 0 }}
-                        </p>
+                        <p class="image-count">Bilder: {{ proj.image_count|default(0) }}</p>
                     </div>
                     
                     <div class="project-actions">
                         <a href="{{ url_for('projects.view_project', project_id=proj.id) }}" class="btn btn-secondary">Anzeigen</a>
-                        <a href="{{ url_for('main.index') }}?project={{ proj.id }}" class="btn btn-primary">Bearbeiten</a>
+                        <a href="{{ url_for('main.index') }}?project={{ proj.id }}" class="btn btn-secondary">Bearbeiten</a>
                         <button class="btn btn-danger delete-project" data-id="{{ proj.id }}">Löschen</button>
                     </div>
                 </div>
