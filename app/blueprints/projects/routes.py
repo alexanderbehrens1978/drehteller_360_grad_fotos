@@ -29,42 +29,20 @@ project_manager = ProjectManager(path_manager.projects_dir)
 
 @projects_bp.route('/')
 def projects_page():
-    """Zeigt die Projekte-Seite an."""
+    """Zeigt die Projektverwaltungsseite an"""
     try:
-        # Lade alle Projekte aus dem ProjectManager
+        # Alle Projekte laden
         projects = project_manager.get_all_projects()
         
-        # Anzahl der Bilder für jedes Projekt ermitteln
-        for project in projects:
-            if hasattr(project, 'path') and project.path:
-                # Prüfe das images-Unterverzeichnis
-                image_dir = os.path.join(project.path, 'images')
-                image_count = 0
-                
-                # Wenn images-Verzeichnis existiert, zähle Bilder dort
-                if os.path.exists(image_dir) and os.path.isdir(image_dir):
-                    for file in os.listdir(image_dir):
-                        if file.lower().endswith(('.jpg', '.jpeg', '.png')):
-                            image_count += 1
-                
-                # Falls keine Bilder im images-Verzeichnis, schau im Hauptverzeichnis
-                if image_count == 0 and os.path.exists(project.path):
-                    for file in os.listdir(project.path):
-                        if file.lower().endswith(('.jpg', '.jpeg', '.png')):
-                            image_count += 1
-                
-                # Speichere Bildanzahl im Projekt
-                project.image_count = image_count
-            else:
-                project.image_count = 0
-        
-        # Stelle das os-Modul im Template zur Verfügung
-        return render_template('projects.html', projects=projects, os=os)
+        # Debug-Logging für jedes Projekt
+        for p in projects:
+            logger.debug(f"Projekt geladen: {p.id} - {p.name}")
+            
+        return render_template('projects.html', projects=projects)
     except Exception as e:
-        logger.error(f"Fehler beim Laden der Projekte: {str(e)}")
         import traceback
-        traceback.print_exc()
-        return render_template('projects.html', projects=[], error=str(e), os=os)
+        logger.error(f"Fehler beim Laden der Projekte: {str(e)}\n{traceback.format_exc()}")
+        return render_template('error.html', message=f"Fehler beim Laden der Projekte: {str(e)}"), 500
 
 @projects_bp.route('/create', methods=['GET', 'POST'])
 def create_project():
@@ -231,48 +209,6 @@ def get_project_image(project_id, image_path):
     except Exception as e:
         logger.error(f"Fehler beim Abrufen des Bildes: {str(e)}")
         abort(500)
-
-@projects_bp.route('/api/projects/list', methods=['GET'])
-def list_projects_api():
-    """Gibt alle Projekte als JSON zurück"""
-    try:
-        # Alle Projekte laden
-        projects = project_manager.get_all_projects()
-        
-        # Projekte in JSON-Format konvertieren
-        projects_data = []
-        for project in projects:
-            # Bilderzählung für jedes Projekt
-            image_count = 0
-            project_path = path_manager.get_project_path(project.id)
-            images_dir = os.path.join(project_path, 'images')
-            
-            if os.path.exists(images_dir) and os.path.isdir(images_dir):
-                # Zähle nur Bilddateien (.jpg, .jpeg, .png)
-                image_files = [f for f in os.listdir(images_dir) 
-                              if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
-                image_count = len(image_files)
-            
-            projects_data.append({
-                'id': project.id,
-                'uuid': project.id,  # Für Kompatibilität
-                'name': project.name,
-                'description': project.description,
-                'angle_step': project.angle_step,
-                'image_count': image_count
-            })
-        
-        return jsonify({
-            'success': True,
-            'projects': projects_data
-        })
-    except Exception as e:
-        import traceback
-        logger.error(f"Fehler beim Laden der Projekte für API: {str(e)}\n{traceback.format_exc()}")
-        return jsonify({
-            'success': False,
-            'error': f"Fehler beim Laden der Projekte: {str(e)}"
-        }), 500
 
 @projects_bp.route('/<project_id>/view360')
 def view_360(project_id):

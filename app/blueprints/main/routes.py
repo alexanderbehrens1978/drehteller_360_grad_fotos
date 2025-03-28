@@ -9,7 +9,7 @@ import os
 import json
 import time
 import logging
-from flask import render_template, request, send_from_directory, jsonify, current_app, redirect, url_for
+from flask import render_template, request, send_from_directory, jsonify, current_app
 from app.blueprints.main import main_bp
 from app.utils.config_manager import config_manager
 from app import arduino_controller, camera_controller, turntable_controller
@@ -38,34 +38,26 @@ def index():
 
 @main_bp.route('/viewer')
 def viewer_overview():
-    """Zeigt eine Übersicht aller Projekte für den 360° Viewer"""
-    # Umleitung zur korrekten Route in der viewer Blueprint
-    return redirect(url_for('viewer.viewer_overview'))
-
-@main_bp.route('/turntable-status', methods=['GET'])
-def turntable_status():
-    """
-    Gibt den aktuellen Status und die Status-Historie des Drehtellers zurück
-    """
-    global turntable_controller
+    """Zeigt eine Übersicht aller Projekte und den 360° Viewer für ein ausgewähltes Projekt"""
+    # Projekte aus dem ProjectManager laden
+    from app.models.project import ProjectManager
+    from app.utils.path_manager import PathManager
     
-    try:
-        if not turntable_controller:
-            return jsonify({"error": "Drehteller ist nicht initialisiert"}), 500
-            
-        # Status und Historie abrufen
-        current_status = turntable_controller.get_current_status()
-        status_history = turntable_controller.get_status_history()
-        
-        return jsonify({
-            "current": current_status,
-            "history": status_history,
-            "is_running": turntable_controller.is_session_running
-        })
-        
-    except Exception as e:
-        logger.error(f"Fehler beim Abrufen des Drehteller-Status: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+    path_manager = PathManager()
+    project_manager = ProjectManager(path_manager.projects_dir)
+    
+    projects = project_manager.get_all_projects()
+    
+    # Ausgewähltes Projekt (falls vorhanden)
+    project_id = request.args.get('project')
+    selected_project = None
+    
+    if project_id:
+        selected_project = project_manager.get_project(project_id)
+    
+    return render_template('viewer_overview.html', 
+                          projects=projects,
+                          selected_project=selected_project)
 
 @main_bp.route('/rotate', methods=['POST'])
 def rotate():

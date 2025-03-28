@@ -16,17 +16,13 @@ const projectSelect = document.getElementById('projectSelect');
 const startBtn = document.getElementById('startBtn');
 const stopBtn = document.getElementById('stopBtn');
 const rotateBtn = document.getElementById('rotateBtn');
-const resetBtn = document.getElementById('resetBtn');
 const imagePreview = document.getElementById('imagePreview');
 const angleInput = document.getElementById('angleInput');
 const intervalInput = document.getElementById('intervalInput');
-const statusText = document.getElementById('statusText');
-const progressText = document.getElementById('progressText');
-const progressBar = document.getElementById('progressBar');
+const rotationStatus = document.getElementById('rotationStatus');
 const projectModal = document.getElementById('projectModal');
 const projectForm = document.getElementById('projectForm');
 const cancelProjectBtn = document.getElementById('cancelProject');
-const logBox = document.getElementById('logBox');
 
 // Debug-Funktion - wichtig zur Fehlerbehebung
 function debug(message) {
@@ -51,8 +47,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (this.value) {
                 if (this.value === 'new') {
                     debug("Neues Projekt erstellen ausgewählt");
-                    // Statt Modal anzeigen, direkt zur Projekterstellungsseite navigieren
-                    window.location.href = '/projects/create';
+                    showProjectModal();
                 } else {
                     debug(`Projekt mit ID ${this.value} ausgewählt, lade Seite neu`);
                     window.location.href = '/?project_id=' + this.value;
@@ -227,8 +222,9 @@ function singleRotation() {
     if (rotateBtn) rotateBtn.disabled = true;
 
     // Statusmeldung anzeigen
-    if (statusText) {
-        statusText.textContent = "Nehme Foto auf und drehe dann...";
+    if (rotationStatus) {
+        rotationStatus.textContent = "Nehme Foto auf und drehe dann...";
+        rotationStatus.style.display = "block";
     }
 
     // Formular-Daten vorbereiten
@@ -260,10 +256,10 @@ function singleRotation() {
             displayImage(data.photo, angle);
 
             // Statusmeldung aktualisieren
-            if (statusText) {
-                statusText.textContent = `Foto aufgenommen bei ${angle}°`;
+            if (rotationStatus) {
+                rotationStatus.textContent = `Foto aufgenommen bei ${angle}°`;
                 setTimeout(() => {
-                    statusText.textContent = "";
+                    rotationStatus.style.display = "none";
                 }, 3000);
             }
 
@@ -273,8 +269,8 @@ function singleRotation() {
             alert(`Fehler bei der Rotation: ${data.error}`);
 
             // Statusmeldung aktualisieren
-            if (statusText) {
-                statusText.textContent = `Fehler: ${data.error}`;
+            if (rotationStatus) {
+                rotationStatus.textContent = `Fehler: ${data.error}`;
             }
         }
     })
@@ -283,8 +279,8 @@ function singleRotation() {
         alert(`Netzwerkfehler beim Drehen des Tellers: ${error.message}`);
 
         // Statusmeldung aktualisieren
-        if (statusText) {
-            statusText.textContent = `Netzwerkfehler: ${error.message}`;
+        if (rotationStatus) {
+            rotationStatus.textContent = `Netzwerkfehler: ${error.message}`;
         }
     })
     .finally(() => {
@@ -342,6 +338,7 @@ function displayImage(imagePath, angle) {
 }
 
 // Automatische Rotation und Fotoaufnahme - Verbesserte Version
+// WICHTIG: Wir nehmen jetzt das erste Foto und beginnen danach mit der Sequenz
 function startRotation() {
     debug("startRotation() aufgerufen");
     
@@ -354,10 +351,6 @@ function startRotation() {
     if (!currentProjectId) {
         debug("Kein Projekt ausgewählt");
         alert('Bitte wählen Sie zuerst ein Projekt aus.');
-        
-        if (document.getElementById('noProjectNotice')) {
-            document.getElementById('noProjectNotice').style.display = 'block';
-        }
         return;
     }
 
@@ -369,16 +362,28 @@ function startRotation() {
     debug(`Starte 360° Rotation mit ${totalSteps} Schritten, Winkel=${angle}°, Intervall=${interval}s`);
 
     // UI aktualisieren
-    if (startBtn) startBtn.disabled = true;
-    if (stopBtn) stopBtn.disabled = false;
-    if (rotateBtn) rotateBtn.disabled = true;
-    if (resetBtn) resetBtn.disabled = true;
+    if (startBtn) {
+        startBtn.disabled = true;
+        debug("Start-Button deaktiviert");
+    }
+    
+    if (stopBtn) {
+        stopBtn.disabled = false;
+        debug("Stop-Button aktiviert");
+    }
+    
+    if (rotateBtn) {
+        rotateBtn.disabled = true;
+        debug("Rotate-Button deaktiviert");
+    }
     
     isRotating = true;
 
-    // Statusmeldung und Fortschritt aktualisieren
-    updateStatus("Rotation gestartet: Nehme erstes Foto auf");
-    updateProgress(0, totalSteps);
+    // Statusmeldung anzeigen
+    if (rotationStatus) {
+        rotationStatus.textContent = `Rotation gestartet: Nehme erstes Foto auf`;
+        rotationStatus.style.display = "block";
+    }
 
     // Ersten Schritt starten - nehme erstes Foto auf der Position 0
     debug("Nehme erstes Foto auf");
@@ -398,11 +403,13 @@ function takePhotoAndContinue() {
     const angle = parseInt(angleInput.value) || 15;
 
     // Aktuelle Winkelposition berechnen (0, 15, 30, ...)
+    // KORREKTUR: Setze Winkel auf mindestens 1 für das erste Foto
     const currentAngle = Math.max(1, currentStep * angle);
     
     // Statusmeldung aktualisieren
-    updateStatus(`Nehme Foto ${currentStep+1}/${totalSteps} bei ${currentAngle}° auf`);
-    updateProgress(currentStep, totalSteps);
+    if (rotationStatus) {
+        rotationStatus.textContent = `Nehme Foto ${currentStep+1}/${totalSteps} bei ${currentAngle}° auf`;
+    }
 
     // Nur Foto aufnehmen - an der aktuellen Position
     debug(`Nehme Foto bei Position ${currentAngle}° auf`);
@@ -426,15 +433,9 @@ function takePhotoAndContinue() {
 
             // Bild anzeigen
             displayImage(data.photo, currentAngle);
-            
-            // Log-Eintrag hinzufügen
-            addLogEntry(`Foto #${currentStep+1} bei ${currentAngle}° aufgenommen`);
 
             // Schritt abgeschlossen
             currentStep++;
-            
-            // Fortschritt aktualisieren
-            updateProgress(currentStep, totalSteps);
             
             // Wenn alle Fotos gemacht wurden, fertig
             if (currentStep >= totalSteps) {
@@ -448,14 +449,12 @@ function takePhotoAndContinue() {
         } else {
             console.error('Fehler beim Aufnehmen des Fotos:', data.error);
             alert(`Fehler beim Aufnehmen des Fotos: ${data.error}`);
-            addLogEntry(`Fehler: ${data.error}`);
             stopRotation();
         }
     })
     .catch(error => {
         console.error('Netzwerkfehler beim Aufnehmen des Fotos:', error);
         alert(`Netzwerkfehler beim Aufnehmen des Fotos: ${error.message}`);
-        addLogEntry(`Netzwerkfehler: ${error.message}`);
         stopRotation();
     });
 }
@@ -472,9 +471,10 @@ function rotateToNextPosition() {
     const angle = parseInt(angleInput.value) || 15;
     
     // Statusmeldung aktualisieren
-    updateStatus(`Drehe um ${angle}° zur nächsten Position...`);
-    updateProgress(currentStep, totalSteps);
-
+    if (rotationStatus) {
+        rotationStatus.textContent = `Drehe um ${angle}° zur nächsten Position...`;
+    }
+    
     // Drehe um den eingestellten Winkel
     debug(`Drehe um ${angle}° weiter`);
     const formData = new FormData();
@@ -503,8 +503,8 @@ function rotateToNextPosition() {
                 const intervalTime = parseInt(intervalInput.value) || 5;
                 debug(`Warte ${intervalTime} Sekunden bis zur nächsten Aufnahme...`);
                 
-                if (statusText) {
-                    statusText.textContent = `Warte ${intervalTime}s für nächste Aufnahme...`;
+                if (rotationStatus) {
+                    rotationStatus.textContent = `Warte ${intervalTime}s für nächste Aufnahme...`;
                 }
                 
                 setTimeout(() => {
@@ -522,14 +522,12 @@ function rotateToNextPosition() {
         } else {
             console.error('Fehler bei der Drehung:', data.error);
             alert(`Fehler bei der Drehung: ${data.error}`);
-            addLogEntry(`Fehler: ${data.error}`);
             stopRotation();
         }
     })
     .catch(error => {
         console.error('Netzwerkfehler bei der Drehung:', error);
         alert(`Netzwerkfehler bei der Drehung: ${error.message}`);
-        addLogEntry(`Netzwerkfehler: ${error.message}`);
         stopRotation();
     });
 }
@@ -556,8 +554,8 @@ function stopRotation() {
         debug("Rotate-Button aktiviert");
     }
 
-    if (statusText) {
-        statusText.textContent = 'Rotation wird gestoppt...';
+    if (rotationStatus) {
+        rotationStatus.textContent = 'Rotation wird gestoppt...';
     }
     
     // Dann den Server-Befehl senden
@@ -576,20 +574,20 @@ function stopRotation() {
     .then(data => {
         debug(`Stop-Antwort vom Server: ${JSON.stringify(data)}`);
         
-        if (statusText) {
-            statusText.textContent = 'Rotation gestoppt';
+        if (rotationStatus) {
+            rotationStatus.textContent = 'Rotation gestoppt';
             setTimeout(() => {
-                statusText.textContent = "";
+                rotationStatus.style.display = "none";
             }, 3000);
         }
     })
     .catch(error => {
         console.error("Fehler beim Stoppen der Rotation:", error);
         
-        if (statusText) {
-            statusText.textContent = `Fehler beim Stoppen: ${error.message}`;
+        if (rotationStatus) {
+            rotationStatus.textContent = `Fehler beim Stoppen: ${error.message}`;
             setTimeout(() => {
-                statusText.textContent = "";
+                rotationStatus.style.display = "none";
             }, 3000);
         }
     });
@@ -606,10 +604,10 @@ function completeRotation() {
     if (stopBtn) stopBtn.disabled = true;
     if (rotateBtn) rotateBtn.disabled = false;
 
-    if (statusText) {
-        statusText.textContent = 'Rotation abgeschlossen!';
+    if (rotationStatus) {
+        rotationStatus.textContent = 'Rotation abgeschlossen!';
         setTimeout(() => {
-            statusText.textContent = "";
+            rotationStatus.style.display = "none";
         }, 3000);
     }
 
@@ -670,35 +668,4 @@ function generateViewer() {
         console.error('Netzwerkfehler:', error);
         alert(`Netzwerkfehler beim Generieren des 360°-CloudImage-Viewers: ${error.message}`);
     });
-}
-
-// Hilfsfunktion zum Aktualisieren des Status-Textes
-function updateStatus(message) {
-    debug(`Status: ${message}`);
-    
-    if (statusText) {
-        statusText.textContent = message;
-    }
-}
-
-// Hilfsfunktion zum Aktualisieren des Fortschritts
-function updateProgress(current, total) {
-    if (progressText) {
-        progressText.textContent = `${current} / ${total} Fotos`;
-    }
-    
-    if (progressBar) {
-        const percentage = total > 0 ? (current / total) * 100 : 0;
-        progressBar.style.width = `${percentage}%`;
-    }
-}
-
-// Hilfsfunktion zum Hinzufügen von Log-Einträgen
-function addLogEntry(message) {
-    if (!logBox) return;
-    
-    const entry = document.createElement('div');
-    entry.textContent = message;
-    logBox.appendChild(entry);
-    logBox.scrollTop = logBox.scrollHeight; // Zum Ende scrollen
 }

@@ -1,619 +1,105 @@
-{% extends "base.html" %}
-
-{% block title %}360° Drehteller Steuerung - Startseite{% endblock %}
-
-{% block extra_css %}
-<style>
-    .card {
-        background-color: white;
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
-    }
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alexander Behrens 360° Drehteller Steuerung</title>
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="/static/css/index.css">
+</head>
+<body data-project-id="{{ project.id if project else '' }}">
+    <header>
+        <h1>360° Drehteller Steuerung</h1>
+        <nav>
+            <a href="/" class="active">Startseite</a>
+            <a href="/projects">Projekte</a>
+            <a href="/settings">Einstellungen</a>
+            <a href="/viewer">360° Viewer</a>
+        </nav>
+    </header>
     
-    .card h2 {
-        margin-top: 0;
-        margin-bottom: 1rem;
-        border-bottom: 1px solid #e9ecef;
-        padding-bottom: 0.75rem;
-        font-size: 1.5rem;
-        word-break: break-word;
-    }
-    
-    .two-column-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 1.5rem;
-    }
-    
-    @media (max-width: 768px) {
-        .two-column-grid {
-            grid-template-columns: 1fr;
-        }
-        
-        .card {
-            padding: 1rem;
-        }
-        
-        .card h2 {
-            font-size: 1.3rem;
-        }
-    }
-    
-    .project-selection {
-        margin-bottom: 1.5rem;
-    }
-    
-    .project-selection label {
-        font-weight: 500;
-        margin-bottom: 0.5rem;
-        display: block;
-    }
-    
-    .project-selection select {
-        width: 100%;
-        padding: 0.75rem;
-        border: 1px solid #ced4da;
-        border-radius: 6px;
-        font-size: 16px;
-        background-color: white;
-        -webkit-appearance: none;
-        appearance: none;
-        background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24'%3E%3Cpath fill='%23333' d='M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z'/%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-position: right 0.75rem center;
-        background-size: 16px;
-        min-height: 44px;
-    }
-    
-    .controls-container {
-        margin-top: 1rem;
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 1rem;
-    }
-    
-    @media (max-width: 576px) {
-        .controls-container {
-            grid-template-columns: 1fr;
-        }
-    }
-    
-    .settings-row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 1rem;
-        margin-bottom: 1rem;
-    }
-    
-    @media (max-width: 480px) {
-        .settings-row {
-            grid-template-columns: 1fr;
-            gap: 1rem;
-        }
-        
-        .card {
-            padding: 1rem;
-            margin-bottom: 1rem;
-        }
-        
-        .notice {
-            font-size: 14px;
-            padding: 0.75rem;
-        }
-    }
-    
-    .setting-item {
-        margin-bottom: 1rem;
-    }
-    
-    .setting-item label {
-        display: block;
-        margin-bottom: 0.5rem;
-        font-weight: 500;
-        font-size: 16px;
-    }
-    
-    .setting-item input {
-        width: 100%;
-        padding: 0.75rem;
-        border: 1px solid #ced4da;
-        border-radius: 6px;
-        font-size: 16px;
-        box-sizing: border-box;
-        min-height: 44px;
-    }
-    
-    .buttons-row {
-        display: flex;
-        gap: 0.75rem;
-        flex-wrap: wrap;
-        margin-top: 1.5rem;
-        margin-bottom: 1rem;
-    }
-    
-    @media (max-width: 480px) {
-        .buttons-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.75rem;
-        }
-        
-        .buttons-row .btn {
-            margin: 0;
-            font-size: 16px;
-            padding: 0.8rem 1rem;
-            display: block;
-            width: 100%;
-            box-sizing: border-box;
-            min-height: 44px;
-        }
-    }
-    
-    .status-box {
-        background-color: #f8f9fa;
-        border-radius: 6px;
-        padding: 1rem;
-        margin-top: 1rem;
-        border: 1px solid #e9ecef;
-    }
-    
-    .progress-container {
-        margin-top: 0.75rem;
-    }
-    
-    .progress-bar {
-        height: 12px;
-        background-color: #e9ecef;
-        border-radius: 6px;
-        overflow: hidden;
-        margin: 0.5rem 0;
-    }
-    
-    .progress {
-        height: 100%;
-        background-color: #2980b9;
-        width: 0%;
-        transition: width 0.3s;
-    }
-    
-    .preview-container {
-        min-height: 250px;
-        background-color: #f8f9fa;
-        border: 1px solid #dee2e6;
-        border-radius: 6px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        overflow: hidden;
-    }
-    
-    /* Verbesserte Vorschaubilder */
-    #imagePreview {
-        width: 100%;
-        overflow: hidden;
-    }
-    
-    #imagePreview img {
-        max-width: 100%;
-        height: auto;
-        display: block;
-        margin: 0 auto;
-        object-fit: contain;
-    }
-    
-    .image-container {
-        position: relative;
-        width: 100%;
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-    }
-    
-    .angle-label {
-        background-color: rgba(0, 0, 0, 0.7);
-        color: white;
-        padding: 0.25rem 0.5rem;
-        border-radius: 4px;
-        position: absolute;
-        bottom: 10px;
-        right: 10px;
-        font-size: 0.9rem;
-    }
-    
-    .log-container {
-        height: 200px;
-        overflow-y: auto;
-        background-color: #f8f9fa;
-        border: 1px solid #dee2e6;
-        border-radius: 6px;
-        padding: 0.75rem;
-        font-family: monospace;
-        font-size: 0.9rem;
-    }
-    
-    .notice {
-        padding: 0.75rem;
-        margin: 1rem 0;
-        border-radius: 6px;
-        background-color: #fff3cd;
-        color: #856404;
-        border: 1px solid #ffeeba;
-    }
-    
-    #progressText, #statusText {
-        margin-top: 0.5rem;
-        font-weight: 500;
-    }
-    
-    /* Zusätzliche mobile Anpassungen */
-    @media (max-width: 480px) {
-        #previewPlaceholder {
-            padding: 1rem;
-            text-align: center;
-        }
-        
-        .preview-container {
-            min-height: 200px;
-        }
-        
-        .log-container {
-            height: 150px;
-        }
-    }
-    
-    /* Stile für die Zeitachse */
-    .timeline-container {
-        margin: 1.5rem 0;
-        border: 1px solid #dee2e6;
-        border-radius: 4px;
-        padding: 1rem;
-        background-color: #f8f9fa;
-    }
-    
-    .timeline-title {
-        font-weight: 500;
-        margin-bottom: 1rem;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-    }
-    
-    .timeline-status {
-        background-color: #e9ecef;
-        padding: 0.5rem;
-        border-radius: 4px;
-        display: inline-block;
-        font-weight: 600;
-        min-width: 120px;
-        text-align: center;
-    }
-    
-    .timeline-status.idle { background-color: #6c757d; color: white; }
-    .timeline-status.taking_photo { background-color: #28a745; color: white; }
-    .timeline-status.rotating { background-color: #007bff; color: white; }
-    .timeline-status.paused { background-color: #ffc107; color: #212529; }
-    .timeline-status.error { background-color: #dc3545; color: white; }
-    
-    .timeline-progress {
-        height: 8px;
-        background-color: #dee2e6;
-        border-radius: 4px;
-        margin: 1rem 0;
-        overflow: hidden;
-    }
-    
-    .timeline-progress-bar {
-        height: 100%;
-        background-color: #007bff;
-        width: 0%;
-        transition: width 0.3s ease-in-out;
-    }
-    
-    .timeline-events {
-        margin-top: 1rem;
-        position: relative;
-        height: 120px;
-        overflow-x: auto;
-        white-space: nowrap;
-        padding-bottom: 1rem;
-    }
-    
-    .timeline-event {
-        display: inline-block;
-        position: relative;
-        padding: 0.5rem;
-        margin-right: 0.25rem;
-        border-radius: 4px;
-        height: 80px;
-        min-width: 100px;
-        vertical-align: middle;
-        text-align: center;
-        overflow: hidden;
-        color: white;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-    }
-    
-    .timeline-event.idle { background-color: #6c757d; }
-    .timeline-event.taking_photo { background-color: #28a745; }
-    .timeline-event.rotating { background-color: #007bff; }
-    .timeline-event.paused { background-color: #ffc107; color: #212529; }
-    .timeline-event.error { background-color: #dc3545; }
-    
-    .timeline-angle {
-        position: absolute;
-        bottom: 0.5rem;
-        width: 100%;
-        left: 0;
-        text-align: center;
-        font-size: 0.8rem;
-    }
-</style>
-{% endblock %}
-
-{% block content %}
-<div class="card">
-    <h2>{% if project %}Projekt: {{ project.name }}{% else %}Drehteller steuern{% endif %}</h2>
-    
-    {% if not project %}
-    <div class="project-selection">
-        <label for="projectSelect">Projekt auswählen:</label>
-        <select id="projectSelect" class="form-control">
-            <option value="">Bitte wählen...</option>
-            <option value="new">+ Neues Projekt erstellen</option>
-            <!-- Projekte werden per JavaScript geladen -->
-        </select>
-    </div>
-    <div id="noProjectNotice" class="notice" style="display: none;">
-        Bitte wählen Sie zuerst ein Projekt aus, bevor Sie den Drehteller starten.
-    </div>
-    {% endif %}
-    
-    <div class="settings-row">
-        <div class="setting-item">
-            <label for="intervalInput">Foto-Intervall (Sekunden):</label>
-            <input type="number" id="intervalInput" value="5" min="1" max="60">
-        </div>
-        
-        <div class="setting-item">
-            <label for="angleInput">Drehwinkel pro Schritt:</label>
-            <input type="number" id="angleInput" value="{{ project.angle_step|default(15) }}" min="1" max="90">
-        </div>
-    </div>
-    
-    <div class="buttons-row">
-        <button id="startBtn" class="btn btn-primary">Start 360°</button>
-        <button id="stopBtn" class="btn btn-secondary" disabled>Stop</button>
-        <button id="rotateBtn" class="btn btn-secondary">Einzelschritt</button>
-        <button id="resetBtn" class="btn btn-secondary">Reset</button>
-    </div>
-    
-    <div class="status-box">
-        <div id="statusText">Bereit.</div>
-        <div class="progress-container">
-            <div class="progress-bar">
-                <div id="progressBar" class="progress"></div>
-            </div>
-            <div id="progressText">0 / 0 Fotos</div>
-        </div>
-    </div>
-    
-    <!-- Zeitachsen-Visualisierung -->
-    <div class="timeline-container">
-        <div class="timeline-title">
-            <h3>Status</h3>
-            <div class="timeline-status idle" id="current-status">Bereit</div>
-        </div>
-        
-        <div class="timeline-progress">
-            <div class="timeline-progress-bar" id="progress-bar" style="width: 0%"></div>
-        </div>
-        
-        <div id="current-angle">Winkel: 0°</div>
-        <div id="timeline-message">Warte auf Aktion</div>
-        
-        <div class="timeline-events" id="timeline-events">
-            <!-- Hier werden die Timeline-Events dynamisch eingefügt -->
-        </div>
-    </div>
-</div>
-
-<div class="two-column-grid">
-    <div class="card">
-        <h2>Vorschau</h2>
-        <div id="imagePreview" class="preview-container">
-            <div id="previewPlaceholder">Noch kein Bild aufgenommen</div>
-        </div>
-    </div>
-
-    <div class="card">
-        <h2>Status-Log</h2>
-        <div id="logBox" class="log-container"></div>
-    </div>
-</div>
-{% endblock %}
-
-{% block extra_js %}
-<script src="{{ url_for('static', filename='js/index.js') }}"></script>
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Globale Variablen
-        let selectedProject = '{{ project.id if project else "" }}';
-        let isSessionRunning = false;
-        let statusUpdateInterval = null;
-        
-        // DOM-Elemente
-        const projectSelect = document.getElementById('project_select');
-        const currentStatusElement = document.getElementById('current-status');
-        const progressBarElement = document.getElementById('progress-bar');
-        const currentAngleElement = document.getElementById('current-angle');
-        const timelineMessageElement = document.getElementById('timeline-message');
-        const timelineEventsElement = document.getElementById('timeline-events');
-        
-        // Lade Projekte
-        loadProjects();
-        
-        // Status-Updates abrufen
-        startStatusUpdates();
-        
-        // Event-Listener
-        projectSelect.addEventListener('change', function() {
-            selectedProject = this.value;
-            updateStartButtonState();
-        });
-        
-        // Funktionen
-        function loadProjects() {
-            fetch('/api/projects')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.projects && data.projects.length > 0) {
-                        // Bestehende Optionen löschen außer der ersten
-                        while (projectSelect.options.length > 1) {
-                            projectSelect.remove(1);
-                        }
-                        
-                        // Neue Optionen hinzufügen
-                        data.projects.forEach(project => {
-                            const option = document.createElement('option');
-                            option.value = project.id;
-                            option.textContent = project.name;
-                            
-                            // Wenn dies das aktuelle Projekt ist, als ausgewählt markieren
-                            if (selectedProject && project.id === selectedProject) {
-                                option.selected = true;
-                            }
-                            
-                            projectSelect.appendChild(option);
-                        });
-                    }
-                })
-                .catch(error => console.error('Fehler beim Laden der Projekte:', error));
-        }
-        
-        function startStatusUpdates() {
-            // Bestehende Intervalle stoppen
-            if (statusUpdateInterval) {
-                clearInterval(statusUpdateInterval);
-            }
-            
-            // Status sofort abrufen
-            fetchStatus();
-            
-            // Und dann alle 2 Sekunden erneut abrufen
-            statusUpdateInterval = setInterval(fetchStatus, 2000);
-        }
-        
-        function fetchStatus() {
-            fetch('/turntable-status')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.error) {
-                        console.error('Fehler beim Abrufen des Status:', data.error);
-                        return;
-                    }
+    <main>
+        <div class="container">
+            <div class="control-panel card">
+                <h2>{% if project %}Projekt: {{ project.name }}{% else %}Drehteller steuern{% endif %}</h2>
+                
+                {% if not project %}
+                <div class="project-selection">
+                    <label for="projectSelect">Projekt auswählen:</label>
+                    <select id="projectSelect">
+                        <option value="">Bitte wählen...</option>
+                        <option value="new">+ Neues Projekt erstellen</option>
+                        <!-- Projekte werden per JavaScript geladen -->
+                    </select>
+                </div>
+                {% endif %}
+                
+                <div class="rotation-settings">
+                    <div class="form-group">
+                        <label for="intervalInput">Foto-Intervall (Sekunden):</label>
+                        <input type="number" id="intervalInput" value="5" min="1" max="60">
+                    </div>
                     
-                    updateStatusDisplay(data);
-                })
-                .catch(error => console.error('Fehler beim Abrufen des Status:', error));
-        }
+                    <div class="form-group">
+                        <label for="angleInput">Drehwinkel pro Schritt:</label>
+                        <input type="number" id="angleInput" value="{{ project.angle_step|default(15) }}" min="1" max="90">
+                    </div>
+                </div>
+                
+                <div class="controls">
+                    <button id="startBtn" class="btn btn-primary">Start 360°</button>
+                    <button id="stopBtn" class="btn btn-danger" disabled>Stop</button>
+                    <button id="rotateBtn" class="btn btn-secondary">Manuell drehen</button>
+                </div>
+                
+                <div id="rotationStatus" class="status-message" style="display: none;"></div>
+            </div>
+            
+            <div class="preview card">
+                <h2>Vorschau</h2>
+                <div id="imagePreview" class="image-preview">
+                    <div class="no-image">Kein Bild verfügbar</div>
+                </div>
+            </div>
+        </div>
         
-        function updateStatusDisplay(statusData) {
-            // Sitzungsstatus aktualisieren
-            isSessionRunning = statusData.is_running;
-            
-            // Aktuellen Status aktualisieren
-            const currentStatus = statusData.current;
-            if (currentStatus) {
-                // Status-Badge aktualisieren
-                currentStatusElement.className = 'timeline-status ' + currentStatus.status;
-                
-                // Status-Text basierend auf Status anzeigen
-                let statusText = 'Unbekannt';
-                switch (currentStatus.status) {
-                    case 'idle': statusText = 'Bereit'; break;
-                    case 'taking_photo': statusText = 'Foto'; break;
-                    case 'rotating': statusText = 'Drehung'; break;
-                    case 'paused': statusText = 'Pause'; break;
-                    case 'error': statusText = 'Fehler'; break;
-                }
-                currentStatusElement.textContent = statusText;
-                
-                // Fortschrittsbalken aktualisieren
-                if (currentStatus.progress !== null) {
-                    progressBarElement.style.width = currentStatus.progress + '%';
-                }
-                
-                // Winkel anzeigen
-                currentAngleElement.textContent = 'Winkel: ' + currentStatus.angle + '°';
-                
-                // Nachricht anzeigen
-                timelineMessageElement.textContent = currentStatus.message || 'Keine Nachricht';
-            }
-            
-            // Ereigniszeitleiste aktualisieren
-            if (statusData.history && statusData.history.length > 0) {
-                updateTimelineEvents(statusData.history);
-            }
-        }
-        
-        function updateTimelineEvents(history) {
-            // Zeitachsen-Container leeren
-            timelineEventsElement.innerHTML = '';
-            
-            // Ereignisse in umgekehrter Reihenfolge anzeigen (neueste zuerst)
-            const events = [...history].reverse();
-            
-            // Maximal die letzten 20 Ereignisse anzeigen
-            const recentEvents = events.slice(0, 20);
-            
-            // Ereignisse zur Zeitachse hinzufügen
-            recentEvents.forEach(event => {
-                const eventElement = document.createElement('div');
-                eventElement.className = 'timeline-event ' + event.status;
-                
-                // Statustext
-                let statusText = 'Unbekannt';
-                switch (event.status) {
-                    case 'idle': statusText = 'Bereit'; break;
-                    case 'taking_photo': statusText = 'Foto'; break;
-                    case 'rotating': statusText = 'Drehung'; break;
-                    case 'paused': statusText = 'Pause'; break;
-                    case 'error': statusText = 'Fehler'; break;
-                }
-                
-                // Dauer berechnen
-                let duration = 'n/a';
-                if (event.start_time && event.end_time) {
-                    const start = new Date(event.start_time);
-                    const end = new Date(event.end_time);
-                    const durationMs = end - start;
-                    if (durationMs < 1000) {
-                        duration = durationMs + 'ms';
-                    } else {
-                        duration = (durationMs / 1000).toFixed(1) + 's';
-                    }
-                }
-                
-                eventElement.innerHTML = `
-                    <div>${statusText}</div>
-                    <div>${duration}</div>
-                    <div class="timeline-angle">${event.angle}°</div>
-                `;
-                
-                timelineEventsElement.appendChild(eventElement);
-            });
-        }
-        
-        function updateStartButtonState() {
-            // Prüfen, ob ein Projekt ausgewählt ist
-            const startButton = document.getElementById('start_button');
-            if (startButton) {
-                startButton.disabled = !selectedProject;
-            }
-        }
-    });
-</script>
-{% endblock %}
+        <!-- Modal für Projekterstellung -->
+        <div id="projectModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Neues Projekt erstellen</h3>
+                </div>
+                <div class="modal-body">
+                    <form id="projectForm" action="{{ url_for('projects.create_project') }}" method="POST">
+                        <div class="form-group">
+                            <label for="name">Projektname:</label>
+                            <input type="text" id="name" name="name" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="description">Beschreibung:</label>
+                            <textarea id="description" name="description" rows="4"></textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="angle_step">Winkelschritt (Grad):</label>
+                            <input type="number" id="angle_step" name="angle_step" min="1" max="90" value="15">
+                        </div>
+                        
+                        <div class="modal-footer">
+                            <button type="button" id="cancelProject" class="btn btn-secondary">Abbrechen</button>
+                            <button type="submit" class="btn btn-primary">Projekt erstellen</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+       <p>&copy; 2025 Alexander Behrens 360° Drehteller Steuerung</p>
+    </footer>
+
+    <script src="/static/js/index.js"></script>
+</body>
+</html>

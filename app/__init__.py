@@ -12,7 +12,6 @@ from app.controllers.arduino_controller import ArduinoController
 from app.controllers.camera_controller import CameraController
 from app.controllers.turntable_controller import TurntableController
 from app.utils.path_manager import PathManager
-from app.routes.white_balance_routes import white_balance_bp
 
 # Gemeinsam genutzte Controller-Instanzen
 arduino_controller = None
@@ -115,9 +114,10 @@ def initialize_controllers():
             arduino_controller = ArduinoController(port, baudrate)
         
         # Kamera Controller
-        camera_device = config_manager.get('camera.device_path', 'auto')
+        camera_type = config_manager.get('camera.type', 'webcam')
+        camera_device = config_manager.get('camera.device_path', '/dev/video0')
         resolution = config_manager.get('camera.resolution')
-        camera_controller = CameraController(device=camera_device, resolution=resolution)
+        camera_controller = CameraController(camera_type, camera_device, resolution)
         
         # Drehteller Controller (nutzt den Arduino Controller)
         turntable_controller = TurntableController(arduino_controller, 
@@ -176,10 +176,3 @@ def register_blueprints(app):
     # Blueprint für den 360° Viewer
     from app.blueprints.viewer import viewer_bp
     app.register_blueprint(viewer_bp, url_prefix='/viewer')
-    
-    # Blueprint für Export-Funktionalität
-    from app.blueprints.export import export_bp
-    app.register_blueprint(export_bp, url_prefix='/export')
-    
-    # Blueprint für Weißabgleich
-    app.register_blueprint(white_balance_bp)

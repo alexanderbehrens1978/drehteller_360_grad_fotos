@@ -4,358 +4,412 @@
  */
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM geladen, initialisiere Viewer...');
-    const viewerContainer = document.getElementById('viewer-container');
-    const viewer = document.getElementById('viewer');
+    const viewerContainer = document.getElementById('product-viewer');
+    if (!viewerContainer) return;
     
-    if (!viewerContainer || !viewer) {
-        console.error('Viewer-Container oder Viewer nicht gefunden!', {
-            viewerContainer: !!viewerContainer,
-            viewer: !!viewer
-        });
-        return;
-    }
+    const images = viewerContainer.querySelectorAll('.product-image');
+    const pauseBtn = document.getElementById('pause-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const zoomInBtn = document.getElementById('zoom-in-btn');
+    const zoomOutBtn = document.getElementById('zoom-out-btn');
+    const circleIndicator = document.getElementById('circle-indicator');
+    const magnifierCheckbox = document.getElementById('magnifier');
     
-    // Bereits vorhandene Bilder zuerst prüfen
-    let images = Array.from(viewer.querySelectorAll('.product-image'));
+    // Navigation-Elemente erstellen
+    const leftArrow = document.createElement('button');
+    leftArrow.className = 'cloudimage-360-left';
+    leftArrow.innerHTML = '❮';
+    viewerContainer.appendChild(leftArrow);
     
-    // Wenn Bilder bereits im HTML vorhanden sind, verwende diese
-    if (images.length > 0) {
-        console.log(`${images.length} Bilder bereits im HTML gefunden, verwende diese direkt`);
-        initializeViewer(images);
-        return;
-    }
+    const rightArrow = document.createElement('button');
+    rightArrow.className = 'cloudimage-360-right';
+    rightArrow.innerHTML = '❯';
+    viewerContainer.appendChild(rightArrow);
     
-    // Ansonsten lade dynamisch
-    // Lade die Parameter aus dem Viewer-Element
-    const folderPath = viewer.getAttribute('data-folder');
-    const filenamePattern = viewer.getAttribute('data-filename-pattern');
-    const imageCount = parseInt(viewer.getAttribute('data-amount'));
+    // 360-Grad Kreis erstellen
+    const view360Circle = document.createElement('div');
+    view360Circle.className = 'view-360-circle';
+    viewerContainer.appendChild(view360Circle);
     
-    // Überprüfe, ob alle erforderlichen Attribute vorhanden sind
-    if (!folderPath || !filenamePattern || isNaN(imageCount)) {
-        console.error('Erforderliche Attribute fehlen oder sind ungültig!', { folderPath, filenamePattern, imageCount });
-        return;
-    }
+    // Magnifier-Glas erstellen
+    const magnifier = document.createElement('div');
+    magnifier.className = 'img-magnifier-glass';
+    viewerContainer.appendChild(magnifier);
     
-    console.log('Lade 360° Viewer mit:', { folderPath, filenamePattern, imageCount });
+    // Setting-Elemente
+    const autoPlayBehavior = document.getElementById('auto-play-behavior');
+    const autoPlaySpeed = document.getElementById('auto-play-speed');
+    const dragSpeed = document.getElementById('drag-speed');
+    const autoPlay = document.getElementById('auto-play');
+    const autoPlayOnce = document.getElementById('auto-play-once');
+    const autoPlayReverse = document.getElementById('auto-play-reverse');
+    const draggable = document.getElementById('draggable');
+    const fullscreen = document.getElementById('fullscreen');
     
-    // Bildcontainer erstellen, falls er nicht bereits existiert
-    let imageContainer = viewer.querySelector('.image-container');
-    if (!imageContainer) {
-        imageContainer = document.createElement('div');
-        imageContainer.className = 'image-container';
-        viewer.appendChild(imageContainer);
-    } else {
-        // Bestehenden Container leeren
-        imageContainer.innerHTML = '';
-    }
+    // Status und Konfiguration
+    let currentIndex = 0;
+    let isPlaying = true;
+    let autoRotateTimer = null;
+    let zoom = 1.0;
+    let isDragging = false;
+    let startX = 0;
+    let magnifierActive = false;
     
-    // Ladestatus anzeigen
-    const loaderElement = document.createElement('div');
-    loaderElement.className = 'loader';
-    loaderElement.textContent = 'Bilder werden geladen...';
-    imageContainer.appendChild(loaderElement);
-    
-    // Bilder laden
-    const dynamicImages = [];
-    let loadedCount = 0;
-    
-    // Starte das Laden der Bilder
-    for (let i = 0; i < imageCount; i++) {
-        const img = document.createElement('img');
-        img.className = 'product-image';
-        img.alt = `Bild ${i+1} von ${imageCount}`;
+    /**
+     * Zeigt das Bild mit dem angegebenen Index an
+     * @param {number} index - Der anzuzeigende Bildindex
+     */
+    function showImage(index) {
+        // Aktuelles Bild ausblenden
+        images[currentIndex].classList.remove('active');
         
-        // Pfad zum Bild erstellen
-        const index = i + 1;
-        let imgFilename = filenamePattern
-            .replace('{index}', index)
-            .replace('{index:00}', index.toString().padStart(2, '0'))
-            .replace('{index:000}', index.toString().padStart(3, '0'));
+        // Neues Bild anzeigen
+        currentIndex = index;
+        images[currentIndex].classList.add('active');
         
-        // Achten Sie darauf, dass der Pfad korrekt ist
-        const imgSrc = folderPath + imgFilename;
-        console.log(`Lade Bild ${index}/${imageCount}: ${imgSrc}`);
+        // Bottom Circle Indicator aktualisieren
+        if (circleIndicator) {
+            const progress = (currentIndex / (images.length - 1)) * 100;
+            circleIndicator.style.width = progress + '%';
+        }
+    }
+    
+    /**
+     * Startet die Auto-Rotation des Viewers
+     */
+    function startAutoRotate() {
+        if (autoRotateTimer) return;
         
-        // Event-Listener für Laden und Fehler
-        img.onload = function() {
-            console.log(`Bild erfolgreich geladen: ${img.src}`);
-            loadedCount++;
+        const speed = autoPlaySpeed ? parseInt(autoPlaySpeed.value) : 100;
+        const direction = autoPlayReverse && autoPlayReverse.checked ? -1 : 1;
+        
+        autoRotateTimer = setInterval(function() {
+            const nextIndex = (currentIndex + direction + images.length) % images.length;
+            showImage(nextIndex);
             
-            if (loadedCount === 1) {
-                // Das erste geladene Bild sofort anzeigen
-                img.classList.add('active');
-                console.log('Erstes Bild aktiviert');
+            // Bei autoPlayOnce prüfen, ob wir am Ende angekommen sind
+            if (autoPlayOnce && autoPlayOnce.checked && 
+                ((direction > 0 && nextIndex === 0) || 
+                 (direction < 0 && nextIndex === images.length - 1))) {
+                stopAutoRotate();
             }
-            
-            if (loadedCount === imageCount) {
-                // Alle Bilder geladen
-                loaderElement.remove();
-                console.log('Alle Bilder geladen!');
-                initializeViewer(dynamicImages);
-            }
-        };
+        }, speed);
         
-        img.onerror = function() {
-            console.error(`Fehler beim Laden des Bildes: ${img.src}`);
-            loadedCount++;
-            if (loadedCount === imageCount) {
-                loaderElement.remove();
-                if (dynamicImages.length > 0) {
-                    initializeViewer(dynamicImages);
-                }
-            }
-        };
-        
-        // Füge das Bild dem Container hinzu und speichere es im Array
-        imageContainer.appendChild(img);
-        dynamicImages.push(img);
-        
-        // Starte das Laden des Bildes
-        img.src = imgSrc;
+        if (pauseBtn) {
+            pauseBtn.textContent = "⏸ Pause";
+        }
+        isPlaying = true;
     }
     
-    function initializeViewer(imageElements) {
-        // Ersten Frame anzeigen, wenn kein Bild im Ladevorgang aktiviert wurde
-        if (!document.querySelector('.product-image.active') && imageElements.length > 0) {
-            imageElements[0].classList.add('active');
-            console.log('Erstes Bild per Timeout aktiviert');
+    /**
+     * Stoppt die Auto-Rotation des Viewers
+     */
+    function stopAutoRotate() {
+        if (autoRotateTimer) {
+            clearInterval(autoRotateTimer);
+            autoRotateTimer = null;
         }
         
-        // CircleIndicator erstellen oder vorhandenen finden
-        let circleIndicator = document.querySelector('.circle-indicator');
-        if (!circleIndicator) {
-            circleIndicator = document.createElement('div');
-            circleIndicator.className = 'circle-indicator';
-            circleIndicator.id = 'circle-indicator';
-            const bottomCircle = viewerContainer.querySelector('.bottom-circle');
-            if (bottomCircle) {
-                bottomCircle.appendChild(circleIndicator);
+        if (pauseBtn) {
+            pauseBtn.textContent = "▶ Abspielen";
+        }
+        isPlaying = false;
+    }
+    
+    /**
+     * Wendet den aktuellen Zoom-Wert auf alle Bilder an
+     */
+    function applyZoom() {
+        images.forEach(img => {
+            img.style.transform = `scale(${zoom})`;
+        });
+    }
+    
+    // Event-Listener einrichten
+    
+    // Play/Pause-Button
+    if (pauseBtn) {
+        pauseBtn.addEventListener('click', function() {
+            if (isPlaying) {
+                stopAutoRotate();
             } else {
-                viewerContainer.appendChild(circleIndicator);
+                startAutoRotate();
             }
+        });
+    }
+    
+    // Reset-Button
+    if (resetBtn) {
+        resetBtn.addEventListener('click', function() {
+            showImage(0);
+            zoom = 1.0;
+            applyZoom();
+        });
+    }
+    
+    // Zoom-Buttons
+    if (zoomInBtn) {
+        zoomInBtn.addEventListener('click', function() {
+            if (zoom < 3.0) {
+                zoom += 0.1;
+                applyZoom();
+            }
+        });
+    }
+    
+    if (zoomOutBtn) {
+        zoomOutBtn.addEventListener('click', function() {
+            if (zoom > 0.5) {
+                zoom -= 0.1;
+                applyZoom();
+            }
+        });
+    }
+    
+    /**
+     * Magnifier-Funktionalität
+     */
+    function handleMagnifier(e) {
+        if (!magnifierActive) return;
+        
+        const activeImage = viewerContainer.querySelector('.product-image.active');
+        if (!activeImage) return;
+        
+        magnifier.style.display = 'block';
+        
+        // Berechne Position im Container
+        const rect = viewerContainer.getBoundingClientRect();
+        let x = e.clientX - rect.left;
+        let y = e.clientY - rect.top;
+        
+        // Sicherstellen, dass die Lupe innerhalb des Containers bleibt
+        if (x > rect.width - (magnifier.offsetWidth / 2)) {
+            x = rect.width - (magnifier.offsetWidth / 2);
+        }
+        if (x < (magnifier.offsetWidth / 2)) {
+            x = magnifier.offsetWidth / 2;
+        }
+        if (y > rect.height - (magnifier.offsetHeight / 2)) {
+            y = rect.height - (magnifier.offsetHeight / 2);
+        }
+        if (y < (magnifier.offsetHeight / 2)) {
+            y = magnifier.offsetHeight / 2;
         }
         
-        // Buttons und andere UI-Elemente
-        const playBtn = document.getElementById('play-btn');
-        const fullscreenBtn = document.getElementById('fullscreen-btn');
-        const magnifierBtn = document.getElementById('magnifier-btn');
-        const exportBtn = document.getElementById('export-btn');
-        const settingsBtn = document.getElementById('settings-btn');
-        const playIcon = document.getElementById('play-icon');
+        // Lupe positionieren
+        magnifier.style.left = (x - magnifier.offsetWidth / 2) + "px";
+        magnifier.style.top = (y - magnifier.offsetHeight / 2) + "px";
         
-        console.log('UI-Elemente gefunden:', {
-            playBtn: !!playBtn,
-            fullscreenBtn: !!fullscreenBtn,
-            magnifierBtn: !!magnifierBtn,
-            exportBtn: !!exportBtn,
-            settingsBtn: !!settingsBtn,
-            playIcon: !!playIcon
+        // Hintergrundbild und -position berechnen
+        const zoomFactor = 3;
+        const bgX = (x * zoomFactor - magnifier.offsetWidth / 2);
+        const bgY = (y * zoomFactor - magnifier.offsetHeight / 2);
+        
+        magnifier.style.backgroundImage = "url('" + activeImage.src + "')";
+        magnifier.style.backgroundSize = (rect.width * zoomFactor) + "px " + (rect.height * zoomFactor) + "px";
+        magnifier.style.backgroundPosition = "-" + bgX + "px -" + bgY + "px";
+    }
+    
+    // Maus-Events für die Rotation
+    if (viewerContainer) {
+        viewerContainer.addEventListener('mousedown', function(e) {
+            if (draggable && !draggable.checked) return;
+            if (magnifierActive) return;
+            
+            isDragging = true;
+            startX = e.clientX;
+            viewerContainer.classList.add('dragging');
+            
+            // 360-Kreis ausblenden
+            view360Circle.classList.add('hidden');
+            
+            if (isPlaying) {
+                stopAutoRotate();
+            }
         });
         
-        // Status und Konfiguration
-        let currentIndex = 0;
-        let isPlaying = false;
-        let autoRotateTimer = null;
-        let zoom = 1.0;
-        let isDragging = false;
-        let startX = 0;
-        let magnifierActive = false;
-        
-        /**
-         * Zeigt das Bild mit dem angegebenen Index an
-         * @param {number} index - Der anzuzeigende Bildindex
-         */
-        function showImage(index) {
-            // Sicherstellen, dass der Index gültig ist
-            if (index < 0) index = imageElements.length - 1;
-            if (index >= imageElements.length) index = 0;
-            
-            // Aktuelles Bild ausblenden
-            const currentImg = document.querySelector('.product-image.active');
-            if (currentImg) {
-                currentImg.classList.remove('active');
+        document.addEventListener('mousemove', function(e) {
+            // Magnifier-Handling
+            if (magnifierActive) {
+                handleMagnifier(e);
+                return;
             }
             
-            // Neues Bild anzeigen
-            currentIndex = index;
-            if (imageElements[currentIndex]) {
-                imageElements[currentIndex].classList.add('active');
-                console.log(`Bild ${currentIndex + 1} angezeigt`);
+            if (!isDragging) return;
+            
+            const deltaX = e.clientX - startX;
+            const dragSensitivity = dragSpeed ? parseInt(dragSpeed.value) / 100 : 1.2;
+            
+            if (Math.abs(deltaX) > 20 / dragSensitivity) {
+                // Richtung bestimmen: nach rechts = rückwärts, nach links = vorwärts
+                const direction = Math.sign(deltaX);
+                const newIndex = (currentIndex - direction + images.length) % images.length;
                 
-                // Bottom Circle Indicator aktualisieren
-                if (circleIndicator) {
-                    const progress = (currentIndex / (imageElements.length - 1)) * 100;
-                    circleIndicator.style.width = progress + '%';
+                showImage(newIndex);
+                startX = e.clientX;
+            }
+        });
+        
+        document.addEventListener('mouseup', function() {
+            isDragging = false;
+            if (viewerContainer) {
+                viewerContainer.classList.remove('dragging');
+            }
+        });
+        
+        // Mouseenter/Mouseleave für den Viewer
+        viewerContainer.addEventListener('mouseenter', function() {
+            if (!isDragging && !isPlaying) {
+                view360Circle.classList.remove('hidden');
+            }
+        });
+        
+        viewerContainer.addEventListener('mouseleave', function() {
+            view360Circle.classList.add('hidden');
+            magnifier.style.display = 'none';
+        });
+        
+        // Touch-Events für mobile Geräte
+        viewerContainer.addEventListener('touchstart', function(e) {
+            if (draggable && !draggable.checked) return;
+            
+            isDragging = true;
+            startX = e.touches[0].clientX;
+            
+            if (isPlaying) {
+                stopAutoRotate();
+            }
+        });
+        
+        document.addEventListener('touchmove', function(e) {
+            if (!isDragging) return;
+            
+            const deltaX = e.touches[0].clientX - startX;
+            const dragSensitivity = dragSpeed ? parseInt(dragSpeed.value) / 100 : 1.2;
+            
+            if (Math.abs(deltaX) > 20 / dragSensitivity) {
+                const direction = Math.sign(deltaX);
+                const newIndex = (currentIndex - direction + images.length) % images.length;
+                
+                showImage(newIndex);
+                startX = e.touches[0].clientX;
+            }
+        });
+        
+        document.addEventListener('touchend', function() {
+            isDragging = false;
+        });
+        
+        // Mausrad-Zoom
+        viewerContainer.addEventListener('wheel', function(e) {
+            e.preventDefault();
+            
+            if (e.deltaY < 0) {
+                // Zoom in
+                if (zoom < 3.0) {
+                    zoom += 0.1;
+                    applyZoom();
                 }
             } else {
-                console.error(`Bild mit Index ${index} nicht gefunden!`);
+                // Zoom out
+                if (zoom > 0.5) {
+                    zoom -= 0.1;
+                    applyZoom();
+                }
             }
-        }
+        });
+    }
+    
+    // Navigationspfeile-Handler
+    leftArrow.addEventListener('click', function() {
+        const newIndex = (currentIndex - 1 + images.length) % images.length;
+        showImage(newIndex);
         
-        /**
-         * Startet die Auto-Rotation des Viewers
-         */
-        function startAutoRotate() {
-            // Wenn bereits läuft, zuerst stoppen
+        if (isPlaying) {
             stopAutoRotate();
-            
-            // Geschwindigkeit aus den Einstellungen holen oder Standard verwenden
-            const speed = autoPlaySpeed ? parseInt(autoPlaySpeed.value) : 100;
-            
-            // Auto-Rotation starten
-            autoRotateTimer = setInterval(function() {
-                // Je nach Richtung nächstes oder vorheriges Bild anzeigen
-                const reverse = autoPlayReverse && autoPlayReverse.checked;
-                
-                if (reverse) {
-                    showImage(currentIndex - 1);
-                } else {
-                    showImage(currentIndex + 1);
-                }
-                
-                // Bei einmaligem Abspielen prüfen, ob wir am Ende sind
-                if (autoPlayOnce && autoPlayOnce.checked) {
-                    if ((reverse && currentIndex === 0) || (!reverse && currentIndex === imageElements.length - 1)) {
-                        stopAutoRotate();
-                    }
-                }
-            }, speed);
-            
-            if (playIcon) {
-                playIcon.textContent = '⏸';
-            }
-            isPlaying = true;
         }
+    });
+    
+    rightArrow.addEventListener('click', function() {
+        const newIndex = (currentIndex + 1) % images.length;
+        showImage(newIndex);
         
-        /**
-         * Stoppt die Auto-Rotation des Viewers
-         */
-        function stopAutoRotate() {
-            // Timer zurücksetzen, falls vorhanden
-            if (autoRotateTimer) {
-                clearInterval(autoRotateTimer);
-                autoRotateTimer = null;
-            }
-            
-            if (playIcon) {
-                playIcon.textContent = '▶';
-            }
-            isPlaying = false;
+        if (isPlaying) {
+            stopAutoRotate();
         }
-        
-        // Event-Listener einrichten
-        
-        // Play/Pause-Button
-        if (playBtn) {
-            playBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('Play/Pause Button geklickt');
-                
+    });
+    
+    // Magnifier-Toggle
+    if (magnifierCheckbox) {
+        magnifierCheckbox.addEventListener('change', function() {
+            magnifierActive = this.checked;
+            
+            if (magnifierActive) {
+                viewerContainer.classList.add('magnifier');
                 if (isPlaying) {
                     stopAutoRotate();
-                } else {
-                    startAutoRotate();
                 }
-            });
-        }
-        
-        // Vollbild-Button
-        if (fullscreenBtn) {
-            fullscreenBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('Vollbild Button geklickt');
-                
-                // Finde das Element, das in den Vollbildmodus gehen soll
-                const elem = viewerContainer;
-                
-                // Vollbildmodus umschalten
-                if (!document.fullscreenElement) {
-                    // In Vollbild gehen
-                    if (elem.requestFullscreen) {
-                        elem.requestFullscreen();
-                    } else if (elem.mozRequestFullScreen) { /* Firefox */
-                        elem.mozRequestFullScreen();
-                    } else if (elem.webkitRequestFullscreen) { /* Chrome, Safari & Opera */
-                        elem.webkitRequestFullscreen();
-                    } else if (elem.msRequestFullscreen) { /* IE/Edge */
-                        elem.msRequestFullscreen();
-                    }
-                } else {
-                    // Vollbild beenden
-                    if (document.exitFullscreen) {
-                        document.exitFullscreen();
-                    } else if (document.mozCancelFullScreen) { /* Firefox */
-                        document.mozCancelFullScreen();
-                    } else if (document.webkitExitFullscreen) { /* Chrome, Safari & Opera */
-                        document.webkitExitFullscreen();
-                    } else if (document.msExitFullscreen) { /* IE/Edge */
-                        document.msExitFullscreen();
-                    }
+            } else {
+                viewerContainer.classList.remove('magnifier');
+                magnifier.style.display = 'none';
+            }
+        });
+    }
+    
+    // Event-Listener für Einstellungen
+    if (autoPlaySpeed) {
+        autoPlaySpeed.addEventListener('change', function() {
+            if (isPlaying) {
+                stopAutoRotate();
+                startAutoRotate();
+            }
+        });
+    }
+    
+    if (autoPlay) {
+        autoPlay.addEventListener('change', function() {
+            if (this.checked && !isPlaying) {
+                startAutoRotate();
+            } else if (!this.checked && isPlaying) {
+                stopAutoRotate();
+            }
+        });
+    }
+    
+    if (autoPlayReverse) {
+        autoPlayReverse.addEventListener('change', function() {
+            if (isPlaying) {
+                stopAutoRotate();
+                startAutoRotate();
+            }
+        });
+    }
+    
+    if (fullscreen) {
+        fullscreen.addEventListener('change', function() {
+            if (this.checked) {
+                if (viewerContainer.requestFullscreen) {
+                    viewerContainer.requestFullscreen();
                 }
-            });
-        }
-        
-        // Export-Button
-        if (exportBtn) {
-            exportBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('Export Button geklickt');
-                
-                // Projekt-ID aus dem globalen Kontext holen
-                const projectId = window.projectId || document.querySelector('meta[name="project-id"]')?.content;
-                
-                if (projectId) {
-                    // Zur Export-Optionen-Seite navigieren
-                    window.location.href = `/export/options/${projectId}`;
-                } else {
-                    console.error('Projekt-ID nicht gefunden!');
-                    alert('Fehler: Projekt-ID konnte nicht ermittelt werden.');
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
                 }
-            });
-        }
-        
-        // Schließen-Button für Modal
-        const closeBtn = document.querySelector('.close');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', function() {
-                const exportModal = document.getElementById('export-modal');
-                if (exportModal) {
-                    exportModal.style.display = 'none';
-                }
-            });
-        }
-        
-        // Settings-Button
-        if (settingsBtn) {
-            settingsBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('Settings Button geklickt');
-                
-                // Toggle der Einstellungen
-                const settingsSection = document.querySelector('.viewer-settings');
-                if (settingsSection) {
-                    settingsSection.classList.toggle('visible');
-                }
-            });
-        }
-        
-        // Setting-Elemente
-        const autoPlayBehavior = document.getElementById('auto-play-behavior');
-        const autoPlaySpeed = document.getElementById('auto-play-speed');
-        const dragSpeed = document.getElementById('drag-speed');
-        const autoPlay = document.getElementById('auto-play');
-        const autoPlayOnce = document.getElementById('auto-play-once');
-        const autoPlayReverse = document.getElementById('auto-play-reverse');
-        
-        // Auto-Play bei Laden, wenn aktiviert
-        if (autoPlay && autoPlay.checked) {
-            startAutoRotate();
-        }
+            }
+        });
+    }
+    
+    // Initialisierung
+    if (viewerContainer) {
+        viewerContainer.style.cursor = 'grab';
+    }
+    
+    showImage(0); // Update Circle-Indicator
+    
+    if (autoPlay && autoPlay.checked) {
+        startAutoRotate();
+    } else if (!autoPlay && images.length > 0) {
+        // Standardmäßig starten, wenn kein Autoplay-Checkbox existiert
+        startAutoRotate();
     }
 });
