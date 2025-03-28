@@ -166,7 +166,7 @@ mkdir -p "$PROJECT_DIR/logs"
 
 # Berechtigungen setzen
 chown -R $REAL_USER:$REAL_USER "$PROJECT_DIR/static"
-chown -R $REAL_USER:$REAL_USER "$PROJECT_DIR/projects"
+chown -R $REAL_USER:$REAL_USER "$PROJECT_DIR/static/projects"
 chown -R $REAL_USER:$REAL_USER "$PROJECT_DIR/logs"
 
 # Berechtigungen für serielle Ports und Video-Geräte
