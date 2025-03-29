@@ -7,6 +7,14 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+# Parameter überprüfen für optionale Commit-Nachricht
+if [ -n "$1" ]; then
+    COMMIT_MESSAGE="$1"
+else
+    # Standard Commit-Nachricht wenn keine angegeben wurde
+    COMMIT_MESSAGE="Update vom $(date '+%d.%m.%Y %H:%M') - Web-Version"
+fi
+
 # Aktuelles Datum und Uhrzeit für Branch-Namen
 BRANCH_NAME="web-vom-$(date +%d-%m-%y_%H-%M)"
 
@@ -106,9 +114,6 @@ if git diff-index --quiet HEAD --; then
 else
     HAS_CHANGES=true
 fi
-
-# Commit-Nachricht
-COMMIT_MESSAGE="Update vom $(date '+%d.%m.%Y %H:%M') - Web-Version"
 
 # Commit erstellen, wenn es Änderungen gibt
 if $HAS_CHANGES; then
