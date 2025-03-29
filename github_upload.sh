@@ -7,11 +7,49 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Parameter überprüfen für optionale Commit-Nachricht
-if [ -n "$1" ]; then
+# Hilfefunktion
+show_help() {
+    echo "Verwendung: $0 [OPTIONEN]"
+    echo
+    echo "Optionen:"
+    echo "  -m, --message NACHRICHT   Benutzerdefinierte Commit-Nachricht"
+    echo "  -h, --help                Zeigt diese Hilfe an"
+    echo
+    echo "Beispiele:"
+    echo "  $0                        Verwendet Standard-Commit-Nachricht"
+    echo "  $0 -m \"Meine Nachricht\"   Verwendet benutzerdefinierte Nachricht"
+    echo "  $0 \"Meine Nachricht\"      Alternative Methode (für Abwärtskompatibilität)"
+}
+
+# Parameter verarbeiten
+COMMIT_MESSAGE=""
+
+# Wenn nur ein Parameter ohne Flag übergeben wird (für Abwärtskompatibilität)
+if [ $# -eq 1 ] && [[ "$1" != -* ]]; then
     COMMIT_MESSAGE="$1"
 else
-    # Standard Commit-Nachricht wenn keine angegeben wurde
+    # Parameter-Parsing mit Flags
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -m|--message)
+                COMMIT_MESSAGE="$2"
+                shift 2
+                ;;
+            -h|--help)
+                show_help
+                exit 0
+                ;;
+            *)
+                echo -e "${RED}Unbekannte Option: $1${NC}"
+                show_help
+                exit 1
+                ;;
+        esac
+    done
+fi
+
+# Standard-Commit-Nachricht wenn keine angegeben wurde
+if [ -z "$COMMIT_MESSAGE" ]; then
     COMMIT_MESSAGE="Update vom $(date '+%d.%m.%Y %H:%M') - Web-Version"
 fi
 
