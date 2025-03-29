@@ -21,6 +21,7 @@ Diese Anwendung steuert einen Arduino-basierten Drehteller für 360°-Produktfot
 
 ![image](https://github.com/user-attachments/assets/65078908-9dc8-42e0-b8f6-60e6c0e90d1f)
 
+https://github.com/user-attachments/assets/4441840e-6bc5-46a7-8d0d-1db4809d8b3f
 
 
 ## Neue Blueprint-Struktur
