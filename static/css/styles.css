@@ -291,6 +291,42 @@ textarea {
     font-size: 0.9rem;
 }
 
+/* Export Bereich */
+.export-section {
+    display: none;
+    margin-top: 1.5rem;
+    padding: 1.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: #f9f9f9;
+}
+
+.export-options {
+    margin-bottom: 1.5rem;
+}
+
+.export-instructions {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.code-block {
+    background: #f5f5f5;
+    padding: 1rem;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    margin: 1rem 0;
+    position: relative;
+}
+
+.code-block pre {
+    margin: 0;
+    white-space: pre-wrap;
+    font-family: monospace;
+    font-size: 0.9rem;
+}
+
 /* Fehlerseite */
 .error-container {
     max-width: 600px;
@@ -381,6 +417,107 @@ footer {
     background-color: var(--primary-color);
     color: white;
     margin-top: 2rem;
+}
+
+/* Alert-Nachrichten */
+.flash-messages {
+    margin-bottom: 20px;
+}
+
+.alert {
+    padding: 12px 15px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    position: relative;
+    border-left: 4px solid transparent;
+}
+
+.alert-success {
+    background-color: rgba(39, 174, 96, 0.1);
+    border-left-color: var(--success-color);
+    color: #2c7a45;
+}
+
+.alert-danger {
+    background-color: rgba(231, 76, 60, 0.1);
+    border-left-color: var(--danger-color);
+    color: #b33528;
+}
+
+.alert-warning {
+    background-color: rgba(243, 156, 18, 0.1);
+    border-left-color: var(--warning-color);
+    color: #b8760b;
+}
+
+.alert-info {
+    background-color: rgba(52, 152, 219, 0.1);
+    border-left-color: var(--secondary-color);
+    color: #2874a6;
+}
+
+.alert-dismissible {
+    padding-right: 35px;
+}
+
+.btn-close {
+    position: absolute;
+    top: 12px;
+    right: 10px;
+    font-size: 18px;
+    font-weight: bold;
+    color: #777;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+/* Tabellen und Button-Gruppen */
+.table-responsive {
+    overflow-x: auto;
+    margin-bottom: 1.5rem;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 0;
+}
+
+.table th, 
+.table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--border-color);
+    text-align: left;
+}
+
+.table th {
+    background-color: #f9f9f9;
+    font-weight: 600;
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+.btn-group {
+    display: flex;
+    gap: 5px;
+}
+
+.btn-primary {
+    background-color: var(--secondary-color);
+    border-color: var(--secondary-color);
+}
+
+.btn-danger {
+    background-color: var(--danger-color);
+    border-color: var(--danger-color);
+}
+
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
 }
 
 /* Responsive Design */

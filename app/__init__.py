@@ -21,7 +21,8 @@ turntable_controller = None
 logging.basicConfig(
     filename='/d360/dev/logs/app.log',
     level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(name)s - %(levelname)s - %(message)s',
+    datefmt='%d.%m.%Y %H:%M:%S'
 )
 
 
@@ -136,7 +137,7 @@ def initialize_controllers():
 def configure_logging(app):
     """Konfiguriert das Logging für die App"""
     log_level = logging.DEBUG if app.config['DEBUG'] else logging.INFO
-    log_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    log_formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
     
     # File Handler - auf den korrekten Pfad geändert
     file_handler = logging.FileHandler('/d360/dev/logs/app.log')

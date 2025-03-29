@@ -101,6 +101,24 @@ class PathManager:
             self.logger.debug(f"Session-Verzeichnis erstellt: {session_dir}")
         
         return secure_join(session_dir, filename)
+    
+    def get_downloads_dir(self):
+        """
+        Gibt den vollständigen Pfad zum Downloads-Verzeichnis zurück und stellt sicher, dass es existiert
+        
+        Returns:
+            Vollständiger Pfad zum Downloads-Verzeichnis
+        """
+        downloads_dir = os.path.join(self.static_dir, 'downloads')
+        
+        # Stelle sicher, dass das Downloads-Verzeichnis existiert
+        if not os.path.exists(downloads_dir):
+            os.makedirs(downloads_dir)
+            self.logger.info(f"Downloads-Verzeichnis erstellt: {downloads_dir}")
+        else:
+            self.logger.debug(f"Downloads-Verzeichnis existiert bereits: {downloads_dir}")
+        
+        return downloads_dir
 
 def sanitize_filename(filename):
     """
