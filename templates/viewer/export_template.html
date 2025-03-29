@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ project.name }} - 360° Ansicht</title>
+    <link rel="stylesheet" href="css/cloudimage-viewer.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        h1, h2 {
+            color: #333;
+        }
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            color: #666;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>{{ project.name }}</h1>
+        <p>{{ project.description or "360° Ansicht" }}</p>
+        
+        <div 
+            class="cloudimage-360"
+            data-image-list-x="{{ image_list|safe }}"
+            data-keys="true"
+            data-autoplay="true"
+            data-full-screen="true"
+            data-magnifier="3"
+            data-hide-360-logo="true"
+            data-bottom-circle="true"
+        ></div>
+    </div>
+    
+    <div class="footer">
+        <p>Erstellt mit 360° Drehteller Steuerung</p>
+    </div>
+    
+    <!-- CloudImage 360° Viewer JavaScript -->
+    <script src="js/js-cloudimage-360-view.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // CloudImage 360 Viewer initialisieren
+            CI360.init();
+        });
+    </script>
+</body>
+</html>

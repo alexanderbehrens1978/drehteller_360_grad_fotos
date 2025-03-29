@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% block title %}Export erfolgreich - 360° Drehteller{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-success text-white">
+            <h3>Export erfolgreich</h3>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-success">
+                <i class="fa fa-check-circle"></i> Die ZIP-Datei für das Projekt <strong>{{ project.name }}</strong> wurde erfolgreich erstellt!
+            </div>
+            
+            <h4>ZIP-Datei herunterladen</h4>
+            <p>Klicken Sie auf den Button unten, um den 360° Viewer als ZIP-Datei herunterzuladen:</p>
+            
+            <div class="mb-4">
+                <a href="{{ download_url }}" class="btn btn-primary btn-lg" download="{{ zip_filename }}">
+                    <i class="fa fa-download"></i> ZIP-Datei herunterladen
+                </a>
+            </div>
+            
+            <h4>Anleitung zur Einbindung</h4>
+            <ol>
+                <li>Entpacken Sie die ZIP-Datei in einen Ordner auf Ihrem Webserver</li>
+                <li>Binden Sie die index.html direkt ein oder kopieren Sie den Code in Ihre Webseite</li>
+                <li>Alternativ können Sie den Viewer über einen iFrame einbinden:</li>
+            </ol>
+            
+            <div class="bg-light p-3 mb-4 code-block rounded">
+                <code>&lt;iframe src="pfad/zum/viewer/index.html" width="100%" height="500" frameborder="0"&gt;&lt;/iframe&gt;</code>
+                <button class="btn btn-sm btn-outline-secondary mt-2" onclick="copyToClipboard(this.previousElementSibling.innerText)">Kopieren</button>
+            </div>
+            
+            <h4>Direkteinbindung</h4>
+            <p>Für die direkte Einbindung des Viewers in Ihre Webseite kopieren Sie folgenden Code:</p>
+            
+            <div class="bg-light p-3 code-block rounded">
+                <pre><code>&lt;!-- CloudImage 360° Viewer --&gt;
+&lt;div class="cloudimage-360"
+     data-folder="/static/projects/{{ project.id }}/"
+     data-filename="{index}.jpg"
+     data-amount="{{ project.images|length }}"
+     data-bottom-circle="true"
+     data-keys="true"
+     data-drag-speed="150"
+     data-autoplay="true"&gt;
+&lt;/div&gt;
+&lt;script src="/static/js/js-cloudimage-360-view.min.js"&gt;&lt;/script&gt;</code></pre>
+                <button class="btn btn-sm btn-outline-secondary mt-2" onclick="copyToClipboard(this.previousElementSibling.innerText)">Kopieren</button>
+            </div>
+            
+            <div class="mt-4">
+                <a href="{{ url_for('viewer_bp.show_viewer', project_id=project.id) }}" class="btn btn-outline-primary">
+                    <i class="fa fa-eye"></i> Zurück zum Viewer
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyToClipboard(text) {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+    
+    // Show feedback
+    const toast = document.createElement('div');
+    toast.className = 'position-fixed bottom-0 end-0 p-3';
+    toast.style.zIndex = '5';
+    toast.innerHTML = `
+        <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <strong class="me-auto">Hinweis</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close" onclick="this.parentElement.parentElement.parentElement.remove()"></button>
+            </div>
+            <div class="toast-body">
+                Code wurde in die Zwischenablage kopiert!
+            </div>
+        </div>
+    `;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
+}
+</script>
+{% endblock %}

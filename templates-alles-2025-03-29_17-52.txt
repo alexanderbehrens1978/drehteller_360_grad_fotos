@@ -1,0 +1,1888 @@
+
+--- Datei: /d360/dev/templates/error.html ---
+<!-- templates/error.html -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fehler - 360° Drehteller Steuerung</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <header>
+        <h1>360° Drehteller Steuerung</h1>
+        <nav>
+            <a href="/">Startseite</a>
+            <a href="/projects">Projekte</a>
+            <a href="/settings">Einstellungen</a>
+        </nav>
+    </header>
+    
+    <main>
+        <div class="error-container">
+            <div class="error-icon">⚠️</div>
+            <h2>Fehler aufgetreten</h2>
+            <p class="error-message">{{ message }}</p>
+            <div class="error-actions">
+                <a href="/" class="btn">Zur Startseite</a>
+                <a href="/projects" class="btn">Zu den Projekten</a>
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+       <p>&copy; 2025 Alexander Behrens 360° Drehteller Steuerung</p>
+    </footer>
+</body>
+</html>
+
+
+--- Datei: /d360/dev/templates/project_edit.html ---
+<!-- templates/project_edit.html -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projekt bearbeiten - 360° Drehteller</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h2 class="mb-0">Projekt: {{ project.name }}</h2>
+                <div>
+                    <a href="/viewer/{{ project.directory }}" class="btn btn-light btn-sm me-2">
+                        <i class="bi bi-eye"></i> 360° Ansicht
+                    </a>
+                    <a href="/projects" class="btn btn-light btn-sm">
+                        <i class="bi bi-arrow-left"></i> Zurück
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Projektverlauf -->
+                <div class="mb-4">
+                    <h3>Projektdetails</h3>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <dl class="row">
+                                <dt class="col-sm-4">Erstellt</dt>
+                                <dd class="col-sm-8">{{ project.created.split('T')[0] }}</dd>
+
+                                <dt class="col-sm-4">Letzte Änderung</dt>
+                                <dd class="col-sm-8">{{ project.last_modified.split('T')[0] }}</dd>
+
+                                <dt class="col-sm-4">Bilder</dt>
+                                <dd class="col-sm-8">{{ project.image_count }}</dd>
+                            </dl>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-floating">
+                                <textarea class="form-control" id="project-description" style="height: 100px">{{ project.description or '' }}</textarea>
+                                <label for="project-description">Projektbeschreibung</label>
+                            </div>
+                            <button class="btn btn-sm btn-outline-secondary mt-2" id="save-description">Speichern</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 360° Aufnahmesteuerung -->
+                <div class="mb-4">
+                    <h3>360° Aufnahme</h3>
+                    <form id="rotation-form" class="row g-3">
+                        <input type="hidden" name="project_dir" value="{{ project.directory }}">
+
+                        <div class="col-md-3">
+                            <label for="rotation-degrees" class="form-label">Drehwinkel pro Schritt</label>
+                            <select class="form-select" id="rotation-degrees" name="degrees">
+                                <option value="5">5°</option>
+                                <option value="10">10°</option>
+                                <option value="15" selected>15°</option>
+                                <option value="20">20°</option>
+                                <option value="30">30°</option>
+                                <option value="45">45°</option>
+                                <option value="90">90°</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label for="rotation-interval" class="form-label">Intervall (Sekunden)</label>
+                            <input type="number" class="form-control" id="rotation-interval" name="interval" value="5" min="1" max="60">
+                        </div>
+
+                        <div class="col-md-6 d-flex align-items-end">
+                            <button type="button" id="start-single-capture" class="btn btn-primary me-2">
+                                <i class="bi bi-camera"></i> Einzelaufnahme
+                            </button>
+                            <button type="button" id="start-full-360" class="btn btn-success">
+                                <i class="bi bi-arrow-repeat"></i> Volle 360° Aufnahme
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Fortschrittsanzeige -->
+                    <div id="progress-container" class="mt-3" style="display: none;">
+                        <div class="progress">
+                            <div id="rotation-progress" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                        </div>
+                        <div id="rotation-status" class="text-center mt-2"></div>
+                        <button id="stop-capture" class="btn btn-danger btn-sm mt-2">
+                            <i class="bi bi-stop-fill"></i> Aufnahme stoppen
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Vorschaubereich -->
+                <div class="mb-4">
+                    <h3>Aktuelle Aufnahme</h3>
+                    <div class="current-capture-container">
+                        <img id="current-capture" src="/static/placeholder.jpg" alt="Aktuelle Aufnahme" class="img-fluid">
+                    </div>
+                </div>
+
+                <!-- Bildergalerie -->
+                <div>
+                    <h3>Projektbilder</h3>
+                    {% if project.images and project.images|length > 0 %}
+                        <div class="row row-cols-2 row-cols-md-4 g-3 image-gallery">
+                            {% for image in project.images %}
+                                <div class="col">
+                                    <div class="card h-100">
+                                        <img src="/projects/image/{{ project.directory }}/{{ image }}"
+                                             class="card-img-top" alt="Projektbild">
+                                        <div class="card-footer">
+                                            <small class="text-muted">{{ loop.index }}/{{ project.images|length }}</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">
+                            Keine Bilder vorhanden. Starten Sie eine Aufnahme, um Bilder hinzuzufügen.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS und Abhängigkeiten -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const rotationForm = document.getElementById('rotation-form');
+            const progressContainer = document.getElementById('progress-container');
+            const progressBar = document.getElementById('rotation-progress');
+            const rotationStatus = document.getElementById('rotation-status');
+            const currentCapture = document.getElementById('current-capture');
+            const startSingleCapture = document.getElementById('start-single-capture');
+            const startFull360 = document.getElementById('start-full-360');
+            const stopCapture = document.getElementById('stop-capture');
+
+            let isCapturing = false;
+            let captureAborted = false;
+
+            // Einzelne Aufnahme
+            startSingleCapture.addEventListener('click', function() {
+                const formData = new FormData(rotationForm);
+
+                // UI aktualisieren
+                startSingleCapture.disabled = true;
+                startFull360.disabled = true;
+                rotationStatus.textContent = 'Einzelaufnahme wird durchgeführt...';
+                progressContainer.style.display = 'block';
+                progressBar.style.width = '50%';
+
+                fetch('/add_rotation_to_project', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        currentCapture.src = data.photo_path;
+                        progressBar.style.width = '100%';
+                        rotationStatus.textContent = 'Aufnahme erfolgreich';
+
+                        // Seite nach kurzer Verzögerung neu laden, um Galerie zu aktualisieren
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 2000);
+                    } else {
+                        progressBar.classList.add('bg-danger');
+                        rotationStatus.textContent = 'Fehler: ' + data.message;
+                    }
+                })
+                .catch(error => {
+                    console.error('Fehler:', error);
+                    progressBar.classList.add('bg-danger');
+                    rotationStatus.textContent = 'Fehler bei der Anfrage';
+                })
+                .finally(() => {
+                    startSingleCapture.disabled = false;
+                    startFull360.disabled = false;
+                });
+            });
+
+            // Vollständige 360°-Aufnahme
+            startFull360.addEventListener('click', async function() {
+                const degrees = parseInt(document.getElementById('rotation-degrees').value);
+                const interval = parseInt(document.getElementById('rotation-interval').value);
+                const totalSteps = Math.floor(360 / degrees);
+
+                // UI aktualisieren
+                startSingleCapture.disabled = true;
+                startFull360.disabled = true;
+                progressContainer.style.display = 'block';
+                progressBar.style.width = '0%';
+                progressBar.classList.remove('bg-danger');
+                rotationStatus.textContent = 'Starte 360° Aufnahme...';
+
+                isCapturing = true;
+                captureAborted = false;
+
+                for (let step = 0; step < totalSteps; step++) {
+                    // Überprüfen, ob die Aufnahme abgebrochen wurde
+                    if (captureAborted) {
+                        break;
+                    }
+
+                    // Fortschritt aktualisieren
+                    const progress = ((step + 1) / totalSteps) * 100;
+                    progressBar.style.width = `${progress}%`;
+                    rotationStatus.textContent = `Aufnahme ${step + 1} von ${totalSteps}`;
+
+                    // Formular vorbereiten
+                    const formData = new FormData(rotationForm);
+
+                    try {
+                        // Aufnahme durchführen
+                        const response = await fetch('/add_rotation_to_project', {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        const data = await response.json();
+
+                        if (data.status === 'success') {
+                            currentCapture.src = data.photo_path;
+                        } else {
+                            throw new Error(data.message || 'Unbekannter Fehler');
+                        }
+
+                        // Warten für das Intervall
+                        if (step < totalSteps - 1 && !captureAborted) {
+                            await new Promise(resolve => setTimeout(resolve, interval * 1000));
+                        }
+                    } catch (error) {
+                        console.error('Fehler:', error);
+                        progressBar.classList.add('bg-danger');
+                        rotationStatus.textContent = `Fehler: ${error.message}`;
+                        break;
+                    }
+                }
+
+                // Abschluss
+                if (!captureAborted) {
+                    rotationStatus.textContent = '360° Aufnahme abgeschlossen!';
+                } else {
+                    rotationStatus.textContent = '360° Aufnahme abgebrochen';
+                }
+
+                // UI zurücksetzen
+                isCapturing = false;
+                startSingleCapture.disabled = false;
+                startFull360.disabled = false;
+
+                // Seite neu laden, um Galerie zu aktualisieren
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            });
+
+            // Aufnahme stoppen
+            stopCapture.addEventListener('click', function() {
+                if (isCapturing) {
+                    captureAborted = true;
+                    rotationStatus.textContent = 'Aufnahme wird gestoppt...';
+                }
+            });
+
+            // Projektbeschreibung speichern
+            document.getElementById('save-description').addEventListener('click', function() {
+                const description = document.getElementById('project-description').value;
+                const projectDir = rotationForm.querySelector('[name="project_dir"]').value;
+
+                fetch('/projects/update_description', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        project_dir: projectDir,
+                        description: description
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        alert('Beschreibung gespeichert');
+                    } else {
+                        alert('Fehler: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Fehler:', error);
+                    alert('Fehler beim Speichern der Beschreibung');
+                });
+            });
+        });
+    </script>
+</body>
+</html>
+
+
+--- Datei: /d360/dev/templates/image_selection.html ---
+<!-- templates/images_selection.html -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bilder auswählen - {{ project.name }} - 360° Drehteller Steuerung</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <style>
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        .image-selection-item {
+            position: relative;
+            border-radius: 4px;
+            overflow: hidden;
+            cursor: pointer;
+            border: 3px solid transparent;
+        }
+        .image-selection-item.selected {
+            border-color: #3498db;
+        }
+        .image-selection-item img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .image-info {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 0.3rem 0.6rem;
+            font-size: 0.8rem;
+            border-top-left-radius: 4px;
+        }
+        .selection-actions {
+            margin: 1.5rem 0;
+            display: flex;
+            justify-content: space-between;
+        }
+        .selection-counter {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>360° Drehteller Steuerung</h1>
+        <nav>
+            <a href="/">Startseite</a>
+            <a href="/projects">Projekte</a>
+            <a href="/settings">Einstellungen</a>
+        </nav>
+    </header>
+    
+    <main>
+        <div class="card">
+            <h2>Bilder für 360° Ansicht auswählen</h2>
+            <h3>Projekt: {{ project.name }}</h3>
+            
+            <div class="selection-counter">
+                <span id="selected-count">0</span> von {{ project.images|length }} Bildern ausgewählt
+            </div>
+            
+            <div class="selection-actions">
+                <button id="select-all-btn" class="btn btn-secondary">Alle auswählen</button>
+                <button id="deselect-all-btn" class="btn btn-secondary">Auswahl aufheben</button>
+                <button id="select-every-btn" class="btn btn-secondary">Jedes n-te Bild</button>
+            </div>
+            
+            <form id="selection-form" action="/viewer" method="GET">
+                <input type="hidden" name="project" value="{{ project.id }}">
+                
+                <div class="image-grid">
+                    {% if project.images and project.images|length > 0 %}
+                        {% for image in project.images %}
+                            <div class="image-selection-item" data-path="{{ image.path }}" data-angle="{{ image.angle }}">
+                                <img src="/projects/image/{{ project.id }}/{{ image.path }}" 
+                                     alt="Foto bei {{ image.angle }}°">
+                                <div class="image-info">
+                                    <span class="angle">{{ image.angle }}°</span>
+                                </div>
+                                <input type="checkbox" name="images" value="{{ image.path }}" 
+                                       style="display: none;">
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="no-images">Keine Bilder vorhanden.</p>
+                    {% endif %}
+                </div>
+                
+                <div class="selection-actions" style="margin-top: 2rem;">
+                    <a href="/projects/{{ project.id }}" class="btn btn-secondary">Abbrechen</a>
+                    <button type="submit" id="view-selected-btn" class="btn btn-primary">
+                        Ausgewählte Bilder anzeigen
+                    </button>
+                </div>
+            </form>
+            
+            <!-- Modal für "Jedes n-te Bild" -->
+            <div id="interval-modal" class="modal">
+                <div class="modal-content">
+                    <h3>Jedes n-te Bild auswählen</h3>
+                    <div class="form-group">
+                        <label for="interval-input">Intervall:</label>
+                        <input type="number" id="interval-input" min="1" max="10" value="2">
+                        <p>1 = jedes Bild, 2 = jedes zweite Bild, usw.</p>
+                    </div>
+                    <div class="modal-actions">
+                        <button id="cancel-interval-btn" class="btn btn-secondary">Abbrechen</button>
+                        <button id="apply-interval-btn" class="btn btn-primary">Anwenden</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+        <p>&copy; 2025 Alexander Behrens 360° Drehteller Steuerung</p>
+    </footer>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const imageItems = document.querySelectorAll('.image-selection-item');
+            const selectAllBtn = document.getElementById('select-all-btn');
+            const deselectAllBtn = document.getElementById('deselect-all-btn');
+            const selectEveryBtn = document.getElementById('select-every-btn');
+            const viewSelectedBtn = document.getElementById('view-selected-btn');
+            const selectedCountEl = document.getElementById('selected-count');
+            const intervalModal = document.getElementById('interval-modal');
+            const intervalInput = document.getElementById('interval-input');
+            const applyIntervalBtn = document.getElementById('apply-interval-btn');
+            const cancelIntervalBtn = document.getElementById('cancel-interval-btn');
+            
+            // Bildauswahl aktivieren
+            imageItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    const checkbox = this.querySelector('input[type="checkbox"]');
+                    this.classList.toggle('selected');
+                    checkbox.checked = !checkbox.checked;
+                    updateSelectedCount();
+                });
+            });
+            
+            // Alle auswählen
+            selectAllBtn.addEventListener('click', function() {
+                imageItems.forEach(item => {
+                    item.classList.add('selected');
+                    item.querySelector('input[type="checkbox"]').checked = true;
+                });
+                updateSelectedCount();
+            });
+            
+            // Auswahl aufheben
+            deselectAllBtn.addEventListener('click', function() {
+                imageItems.forEach(item => {
+                    item.classList.remove('selected');
+                    item.querySelector('input[type="checkbox"]').checked = false;
+                });
+                updateSelectedCount();
+            });
+            
+            // Modal für "Jedes n-te Bild" öffnen
+            selectEveryBtn.addEventListener('click', function() {
+                intervalModal.style.display = 'flex';
+            });
+            
+            // Modal schließen
+            cancelIntervalBtn.addEventListener('click', function() {
+                intervalModal.style.display = 'none';
+            });
+            
+            // Intervall anwenden
+            applyIntervalBtn.addEventListener('click', function() {
+                const interval = parseInt(intervalInput.value);
+                
+                if (interval <= 0) {
+                    alert('Bitte geben Sie ein gültiges Intervall ein (mindestens 1)');
+                    return;
+                }
+                
+                // Auswahl zurücksetzen
+                imageItems.forEach(item => {
+                    item.classList.remove('selected');
+                    item.querySelector('input[type="checkbox"]').checked = false;
+                });
+                
+                // Jedes n-te Element auswählen
+                Array.from(imageItems).forEach((item, index) => {
+                    if (index % interval === 0) {
+                        item.classList.add('selected');
+                        item.querySelector('input[type="checkbox"]').checked = true;
+                    }
+                });
+                
+                updateSelectedCount();
+                intervalModal.style.display = 'none';
+            });
+            
+            // Anzahl ausgewählter Bilder aktualisieren
+            function updateSelectedCount() {
+                const selectedCount = document.querySelectorAll('.image-selection-item.selected').length;
+                selectedCountEl.textContent = selectedCount;
+                
+                // Button deaktivieren, wenn keine Bilder ausgewählt sind
+                if (selectedCount === 0) {
+                    viewSelectedBtn.disabled = true;
+                } else {
+                    viewSelectedBtn.disabled = false;
+                }
+            }
+            
+            // Initial aktualisieren
+            updateSelectedCount();
+        });
+    </script>
+</body>
+</html>
+
+
+--- Datei: /d360/dev/templates/viewer_overview.html ---
+<! templates/viewer_overview.html -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>360° Viewer Übersicht - Drehteller Steuerung</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <header>
+        <h1>360° Drehteller Steuerung</h1>
+        <nav>
+            <a href="/">Startseite</a>
+            <a href="/projects">Projekte</a>
+            <a href="/settings">Einstellungen</a>
+            <a href="/viewer" class="active">360° Viewer</a>
+        </nav>
+    </header>
+    
+    <main>
+        <div class="card">
+            <h2>360° Viewer Übersicht</h2>
+            <p>Wählen Sie ein Projekt, um die 360°-Ansicht zu öffnen:</p>
+            
+            <div class="projects-list">
+                {% if projects %}
+                    {% for project in projects %}
+                        <div class="project-card">
+                            <h3>{{ project.name }}</h3>
+                            <div class="project-meta">
+                                {% if project.description %}
+                                    <p>{{ project.description }}</p>
+                                {% else %}
+                                    <p class="no-description">Keine Beschreibung</p>
+                                {% endif %}
+                                
+                                <p class="created-date">
+                                    Erstellt: {% if project.created_at %}{{ project.created_at|datetime }}{% else %}Unbekannt{% endif %}
+                                </p>
+                                
+                                <p class="image-count">
+                                    Bilder: {{ project.images|length if project.images else 0 }}
+                                </p>
+                            </div>
+                            
+                            <div class="project-actions">
+                                {% if project.images and project.images|length > 0 %}
+                                    <a href="/viewer/cloudimage?project={{ project.id }}" class="btn btn-primary">360° Ansicht öffnen</a>
+                                {% else %}
+                                    <button class="btn btn-secondary" disabled>Keine Bilder vorhanden</button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="no-projects">
+                        <p>Keine Projekte vorhanden. Erstellen Sie zuerst ein Projekt und nehmen Sie Bilder auf.</p>
+                        <a href="/projects/create" class="btn btn-primary">Neues Projekt erstellen</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+        <p>&copy; 2025 Alexander Behrens 360° Drehteller Steuerung</p>
+    </footer>
+</body>
+</html>
+
+
+--- Datei: /d360/dev/templates/project_view.html ---
+<!-- templates/project_view.html -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ project.name }} - 360° Drehteller Steuerung</title>
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="/static/css/project_view.css">
+</head>
+<body>
+    <header>
+        <h1>360° Drehteller Steuerung</h1>
+        <nav>
+            <a href="/">Startseite</a>
+            <a href="/projects">Projekte</a>
+            <a href="/settings">Einstellungen</a>
+        </nav>
+    </header>
+    
+    <main>
+        <div class="project-details">
+            <h2>{{ project.name }}</h2>
+            
+            <div class="project-info">
+                <p><strong>Beschreibung:</strong> {{ project.description or "Keine Beschreibung" }}</p>
+                <p><strong>Erstellt am:</strong> {{ project.created_at|datetime }}</p>
+                <p><strong>Winkelschritt:</strong> {{ project.angle_step }}°</p>
+            </div>
+            
+            <div class="project-actions">
+                <a href="/?project_id={{ project.id }}" class="btn btn-primary">Bilder aufnehmen</a>
+                <a href="/viewer/cloudimage?project={{ project.id }}" class="btn btn-primary">360° CloudImage-Ansicht</a>
+                <a href="/projects" class="btn btn-secondary">Zurück zur Projektliste</a>
+            </div>
+
+            <h3>Bilder</h3>
+            <div class="project-images">
+                {% if project.images and project.images|length > 0 %}
+                    <div class="image-grid">
+                        {% for image in project.images %}
+                            <div class="image-item">
+                                <img src="/projects/image/{{ project.id }}/{{ image.path }}" alt="Foto bei {{ image.angle }}°">
+                                <div class="image-info">
+                                    <span class="angle">{{ image.angle }}°</span>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="no-images">Keine Bilder vorhanden. Nehmen Sie Bilder auf, um sie hier anzuzeigen.</p>
+                {% endif %}
+            </div>
+            
+            <h3>Sessions</h3>
+            <div class="project-sessions">
+                {% if project.sessions and project.sessions|length > 0 %}
+                    <div class="sessions-list">
+                        {% for session in project.sessions %}
+                            <div class="session-item">
+                                <h4>{{ session.name }}</h4>
+                                <p>Aufgenommen am: {{ session.timestamp|datetime }}</p>
+                                <p>Winkelschritt: {{ session.angle_step }}°</p>
+                                <p>Fotos: {{ session.photos|length if session.photos else 0 }}</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="no-sessions">Keine Sessions vorhanden.</p>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+   
+    <footer>
+       <p>&copy; 2025 Alexander Behrens 360° Drehteller Steuerung</p>
+    </footer> 
+    
+    <script src="/static/js/project_view.js"></script>
+</body>
+</html>
+
+
+--- Datei: /d360/dev/templates/base.html ---
+<!-- Datei: templates/base.html - Basis-Template für alle Seiten -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}360° Drehteller Fotografie-System{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='/static/css/style.css') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="app-container">
+        <nav class="main-nav">
+            <div class="logo">
+                <h1>360° Drehteller</h1>
+            </div>
+            <ul class="nav-links">
+                <li><a href="{{ url_for('index') }}">Projekte</a></li>
+                <li><a href="{{ url_for('app_settings') }}">Einstellungen</a></li>
+                <li><a href="{{ url_for('viewer') }}">360° Viewer</a></li>
+            </ul>
+        </nav>
+
+        <main class="main-content">
+            {% block content %}{% endblock %}
+        </main>
+
+        <footer class="main-footer">
+            <p>&copy; 2025 Alexander Behrens 360° Drehteller Steuerung</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
+
+
+--- Datei: /d360/dev/templates/viewer.html ---
+<!-- templates/viewer.html -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>360° Produktansicht - Drehteller Steuerung</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <style>
+        .debug-info {
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        .image-display {
+            margin: 20px 0;
+            text-align: center;
+        }
+        .image-display img {
+            max-width: 100%;
+            max-height: 400px;
+            border: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>360° Drehteller Steuerung</h1>
+        <nav>
+            <a href="/">Startseite</a>
+            <a href="/projects">Projekte</a>
+            <a href="/settings">Einstellungen</a>
+            <a href="/viewer">360° Viewer</a>
+        </nav>
+    </header>
+    
+    <main>
+        <div class="card">
+            <h2>360° Viewer Debug</h2>
+            
+            <div class="debug-info">
+                <h3>Projekt-Informationen:</h3>
+                <pre>Projekt-ID: {{ project.id|default('keine ID') }}</pre>
+                <pre>Projekt-Name: {{ project.name|default('kein Name') }}</pre>
+                <pre>Anzahl Bilder: {{ project.images|length if project.images else 0 }}</pre>
+                
+                {% if project and project.images %}
+                    <h3>Bilder:</h3>
+                    <ul>
+                    {% for image in project.images %}
+                        <li>
+                            Pfad: {{ image.path|default('kein Pfad') }}<br>
+                            Winkel: {{ image.angle|default('kein Winkel') }}°
+                        </li>
+                    {% endfor %}
+                    </ul>
+                {% else %}
+                    <p>Keine Bilder gefunden.</p>
+                {% endif %}
+            </div>
+            
+            {% if project and project.images and project.images|length > 0 %}
+                <div class="image-display">
+                    <h3>Erstes Bild:</h3>
+                    <img src="/projects/image/{{ project.id }}/{{ project.images[0].path }}" 
+                         alt="Erstes Bild" 
+                         onerror="this.onerror=null; this.src=''; this.alt='Fehler beim Laden des Bildes'; document.getElementById('error-msg').style.display='block';">
+                    <div id="error-msg" style="color: red; display: none;">
+                        Fehler beim Laden des Bildes! URL war: /projects/image/{{ project.id }}/{{ project.images[0].path }}
+                    </div>
+                </div>
+            {% endif %}
+            
+            <a href="/projects" class="btn">Zurück zu den Projekten</a>
+        </div>
+    </main>
+    
+    <footer>
+       <p>&copy; 2025 Alexander Behrens 360° Drehteller Steuerung</p>
+    </footer>
+</body>
+</html>
+
+
+--- Datei: /d360/dev/templates/settings.html ---
+<!-- templates/settings.html -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Einstellungen - 360° Drehteller Steuerung</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <header>
+        <h1>360° Drehteller Steuerung</h1>
+        <nav>
+            <a href="/">Startseite</a>
+            <a href="/projects">Projekte</a>
+            <a href="/settings" class="active">Einstellungen</a>
+            <a href="/viewer">360° Viewer</a>
+        </nav>
+    </header>
+    
+    <main>
+        <div class="settings-container">
+            <h1>Einstellungen</h1>
+            
+            <div id="statusMessage" class="status-message" style="display: none;"></div>
+            
+            <form id="settingsForm">
+
+                <div class="settings-group">
+                    <h2>Kamera-Einstellungen</h2>
+    
+                    <div class="setting-row">
+                        <div class="setting-label">Kamera-Typ</div>
+                        <div class="setting-control">
+                            <select id="cameraType" name="camera.type">
+                                <option value="webcam">Webcam</option>
+                                <option value="gphoto2">DSLR (gphoto2)</option>
+                            </select>
+                            <div class="setting-description">Art der verwendeten Kamera</div>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-row">
+                        <div class="setting-label">Geräte-Pfad</div>
+                        <div class="setting-control">
+                            <input type="text" id="cameraPath" name="camera.device_path" placeholder="/dev/video0">
+                            <div class="setting-description">Pfad zum Kameragerät (z.B. /dev/video0)</div>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-row">
+                        <div class="setting-label">Auflösung</div>
+                        <div class="setting-control" style="display: flex; gap: 10px;">
+                            <input type="number" id="resolutionWidth" name="camera.resolution.width" placeholder="Breite" min="320" max="4096" style="width: 100px;">
+                            <span>×</span>
+                            <input type="number" id="resolutionHeight" name="camera.resolution.height" placeholder="Höhe" min="240" max="3072" style="width: 100px;">
+                            <div class="setting-description" style="width: 100%">Bildauflösung in Pixeln</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="settings-group">
+                    <h2>Arduino-Einstellungen</h2>
+                    
+                    <div class="setting-row">
+                        <div class="setting-label">Serial-Port</div>
+                        <div class="setting-control">
+                            <input type="text" id="arduinoPort" name="arduino.port" placeholder="/dev/ttyACM0">
+                            <div class="setting-description">Pfad zum Arduino-Serial-Port (z.B. /dev/ttyACM0)</div>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-row">
+                        <div class="setting-label">Baudrate</div>
+                        <div class="setting-control">
+                            <select id="arduinoBaudrate" name="arduino.baudrate">
+                                <option value="9600">9600</option>
+                                <option value="19200">19200</option>
+                                <option value="38400">38400</option>
+                                <option value="57600">57600</option>
+                                <option value="115200">115200</option>
+                            </select>
+                            <div class="setting-description">Baudrate für die Arduino-Kommunikation</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="settings-group">
+                    <h2>Drehteller-Einstellungen</h2>
+                    
+                    <div class="setting-row">
+                        <div class="setting-label">Standard-Winkelschritt</div>
+                        <div class="setting-control">
+                            <input type="number" id="defaultDegrees" name="rotation.default_degrees" min="1" max="90">
+                            <div class="setting-description">Standardmäßiger Winkel pro Schritt in Grad</div>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-row">
+                        <div class="setting-label">Standard-Intervall</div>
+                        <div class="setting-control">
+                            <input type="number" id="defaultInterval" name="rotation.default_interval" min="1" max="60">
+                            <div class="setting-description">Standardintervall zwischen Fotos in Sekunden</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="submit" class="save-btn">Einstellungen speichern</button>
+            </form>
+        </div>
+    </main>
+    
+    <footer>
+        <p>&copy; 2025 360° Drehteller Steuerung</p>
+    </footer>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const settingsForm = document.getElementById('settingsForm');
+            const statusMessage = document.getElementById('statusMessage');
+            
+            // Aktuelle Konfiguration laden
+            fetch('/get_config')
+                .then(response => response.json())
+                .then(config => {
+                    // Formularfelder mit aktuellen Werten füllen
+                    document.getElementById('cameraType').value = config?.camera?.type || 'webcam';
+                    document.getElementById('cameraPath').value = config?.camera?.device_path || '/dev/video0';
+                    document.getElementById('resolutionWidth').value = config?.camera?.resolution?.width || 1280;
+                    document.getElementById('resolutionHeight').value = config?.camera?.resolution?.height || 720;
+                    
+                    document.getElementById('arduinoPort').value = config?.arduino?.port || '/dev/ttyACM0';
+                    document.getElementById('arduinoBaudrate').value = config?.arduino?.baudrate || 9600;
+                    
+                    document.getElementById('defaultDegrees').value = config?.rotation?.default_degrees || 15;
+                    document.getElementById('defaultInterval').value = config?.rotation?.default_interval || 5;
+                    
+                })
+                .catch(error => {
+                    console.error('Fehler beim Laden der Konfiguration:', error);
+                    showStatus('Fehler beim Laden der Konfiguration. Bitte versuchen Sie es später erneut.', 'error');
+                });
+                
+            // Formular absenden
+            settingsForm.addEventListener('submit', function(event) {
+                event.preventDefault();
+                
+                // Formulardaten sammeln
+                const formData = new FormData(settingsForm);
+                const configData = {};
+                
+                // FormData in verschachtelte Objekte umwandeln
+                formData.forEach((value, key) => {
+                    // Checkbox-Werte in boolesche Werte umwandeln
+                    
+                    // Zahlen in numerische Werte umwandeln
+                    if (key.includes('resolution') || key.includes('degrees') || key.includes('interval') || key.includes('baudrate')) {
+                        value = Number(value);
+                    }
+                    
+                    // Punkt-Notation in verschachtelte Objekte umwandeln
+                    const keys = key.split('.');
+                    let current = configData;
+                    
+                    for (let i = 0; i < keys.length - 1; i++) {
+                        if (!current[keys[i]]) {
+                            current[keys[i]] = {};
+                        }
+                        current = current[keys[i]];
+                    }
+                    
+                    current[keys[keys.length - 1]] = value;
+                });
+                
+                // Konfiguration speichern
+                fetch('/settings/save_config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(configData)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showStatus('Einstellungen erfolgreich gespeichert!', 'success');
+                    } else {
+                        showStatus('Fehler beim Speichern der Einstellungen: ' + (data.message || 'Unbekannter Fehler'), 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Fehler beim Speichern der Konfiguration:', error);
+                    showStatus('Fehler beim Speichern der Konfiguration. Bitte versuchen Sie es später erneut.', 'error');
+                });
+            });
+            
+            // Hilfsfunktion zum Anzeigen von Statusmeldungen
+            function showStatus(message, type) {
+                statusMessage.textContent = message;
+                statusMessage.className = 'status-message status-' + type;
+                statusMessage.style.display = 'block';
+                
+                // Nach 5 Sekunden ausblenden
+                setTimeout(() => {
+                    statusMessage.style.display = 'none';
+                }, 5000);
+            }
+        });
+    </script>
+</body>
+</html>
+
+
+--- Datei: /d360/dev/templates/project_create.html ---
+<!-- templates/project_create.html -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neues Projekt erstellen - 360° Drehteller Steuerung</title>
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="/static/css/project_create.css">
+</head>
+<body>
+    <header>
+        <h1>360° Drehteller Steuerung</h1>
+        <nav>
+            <a href="/">Startseite</a>
+            <a href="/projects">Projekte</a>
+            <a href="/settings">Einstellungen</a>
+            <a href="/viewer">360° Viewer</a>
+        </nav>
+    </header>
+    
+    <main>
+        <div class="card project-form-container">
+            <h2>Neues Projekt erstellen</h2>
+            
+            {% if error %}
+            <div class="error-message">
+                {{ error }}
+            </div>
+            {% endif %}
+            
+            <form id="projectForm" action="{{ url_for('projects.create_project') }}" method="POST">
+                <div class="form-group">
+                    <label for="name">Projektname:</label>
+                    <input type="text" id="name" name="name" required value="{{ request.form.get('name', '') }}">
+                </div>
+                
+                <div class="form-group">
+                    <label for="description">Beschreibung:</label>
+                    <textarea id="description" name="description" rows="4">{{ request.form.get('description', '') }}</textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="angle_step">Winkelschritt (Grad):</label>
+                    <input type="number" id="angle_step" name="angle_step" min="1" max="90" value="{{ request.form.get('angle_step', 15) }}">
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Projekt erstellen</button>
+                    <a href="{{ url_for('projects.projects_page') }}" class="btn btn-secondary">Abbrechen</a>
+                </div>
+            </form>
+        </div>
+    </main>
+    
+    <footer>
+       <p>&copy; 2025 Alexander Behrens 360° Drehteller Steuerung</p>
+    </footer>    
+
+    <script src="/static/js/project_create.js"></script>
+</body>
+</html>
+
+
+--- Datei: /d360/dev/templates/projects.html ---
+<!-- templates/projects.html -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projekte - 360° Drehteller Steuerung</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <header>
+        <h1>360° Drehteller Steuerung</h1>
+        <nav>
+            <a href="/">Startseite</a>
+            <a href="/projects" class="active">Projekte</a>
+            <a href="/settings">Einstellungen</a>
+            <a href="/viewer">360° Viewer</a>
+        </nav>
+    </header>
+    
+    <main>
+        <div class="projects-container">
+            <h2>Meine Projekte</h2>
+            <p>Verwalten und organisieren Sie Ihre 360° Drehteller-Aufnahmen</p>
+            
+            <div class="project-actions">
+                <a href="{{ url_for('projects.create_project') }}" class="btn btn-primary">Neues Projekt erstellen</a>
+            </div>
+            
+            <div class="projects-list" id="projectsList">
+                {% if projects %}
+                    {% for proj in projects %}
+                        <div class="project-card">
+                            <h3>{{ proj.name }}</h3>
+                            <div class="project-meta">
+                                {% if proj.description %}
+                                    <p>{{ proj.description }}</p>
+                                {% else %}
+                                    <p class="no-description">Keine Beschreibung</p>
+                                {% endif %}
+                                
+                                <p class="created-date">
+                                    Erstellt: {% if proj.created_at %}{{ proj.created_at|datetime }}{% else %}Unbekannt{% endif %}
+                                </p>
+                                
+                                <p class="image-count">
+                                    Bilder: {{ proj.images|length if proj.images else 0 }}
+                                </p>
+                            </div>
+                            
+                            <div class="project-actions">
+                                <a href="{{ url_for('projects.view_project', project_id=proj.id) }}" class="btn btn-secondary">Anzeigen</a>
+                                <form action="{{ url_for('projects.delete_project', project_id=proj.id) }}" method="POST" class="inline-form"
+                                      onsubmit="return confirm('Möchten Sie das Projekt \"{{ proj.name }}\" wirklich löschen?');">
+                                    <button type="submit" class="btn btn-danger">Löschen</button>
+                                </form>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="no-projects">
+                        <p>Keine Projekte vorhanden. Erstellen Sie ein neues Projekt, um zu beginnen.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+       <p>&copy; 2025 Alexander Behrens 360° Drehteller Steuerung</p>
+    </footer>
+</body>
+</html>
+
+
+--- Datei: /d360/dev/templates/index.html ---
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alexander Behrens 360° Drehteller Steuerung</title>
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="/static/css/index.css">
+</head>
+<body data-project-id="{{ project.id if project else '' }}">
+    <header>
+        <h1>360° Drehteller Steuerung</h1>
+        <nav>
+            <a href="/" class="active">Startseite</a>
+            <a href="/projects">Projekte</a>
+            <a href="/settings">Einstellungen</a>
+            <a href="/viewer">360° Viewer</a>
+        </nav>
+    </header>
+    
+    <main>
+        <div class="container">
+            <div class="control-panel card">
+                <h2>{% if project %}Projekt: {{ project.name }}{% else %}Drehteller steuern{% endif %}</h2>
+                
+                {% if not project %}
+                <div class="project-selection">
+                    <label for="projectSelect">Projekt auswählen:</label>
+                    <select id="projectSelect">
+                        <option value="">Bitte wählen...</option>
+                        <option value="new">+ Neues Projekt erstellen</option>
+                        <!-- Projekte werden per JavaScript geladen -->
+                    </select>
+                </div>
+                {% endif %}
+                
+                <div class="rotation-settings">
+                    <div class="form-group">
+                        <label for="intervalInput">Foto-Intervall (Sekunden):</label>
+                        <input type="number" id="intervalInput" value="5" min="1" max="60">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="angleInput">Drehwinkel pro Schritt:</label>
+                        <input type="number" id="angleInput" value="{{ project.angle_step|default(15) }}" min="1" max="90">
+                    </div>
+                </div>
+                
+                <div class="controls">
+                    <button id="startBtn" class="btn btn-primary">Start 360°</button>
+                    <button id="stopBtn" class="btn btn-danger" disabled>Stop</button>
+                    <button id="rotateBtn" class="btn btn-secondary">Manuell drehen</button>
+                </div>
+                
+                <div id="rotationStatus" class="status-message" style="display: none;"></div>
+            </div>
+            
+            <div class="preview card">
+                <h2>Vorschau</h2>
+                <div id="imagePreview" class="image-preview">
+                    <div class="no-image">Kein Bild verfügbar</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Modal für Projekterstellung -->
+        <div id="projectModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Neues Projekt erstellen</h3>
+                </div>
+                <div class="modal-body">
+                    <form id="projectForm" action="{{ url_for('projects.create_project') }}" method="POST">
+                        <div class="form-group">
+                            <label for="name">Projektname:</label>
+                            <input type="text" id="name" name="name" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="description">Beschreibung:</label>
+                            <textarea id="description" name="description" rows="4"></textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="angle_step">Winkelschritt (Grad):</label>
+                            <input type="number" id="angle_step" name="angle_step" min="1" max="90" value="15">
+                        </div>
+                        
+                        <div class="modal-footer">
+                            <button type="button" id="cancelProject" class="btn btn-secondary">Abbrechen</button>
+                            <button type="submit" class="btn btn-primary">Projekt erstellen</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+       <p>&copy; 2025 Alexander Behrens 360° Drehteller Steuerung</p>
+    </footer>
+
+    <script src="/static/js/index.js"></script>
+</body>
+</html>
+
+
+--- Datei: /d360/dev/templates/viewer/overview.html ---
+<!-- templates/viewer/overview.html -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>360° Viewer Übersicht - Drehteller Steuerung</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <header>
+        <h1>360° Drehteller Steuerung</h1>
+        <nav>
+            <a href="/">Startseite</a>
+            <a href="/projects">Projekte</a>
+            <a href="/settings">Einstellungen</a>
+            <a href="/viewer" class="active">360° Viewer</a>
+        </nav>
+    </header>
+    
+    <main>
+        <div class="card">
+            <h2>360° Viewer Übersicht</h2>
+            <p>Wählen Sie ein Projekt, um die 360°-Ansicht zu öffnen:</p>
+            
+            <div class="projects-list">
+                {% if projects %}
+                    {% for project in projects %}
+                        <div class="project-card">
+                            <h3>{{ project.name }}</h3>
+                            <div class="project-meta">
+                                {% if project.description %}
+                                    <p>{{ project.description }}</p>
+                                {% else %}
+                                    <p class="no-description">Keine Beschreibung</p>
+                                {% endif %}
+                                
+                                <p class="created-date">
+                                    Erstellt: {% if project.created_at %}{{ project.created_at|datetime }}{% else %}Unbekannt{% endif %}
+                                </p>
+                                
+                                <p class="image-count">
+                                    Bilder: {{ project.images|length if project.images else 0 }}
+                                </p>
+                            </div>
+                            
+                            <div class="project-actions">
+                                {% if project.images and project.images|length > 0 %}
+
+<a href="/viewer/cloudimage?project={{ project.id }}" 
+   class="btn btn-primary">
+   360° Ansicht öffnen
+</a>
+
+                                {% else %}
+                                    <button class="btn btn-secondary" disabled>Keine Bilder vorhanden</button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="no-projects">
+                        <p>Keine Projekte vorhanden. Erstellen Sie zuerst ein Projekt und nehmen Sie Bilder auf.</p>
+                        <a href="/projects/create" class="btn btn-primary">Neues Projekt erstellen</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+        <p>&copy; 2025 Alexander Behrens 360° Drehteller Steuerung</p>
+    </footer>
+</body>
+</html>
+
+
+--- Datei: /d360/dev/templates/viewer/cloudimage_viewer.html ---
+<!-- templates/viewer/cloudimage_viewer.html -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ project.name }} - 360° Drehteller Steuerung</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="/static/css/cloudimage-viewer.css">
+</head>
+<body>
+    <header>
+        <h1>360° Drehteller Steuerung</h1>
+        <nav>
+            <a href="/">Startseite</a>
+            <a href="/projects">Projekte</a>
+            <a href="/settings">Einstellungen</a>
+            <a href="/viewer" class="active">360° Viewer</a>
+        </nav>
+    </header>
+    
+    <main>
+        <div class="card">
+            <h2>{{ project.name }}</h2>
+            <p>360° Ansicht Ihres Produkts</p>
+            
+            <div class="viewer-container">
+                <div class="image-container" id="product-viewer">
+                    {% for image in project.images %}
+                        <img 
+                            src="/projects/image/{{ project.id }}/{{ image.path }}" 
+                            class="product-image {% if loop.first %}active{% endif %}" 
+                            alt="Ansicht {{ loop.index }}"
+                            data-angle="{{ image.angle if image.angle is defined else loop.index0 * 360 // project.images|length }}"
+                        >
+                    {% endfor %}
+                    <div class="bottom-circle">
+                        <div class="circle-indicator" id="circle-indicator"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <button id="pause-btn" class="control-btn">⏸ Pause</button>
+                <button id="reset-btn" class="control-btn">↺ Zurücksetzen</button>
+                <button id="zoom-in-btn" class="control-btn">🔍+ Vergrößern</button>
+                <button id="zoom-out-btn" class="control-btn">🔍- Verkleinern</button>
+                <button id="export-btn" class="control-btn export-btn">📦 Export</button>
+                <a href="/projects/{{ project.id }}" class="btn">Zurück zum Projekt</a>
+                <a href="/viewer" class="btn">Zurück zur Übersicht</a>
+            </div>
+            
+            <div class="viewer-settings">
+                <h3>Viewer-Einstellungen</h3>
+                <div class="settings-group">
+                    <div class="settings-item">
+                        <label for="auto-play-behavior">Auto Play Verhalten:</label>
+                        <select id="auto-play-behavior">
+                            <option value="spin-x" selected>Horizontal (spin-x)</option>
+                            <option value="spin-xy">Horizontal und Vertikal (spin-xy)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="settings-item">
+                        <label for="auto-play-speed">Auto Play Geschwindigkeit (ms):</label>
+                        <input type="number" id="auto-play-speed" value="100" min="50" max="500">
+                    </div>
+                    
+                    <div class="settings-item">
+                        <label for="drag-speed">Drag Geschwindigkeit:</label>
+                        <input type="number" id="drag-speed" value="120" min="50" max="300">
+                    </div>
+                </div>
+                
+                <div class="settings-group">
+                    <div class="settings-item">
+                        <input type="checkbox" id="auto-play" checked>
+                        <label for="auto-play">Auto Play</label>
+                    </div>
+                    
+                    <div class="settings-item">
+                        <input type="checkbox" id="auto-play-once">
+                        <label for="auto-play-once">Einmal abspielen</label>
+                    </div>
+                    
+                    <div class="settings-item">
+                        <input type="checkbox" id="auto-play-reverse">
+                        <label for="auto-play-reverse">Rückwärts abspielen</label>
+                    </div>
+                    
+                    <div class="settings-item">
+                        <input type="checkbox" id="draggable" checked>
+                        <label for="draggable">Drag-Funktion</label>
+                    </div>
+                    
+                    <div class="settings-item">
+                        <input type="checkbox" id="fullscreen">
+                        <label for="fullscreen">Vollbild</label>
+                    </div>
+                    
+                    <div class="settings-item">
+                        <input type="checkbox" id="magnifier">
+                        <label for="magnifier">Lupe</label>
+                    </div>
+                </div>
+                
+                <div class="settings-actions">
+                    <button id="save-settings-btn" class="btn btn-primary">Einstellungen speichern</button>
+                    <button id="load-settings-btn" class="btn btn-secondary">Einstellungen laden</button>
+                </div>
+            </div>
+            
+            <!-- Export-Bereich -->
+            <div class="export-section" id="export-section" style="display: none;">
+                <h3>360° Viewer exportieren</h3>
+                <p>Mit dieser Funktion können Sie den 360° Viewer als eigenständiges Paket exportieren und in Ihre eigene Webseite einbinden.</p>
+                
+                <div class="export-options">
+                    <div class="form-group">
+                        <label for="export-filename">Dateiname:</label>
+                        <input type="text" id="export-filename" value="{{ project.name|default('360-viewer') }}" class="export-input">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="export-options">Exportoptionen:</label>
+                        <select id="export-options" class="export-input">
+                            <option value="full-package">Komplettes Paket (HTML, JS, Bilder)</option>
+                            <option value="html-only">Nur HTML mit relativen Pfaden</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <button id="start-export-btn" class="btn btn-primary">Export starten</button>
+                        <button id="cancel-export-btn" class="btn btn-secondary">Abbrechen</button>
+                    </div>
+                </div>
+                
+                <div class="export-instructions">
+                    <h4>Anleitung zur Einbindung</h4>
+                    <p>Nach dem Export erhalten Sie eine ZIP-Datei mit dem 360° Viewer. Um den Viewer in Ihre Webseite einzubinden:</p>
+                    <ol>
+                        <li>Entpacken Sie die ZIP-Datei in einen Ordner auf Ihrem Webserver</li>
+                        <li>Binden Sie die index.html direkt ein oder kopieren Sie den Code in Ihre Webseite</li>
+                        <li>Alternativ können Sie den Viewer über einen iFrame einbinden:</li>
+                    </ol>
+                    
+                    <div class="code-block">
+                        <pre><code>&lt;iframe src="pfad/zum/viewer/index.html" width="100%" height="500" frameborder="0"&gt;&lt;/iframe&gt;</code></pre>
+                        <button class="copy-btn" data-target="iframe-code">Kopieren</button>
+                    </div>
+                    
+                    <h4>Direkteinbindung</h4>
+                    <p>Für die direkte Einbindung des Viewers in Ihre Webseite kopieren Sie folgenden Code:</p>
+                    
+                    <div class="code-block">
+                        <pre><code id="embed-code">&lt;!-- Der Code wird beim Export generiert --&gt;</code></pre>
+                        <button class="copy-btn" data-target="embed-code">Kopieren</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+        <p>&copy; 2025 Alexander Behrens 360° Drehteller Steuerung</p>
+    </footer>
+    
+    <script src="/static/js/cloudimage-viewer.js"></script>
+</body>
+</html>
+
+
+--- Datei: /d360/dev/templates/projects/create.html ---
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neues Projekt erstellen - 360° Drehteller</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f4f6f7;
+        }
+        .create-project-container {
+            max-width: 600px;
+            margin: 2rem auto;
+            background-color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .btn-custom-primary {
+            background-color: #3498db;
+            color: white;
+        }
+        .btn-custom-primary:hover {
+            background-color: #2980b9;
+        }
+        .btn-custom-secondary {
+            background-color: #ecf0f1;
+            color: #2c3e50;
+        }
+        .btn-custom-secondary:hover {
+            background-color: #dfe4e6;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container">
+            <a class="navbar-brand" href="/">360° Drehteller</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">Startseite</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/projects">Projekte</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="create-project-container">
+            <h1 class="mb-4 text-center">Neues Projekt erstellen</h1>
+            
+            <form action="{{ url_for('projects.create_project') }}" method="POST">
+                <div class="mb-3">
+                    <label for="name" class="form-label">Projektname</label>
+                    <input type="text" class="form-control" id="name" name="name" required 
+                           placeholder="z.B. Product 360° Aufnahme">
+                </div>
+                
+                <div class="mb-3">
+                    <label for="description" class="form-label">Beschreibung <small class="text-muted">(optional)</small></label>
+                    <textarea class="form-control" id="description" name="description" rows="3"
+                              placeholder="Beschreiben Sie kurz das Ziel des Projekts"></textarea>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="angle_step" class="form-label">Winkelschritt</label>
+                    <select class="form-select" id="angle_step" name="angle_step">
+                        <option value="5">5° (72 Bilder pro Umdrehung) - Höchste Auflösung</option>
+                        <option value="10" selected>10° (36 Bilder pro Umdrehung) - Empfohlen</option>
+                        <option value="15">15° (24 Bilder pro Umdrehung) - Standard</option>
+                        <option value="30">30° (12 Bilder pro Umdrehung) - Schnelle Aufnahme</option>
+                    </select>
+                </div>
+                
+                <div class="d-flex justify-content-between">
+                    <a href="{{ url_for('projects.projects_page') }}" class="btn btn-custom-secondary">
+                        Abbrechen
+                    </a>
+                    <button type="submit" class="btn btn-custom-primary">
+                        Projekt erstellen
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+
+
+--- Datei: /d360/dev/templates/projects/view.html ---
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ project.name }} - 360° Drehteller Steuerung</title>
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="/static/css/project_view.css">
+</head>
+<body>
+    <header>
+        <h1>360° Drehteller Steuerung</h1>
+        <nav>
+            <a href="/">Startseite</a>
+            <a href="/projects">Projekte</a>
+            <a href="/settings">Einstellungen</a>
+            i
+        </nav>
+    </header>
+    
+    <main>
+        <div class="project-details">
+            <h2>{{ project.name }}</h2>
+            
+            <div class="project-info">
+                <p><strong>Beschreibung:</strong> {{ project.description or "Keine Beschreibung" }}</p>
+                <p><strong>Erstellt am:</strong> {{ project.created_at|datetime }}</p>
+                <p><strong>Winkelschritt:</strong> {{ project.angle_step }}°</p>
+            </div>
+            
+            <div class="project-actions">
+                <a href="/?project_id={{ project.id }}" class="btn btn-primary">Bilder aufnehmen</a>
+                <a href="/projects" class="btn btn-secondary">Zurück zur Projektliste</a>
+            </div>
+            
+            <h3>Bilder</h3>
+            <div class="project-images">
+                {% if project.images and project.images|length > 0 %}
+                    <div class="image-grid">
+                        {% for image in project.images %}
+                            <div class="image-item">
+                                <img src="/projects/image/{{ project.id }}/{{ image.path }}" alt="Foto bei {{ image.angle }}°">
+                                <div class="image-info">
+                                    <span class="angle">{{ image.angle }}°</span>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="no-images">Keine Bilder vorhanden. Nehmen Sie Bilder auf, um sie hier anzuzeigen.</p>
+                {% endif %}
+            </div>
+            
+            <h3>Sessions</h3>
+            <div class="project-sessions">
+                {% if project.sessions and project.sessions|length > 0 %}
+                    <div class="sessions-list">
+                        {% for session in project.sessions %}
+                            <div class="session-item">
+                                <h4>{{ session.name }}</h4>
+                                <p>Aufgenommen am: {{ session.timestamp|datetime }}</p>
+                                <p>Winkelschritt: {{ session.angle_step }}°</p>
+                                <p>Fotos: {{ session.photos|length if session.photos else 0 }}</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="no-sessions">Keine Sessions vorhanden.</p>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+        <p>&copy; 2025 360° Drehteller Steuerung</p>
+    </footer>
+    
+    <script src="/static/js/project_view.js"></script>
+</body>
+</html>
+
+
+--- Datei: /d360/dev/templates/projects/index.html ---
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meine Projekte - 360° Drehteller</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container">
+            <a class="navbar-brand" href="/">360° Drehteller</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">Startseite</a>
+                    </li>
+                    <li class="nav-item active">
+                        <a class="nav-link" href="/projects">Projekte</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="projects-header text-center">
+        <div class="container">
+            <h1 class="display-4">Meine Projekte</h1>
+            <p class="lead">Verwalten und organisieren Sie Ihre 360° Drehteller-Aufnahmen</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="mb-4">
+            <a href="{{ url_for('projects.create_project') }}" class="btn btn-create">
+                <i class="bi bi-plus-circle me-2"></i>Neues Projekt erstellen
+            </a>
+        </div>
+
+        {% if projects %}
+            <div class="row">
+                {% for project in projects %}
+                    <div class="col-md-4">
+                        <div class="card project-card">
+                            <div class="card-body">
+                                <div>
+                                    <h5 class="card-title">{{ project.name }}</h5>
+                                    <p class="card-text text-muted">
+                                        {{ project.description or 'Keine Beschreibung' }}
+                                    </p>
+                                </div>
+                                <div class="project-actions">
+                                    <a href="{{ url_for('projects.view_project', project_id=project.id) }}" 
+                                       class="btn btn-sm btn-info">
+                                        Anzeigen
+                                    </a>
+                                    <button class="btn btn-sm btn-danger" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#deleteModal{{ project.id }}">
+                                        Löschen
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Lösch-Modal für jedes Projekt -->
+                        <div class="modal fade" id="deleteModal{{ project.id }}" tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Projekt löschen</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        Möchten Sie das Projekt "{{ project.name }}" wirklich löschen?
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                                        <a href="{{ url_for('projects.delete_project', project_id=project.id) }}" 
+                                           class="btn btn-danger">
+                                            Löschen
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="no-projects">
+                <h3>Keine Projekte vorhanden</h3>
+                <p>Erstellen Sie Ihr erstes 360° Projekt!</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+</body>
+</html>
+

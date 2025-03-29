@@ -6,7 +6,7 @@ Initialisiert die Flask-Anwendung und registriert alle Blueprints.
 """
 
 import logging
-from flask import Flask
+from flask import Flask, g
 from app.utils.config_manager import config_manager
 from app.controllers.arduino_controller import ArduinoController
 from app.controllers.camera_controller import CameraController
@@ -75,6 +75,14 @@ def create_app(config_name=None):
             return date.strftime('%d.%m.%Y %H:%M')
         except Exception:
             return "Ungültiges Datum"
+
+    @app.after_request
+    def call_after_request_functions(response):
+        """Führt alle nach einem Request registrierten Funktionen aus"""
+        if hasattr(g, 'call_after_request'):
+            for func in g.call_after_request:
+                response = func(response)
+        return response
 
     # Sicherheits-Header hinzufügen
     @app.after_request

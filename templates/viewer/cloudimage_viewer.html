@@ -1,3 +1,4 @@
+<!-- templates/viewer/cloudimage_viewer.html -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -44,6 +45,7 @@
                 <button id="reset-btn" class="control-btn">↺ Zurücksetzen</button>
                 <button id="zoom-in-btn" class="control-btn">🔍+ Vergrößern</button>
                 <button id="zoom-out-btn" class="control-btn">🔍- Verkleinern</button>
+                <button id="export-btn" class="control-btn export-btn">📦 Export</button>
                 <a href="/projects/{{ project.id }}" class="btn">Zurück zum Projekt</a>
                 <a href="/viewer" class="btn">Zurück zur Übersicht</a>
             </div>
@@ -99,6 +101,60 @@
                     <div class="settings-item">
                         <input type="checkbox" id="magnifier">
                         <label for="magnifier">Lupe</label>
+                    </div>
+                </div>
+                
+                <div class="settings-actions">
+                    <button id="save-settings-btn" class="btn btn-primary">Einstellungen speichern</button>
+                    <button id="load-settings-btn" class="btn btn-secondary">Einstellungen laden</button>
+                </div>
+            </div>
+            
+            <!-- Export-Bereich -->
+            <div class="export-section" id="export-section" style="display: none;">
+                <h3>360° Viewer exportieren</h3>
+                <p>Mit dieser Funktion können Sie den 360° Viewer als eigenständiges Paket exportieren und in Ihre eigene Webseite einbinden.</p>
+                
+                <div class="export-options">
+                    <div class="form-group">
+                        <label for="export-filename">Dateiname:</label>
+                        <input type="text" id="export-filename" value="{{ project.name|default('360-viewer') }}" class="export-input">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="export-options">Exportoptionen:</label>
+                        <select id="export-options" class="export-input">
+                            <option value="full-package">Komplettes Paket (HTML, JS, Bilder)</option>
+                            <option value="html-only">Nur HTML mit relativen Pfaden</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <button id="start-export-btn" class="btn btn-primary">Export starten</button>
+                        <button id="cancel-export-btn" class="btn btn-secondary">Abbrechen</button>
+                    </div>
+                </div>
+                
+                <div class="export-instructions">
+                    <h4>Anleitung zur Einbindung</h4>
+                    <p>Nach dem Export erhalten Sie eine ZIP-Datei mit dem 360° Viewer. Um den Viewer in Ihre Webseite einzubinden:</p>
+                    <ol>
+                        <li>Entpacken Sie die ZIP-Datei in einen Ordner auf Ihrem Webserver</li>
+                        <li>Binden Sie die index.html direkt ein oder kopieren Sie den Code in Ihre Webseite</li>
+                        <li>Alternativ können Sie den Viewer über einen iFrame einbinden:</li>
+                    </ol>
+                    
+                    <div class="code-block">
+                        <pre><code>&lt;iframe src="pfad/zum/viewer/index.html" width="100%" height="500" frameborder="0"&gt;&lt;/iframe&gt;</code></pre>
+                        <button class="copy-btn" data-target="iframe-code">Kopieren</button>
+                    </div>
+                    
+                    <h4>Direkteinbindung</h4>
+                    <p>Für die direkte Einbindung des Viewers in Ihre Webseite kopieren Sie folgenden Code:</p>
+                    
+                    <div class="code-block">
+                        <pre><code id="embed-code">&lt;!-- Der Code wird beim Export generiert --&gt;</code></pre>
+                        <button class="copy-btn" data-target="embed-code">Kopieren</button>
                     </div>
                 </div>
             </div>
