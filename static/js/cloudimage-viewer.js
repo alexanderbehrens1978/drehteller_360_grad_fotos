@@ -412,4 +412,122 @@ document.addEventListener('DOMContentLoaded', function() {
         // Standardmäßig starten, wenn kein Autoplay-Checkbox existiert
         startAutoRotate();
     }
+
+// Export-Button Event-Handler
+const exportBtn = document.getElementById('export-btn');
+const exportSection = document.getElementById('export-section');
+const startExportBtn = document.getElementById('start-export-btn');
+const cancelExportBtn = document.getElementById('cancel-export-btn');
+const embedCodeElement = document.getElementById('embed-code');
+
+if (exportBtn) {
+    exportBtn.addEventListener('click', function() {
+        if (exportSection.style.display === 'none' || exportSection.style.display === '') {
+            exportSection.style.display = 'block';
+        } else {
+            exportSection.style.display = 'none';
+        }
+    });
+}
+
+if (cancelExportBtn) {
+    cancelExportBtn.addEventListener('click', function() {
+        exportSection.style.display = 'none';
+    });
+}
+
+if (startExportBtn) {
+    startExportBtn.addEventListener('click', function() {
+        // Projekt-ID aus der URL extrahieren
+        const urlParams = new URLSearchParams(window.location.search);
+        const projectId = urlParams.get('project');
+        
+        if (!projectId) {
+            alert('Fehler: Keine Projekt-ID gefunden!');
+            return;
+        }
+        
+        // Exportoptionen
+        const exportFilename = document.getElementById('export-filename').value;
+        const exportOptions = document.getElementById('export-options').value;
+        
+        // API-Anfrage zum Exportieren des Viewers
+        fetch('/viewer/export_viewer', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                project_id: projectId,
+                filename: exportFilename,
+                options: exportOptions
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Einbettungscode aktualisieren
+                if (embedCodeElement && data.embed_code) {
+                    embedCodeElement.textContent = data.embed_code;
+                }
+                
+                // Erfolgsmeldung anzeigen
+                alert('Export erfolgreich! Sie können den Viewer jetzt in Ihre Webseite einbinden.');
+                
+                // Wenn eine Download-URL vorhanden ist, Download starten
+                if (data.download_url) {
+                    window.location.href = data.download_url;
+                }
+            } else {
+                alert('Fehler beim Exportieren: ' + (data.message || 'Unbekannter Fehler'));
+            }
+        })
+        .catch(error => {
+            console.error('Netzwerkfehler beim Exportieren des Viewers:', error);
+            // Mehr Details für Fehlerdiagnose im Konsolenfenster anzeigen
+            try {
+                if (error instanceof TypeError && error.message.includes('JSON')) {
+                    console.error('JSON-Parsefehler: Die Serverantwort ist kein gültiges JSON');
+                } else if (error instanceof TypeError && error.message.includes('fetch')) {
+                    console.error('Fetch-Fehler: Der Server konnte nicht erreicht werden');
+                }
+            } catch (e) {
+                console.error('Fehler bei der Fehleranalyse:', e);
+            }
+            
+            alert('Netzwerkfehler beim Exportieren des Viewers. Details siehe Konsole (F12).');
+        });
+    });
+}
+
+// Copy-Button Funktionalität
+const copyButtons = document.querySelectorAll('.copy-btn');
+copyButtons.forEach(btn => {
+    btn.addEventListener('click', function() {
+        const targetId = this.dataset.target;
+        const codeElement = document.getElementById(targetId) || 
+                            this.parentNode.querySelector('code');
+        
+        if (codeElement) {
+            const textToCopy = codeElement.textContent;
+            
+            // Clipboard API verwenden
+            navigator.clipboard.writeText(textToCopy)
+                .then(() => {
+                    // Kurzzeitig Erfolgsmeldung anzeigen
+                    const originalText = this.textContent;
+                    this.textContent = 'Kopiert!';
+                    setTimeout(() => {
+                        this.textContent = originalText;
+                    }, 2000);
+                })
+                .catch(err => {
+                    console.error('Fehler beim Kopieren:', err);
+                    alert('Fehler beim Kopieren in die Zwischenablage');
+                });
+        }
+    });
+});
+
+
 });

@@ -1,0 +1,1054 @@
+
+--- Datei: /d360/dev/doc/controllers_arduino.html ---
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arduino-Controller - 360° Drehteller Steuerung</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            margin: 0;
+        }
+        
+        nav {
+            margin-top: 1rem;
+        }
+        
+        nav a {
+            color: white;
+            margin-right: 1rem;
+            text-decoration: none;
+        }
+        
+        nav a:hover {
+            text-decoration: underline;
+        }
+        
+        main {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        
+        .module-info {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+        
+        .method {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid #3498db;
+        }
+        
+        .method h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        
+        .method-signature {
+            font-family: monospace;
+            background: #eee;
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+        }
+        
+        .method-description {
+            margin-bottom: 1rem;
+        }
+        
+        .parameter, .return-value {
+            margin-bottom: 0.5rem;
+        }
+        
+        .parameter-name, .return-label {
+            font-weight: bold;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 1rem;
+            background-color: #2c3e50;
+            color: white;
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Arduino-Controller</h1>
+        <nav>
+            <a href="index.html">Zurück zur Übersicht</a>
+        </nav>
+    </header>
+    
+    <main>
+        <div class="module-info">
+            <h2>ArduinoController</h2>
+            <p>Controller für die Kommunikation mit dem Arduino, der den Drehteller steuert</p>
+            <p><strong>Datei:</strong> /app/controllers/arduino_controller.py</p>
+        </div>
+        
+        <h2>Methoden</h2>
+        
+        <div class="method">
+            <h3>__init__</h3>
+            <div class="method-signature">def __init__(self, port=None, baudrate=9600)</div>
+            <div class="method-description">
+                <p>Initialisiert die Arduino-Verbindung</p>
+            </div>
+            <div class="parameters">
+                <h4>Parameter:</h4>
+                <div class="parameter">
+                    <span class="parameter-name">port:</span> Serieller Port (optional)
+                </div>
+                <div class="parameter">
+                    <span class="parameter-name">baudrate:</span> Baudrate (optional)
+                </div>
+            </div>
+        </div>
+        
+        <div class="method">
+            <h3>connect</h3>
+            <div class="method-signature">def connect(self)</div>
+            <div class="method-description">
+                <p>Stellt eine Verbindung zum Arduino her</p>
+            </div>
+            <div class="return-value">
+                <h4>Rückgabewert:</h4>
+                <div class="return-description">
+                    <p>True bei Erfolg, False bei Fehler</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="method">
+            <h3>disconnect</h3>
+            <div class="method-signature">def disconnect(self)</div>
+            <div class="method-description">
+                <p>Trennt die Verbindung zum Arduino</p>
+            </div>
+            <div class="return-value">
+                <h4>Rückgabewert:</h4>
+                <div class="return-description">
+                    <p>True bei Erfolg, False bei Fehler</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="method">
+            <h3>is_connected</h3>
+            <div class="method-signature">def is_connected(self)</div>
+            <div class="method-description">
+                <p>Prüft, ob die Verbindung zum Arduino hergestellt ist</p>
+            </div>
+            <div class="return-value">
+                <h4>Rückgabewert:</h4>
+                <div class="return-description">
+                    <p>True wenn verbunden, sonst False</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="method">
+            <h3>send_command</h3>
+            <div class="method-signature">def send_command(self, command)</div>
+            <div class="method-description">
+                <p>Sendet einen Befehl an den Arduino</p>
+            </div>
+            <div class="parameters">
+                <h4>Parameter:</h4>
+                <div class="parameter">
+                    <span class="parameter-name">command:</span> Zu sendender Befehl
+                </div>
+            </div>
+            <div class="return-value">
+                <h4>Rückgabewert:</h4>
+                <div class="return-description">
+                    <p>True bei Erfolg, False bei Fehler</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="method">
+            <h3>turn_motor_on</h3>
+            <div class="method-signature">def turn_motor_on(self)</div>
+            <div class="method-description">
+                <p>Schaltet den Motor ein (Relais schließen)</p>
+            </div>
+            <div class="return-value">
+                <h4>Rückgabewert:</h4>
+                <div class="return-description">
+                    <p>True bei Erfolg, False bei Fehler</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="method">
+            <h3>turn_motor_off</h3>
+            <div class="method-signature">def turn_motor_off(self)</div>
+            <div class="method-description">
+                <p>Schaltet den Motor aus (Relais öffnen)</p>
+            </div>
+            <div class="return-value">
+                <h4>Rückgabewert:</h4>
+                <div class="return-description">
+                    <p>True bei Erfolg, False bei Fehler</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="method">
+            <h3>rotate_for_duration</h3>
+            <div class="method-signature">def rotate_for_duration(self, duration_ms)</div>
+            <div class="method-description">
+                <p>Dreht den Motor für eine bestimmte Zeit</p>
+            </div>
+            <div class="parameters">
+                <h4>Parameter:</h4>
+                <div class="parameter">
+                    <span class="parameter-name">duration_ms:</span> Dauer in Millisekunden
+                </div>
+            </div>
+            <div class="return-value">
+                <h4>Rückgabewert:</h4>
+                <div class="return-description">
+                    <p>True bei Erfolg, False bei Fehler</p>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+        <p>&copy; 2025 360° Drehteller Steuerung</p>
+    </footer>
+</body>
+</html>
+
+
+--- Datei: /d360/dev/doc/blueprints_projects.html ---
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projektverwaltung - 360° Drehteller Steuerung</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            margin: 0;
+        }
+        
+        nav {
+            margin-top: 1rem;
+        }
+        
+        nav a {
+            color: white;
+            margin-right: 1rem;
+            text-decoration: none;
+        }
+        
+        nav a:hover {
+            text-decoration: underline;
+        }
+        
+        main {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        
+        .module-info {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+        
+        .method {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid #3498db;
+        }
+        
+        .method h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        
+        .method-signature {
+            font-family: monospace;
+            background: #eee;
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+        }
+        
+        .method-description {
+            margin-bottom: 1rem;
+        }
+        
+        .parameter, .return-value {
+            margin-bottom: 0.5rem;
+        }
+        
+        .parameter-name, .return-label {
+            font-weight: bold;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 1rem;
+            background-color: #2c3e50;
+            color: white;
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Projektverwaltung</h1>
+        <nav>
+            <a href="index.html">Zurück zur Übersicht</a>
+        </nav>
+    </header>
+    
+    <main>
+        <div class="module-info">
+            <h2>ProjectsBlueprint</h2>
+            <p>Routen für die Projektverwaltung</p>
+            <p><strong>Datei:</strong> /app/blueprints/projects/routes.py</p>
+        </div>
+        
+        <h2>Routen</h2>
+        
+        <div class="method">
+            <h3>projects_page</h3>
+            <div class="method-signature">@projects_bp.route('/')</div>
+            <div class="method-description">
+                <p>Zeigt die Projektverwaltungsseite an</p>
+            </div>
+            <div class="return-value">
+                <h4>Rückgabewert:</h4>
+                <div class="return-description">
+                    <p>HTML-Template mit der Liste aller Projekte</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="method">
+            <h3>create_project</h3>
+            <div class="method-signature">@projects_bp.route('/create', methods=['GET', 'POST'])</div>
+            <div class="method-description">
+                <p>Erstellt ein neues Projekt</p>
+            </div>
+            <div class="return-value">
+                <h4>Rückgabewert:</h4>
+                <div class="return-description">
+                    <p>Bei GET: HTML-Template mit dem Projektformular</p>
+                    <p>Bei POST: Weiterleitung zur Projektansicht oder Fehlerseite</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="method">
+            <h3>view_project</h3>
+            <div class="method-signature">@projects_bp.route('/<project_id>')</div>
+            <div class="method-description">
+                <p>Zeigt ein Projekt an</p>
+            </div>
+            <div class="parameters">
+                <h4>Parameter:</h4>
+                <div class="parameter">
+                    <span class="parameter-name">project_id:</span> ID des Projekts
+                </div>
+            </div>
+            <div class="return-value">
+                <h4>Rückgabewert:</h4>
+                <div class="return-description">
+                    <p>HTML-Template mit den Projektdetails oder Weiterleitung zur Projektliste</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="method">
+            <h3>delete_project</h3>
+            <div class="method-signature">@projects_bp.route('/delete/<project_id>', methods=['POST'])</div>
+            <div class="method-description">
+                <p>Löscht ein Projekt</p>
+            </div>
+            <div class="parameters">
+                <h4>Parameter:</h4>
+                <div class="parameter">
+                    <span class="parameter-name">project_id:</span> ID des zu löschenden Projekts
+                </div>
+            </div>
+            <div class="return-value">
+                <h4>Rückgabewert:</h4>
+                <div class="return-description">
+                    <p>Weiterleitung zur Projektliste oder Fehlerseite</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="method">
+            <h3>get_project_image</h3>
+            <div class="method-signature">@projects_bp.route('/image/<project_id>/<path:image_path>')</div>
+            <div class="method-description">
+                <p>Liefert ein Projektbild</p>
+            </div>
+            <div class="parameters">
+                <h4>Parameter:</h4>
+                <div class="parameter">
+                    <span class="parameter-name">project_id:</span> ID des Projekts
+                </div>
+                <div class="parameter">
+                    <span class="parameter-name">image_path:</span> Pfad zum Bild innerhalb des Projekts
+                </div>
+            </div>
+            <div class="return-value">
+                <h4>Rückgabewert:</h4>
+                <div class="return-description">
+                    <p>Das angeforderte Bild oder eine 404-Fehlerseite</p>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+        <p>&copy; 2025 360° Drehteller Steuerung</p>
+    </footer>
+</body>
+</html>
+
+
+--- Datei: /d360/dev/doc/controllers_turntable.html ---
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drehteller-Controller - 360° Drehteller Steuerung</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            margin: 0;
+        }
+        
+        nav {
+            margin-top: 1rem;
+        }
+        
+        nav a {
+            color: white;
+            margin-right: 1rem;
+            text-decoration: none;
+        }
+        
+        nav a:hover {
+            text-decoration: underline;
+        }
+        
+        main {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        
+        .module-info {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+        
+        .method {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid #3498db;
+        }
+        
+        .method h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        
+        .method-signature {
+            font-family: monospace;
+            background: #eee;
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+        }
+        
+        .method-description {
+            margin-bottom: 1rem;
+        }
+        
+        .parameter, .return-value {
+            margin-bottom: 0.5rem;
+        }
+        
+        .parameter-name, .return-label {
+            font-weight: bold;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 1rem;
+            background-color: #2c3e50;
+            color: white;
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Drehteller-Controller</h1>
+        <nav>
+            <a href="index.html">Zurück zur Übersicht</a>
+        </nav>
+    </header>
+    
+    <main>
+        <div class="module-info">
+            <h2>TurntableController</h2>
+            <p>Controller für die Drehteller-Steuerung mit dem Arduino</p>
+            <p><strong>Datei:</strong> /app/controllers/turntable_controller.py</p>
+        </div>
+        
+        <h2>Methoden</h2>
+        
+        <div class="method">
+            <h3>__init__</h3>
+            <div class="method-signature">def __init__(self, arduino_controller, default_angle_step=5)</div>
+            <div class="method-description">
+                <p>Initialisiert den Drehteller-Controller</p>
+            </div>
+            <div class="parameters">
+                <h4>Parameter:</h4>
+                <div class="parameter">
+                    <span class="parameter-name">arduino_controller:</span> ArduinoController-Instanz
+                </div>
+                <div class="parameter">
+                    <span class="parameter-name">default_angle_step:</span> Standard-Winkelschritt in Grad (optional)
+                </div>
+            </div>
+        </div>
+        
+        <div class="method">
+            <h3>calculate_rotation_time</h3>
+            <div class="method-signature">def calculate_rotation_time(self, degrees)</div>
+            <div class="method-description">
+                <p>Berechnet die Zeit, die für eine Rotation um einen bestimmten Winkel benötigt wird</p>
+            </div>
+            <div class="parameters">
+                <h4>Parameter:</h4>
+                <div class="parameter">
+                    <span class="parameter-name">degrees:</span> Winkel in Grad
+                </div>
+            </div>
+            <div class="return-value">
+                <h4>Rückgabewert:</h4>
+                <div class="return-description">
+                    <p>Zeit in Millisekunden</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="method">
+            <h3>move_degrees</h3>
+            <div class="method-signature">def move_degrees(self, degrees)</div>
+            <div class="method-description">
+                <p>Bewegt den Drehteller um einen bestimmten Winkel</p>
+            </div>
+            <div class="parameters">
+                <h4>Parameter:</h4>
+                <div class="parameter">
+                    <span class="parameter-name">degrees:</span> Winkel in Grad
+                </div>
+            </div>
+            <div class="return-value">
+                <h4>Rückgabewert:</h4>
+                <div class="return-description">
+                    <p>True bei Erfolg, False bei Fehler</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="method">
+            <h3>reset_position</h3>
+            <div class="method-signature">def reset_position(self)</div>
+            <div class="method-description">
+                <p>Setzt die aktuelle Position auf 0 Grad zurück (ohne Bewegung)</p>
+            </div>
+            <div class="return-value">
+                <h4>Rückgabewert:</h4>
+                <div class="return-description">
+                    <p>True</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="method">
+            <h3>start_session</h3>
+            <div class="method-signature">
+
+
+--- Datei: /d360/dev/doc/controllers_camera.html ---
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kamera-Controller - 360° Drehteller Steuerung</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            margin: 0;
+        }
+        
+        nav {
+            margin-top: 1rem;
+        }
+        
+        nav a {
+            color: white;
+            margin-right: 1rem;
+            text-decoration: none;
+        }
+        
+        nav a:hover {
+            text-decoration: underline;
+        }
+        
+        main {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        
+        .module-info {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+        
+        .method {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid #3498db;
+        }
+        
+        .method h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        
+        .method-signature {
+            font-family: monospace;
+            background: #eee;
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+        }
+        
+        .method-description {
+            margin-bottom: 1rem;
+        }
+        
+        .parameter, .return-value {
+            margin-bottom: 0.5rem;
+        }
+        
+        .parameter-name, .return-label {
+            font-weight: bold;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 1rem;
+            background-color: #2c3e50;
+            color: white;
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Kamera-Controller</h1>
+        <nav>
+            <a href="index.html">Zurück zur Übersicht</a>
+        </nav>
+    </header>
+    
+    <main>
+        <div class="module-info">
+            <h2>CameraController</h2>
+            <p>Controller für die Kamerasteuerung (Webcam und gphoto2-Kameras)</p>
+            <p><strong>Datei:</strong> /app/controllers/camera_controller.py</p>
+        </div>
+        
+        <h2>Methoden</h2>
+        
+        <div class="method">
+            <h3>__init__</h3>
+            <div class="method-signature">def __init__(self, camera_type='webcam', device='/dev/video0', resolution=None)</div>
+            <div class="method-description">
+                <p>Initialisiert den Kamera-Controller</p>
+            </div>
+            <div class="parameters">
+                <h4>Parameter:</h4>
+                <div class="parameter">
+                    <span class="parameter-name">camera_type:</span> Kameratyp ('webcam' oder 'gphoto2') (optional)
+                </div>
+                <div class="parameter">
+                    <span class="parameter-name">device:</span> Gerätepfad (optional)
+                </div>
+                <div class="parameter">
+                    <span class="parameter-name">resolution:</span> Auflösung als Tupel (Breite, Höhe) oder String 'BreitexHöhe' (optional)
+                </div>
+            </div>
+        </div>
+        
+        <div class="method">
+            <h3>_check_gphoto2</h3>
+            <div class="method-signature">def _check_gphoto2(self)</div>
+            <div class="method-description">
+                <p>Prüft, ob gphoto2 installiert ist</p>
+            </div>
+            <div class="return-value">
+                <h4>Rückgabewert:</h4>
+                <div class="return-description">
+                    <p>True wenn gphoto2 verfügbar ist, sonst False</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="method">
+            <h3>_setup_webcam</h3>
+            <div class="method-signature">def _setup_webcam(self)</div>
+            <div class="method-description">
+                <p>Initialisiert die Webcam</p>
+            </div>
+            <div class="return-value">
+                <h4>Rückgabewert:</h4>
+                <div class="return-description">
+                    <p>True bei Erfolg, False bei Fehler</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="method">
+            <h3>_close_webcam</h3>
+            <div class="method-signature">def _close_webcam(self)</div>
+            <div class="method-description">
+                <p>Schließt die Webcam</p>
+            </div>
+        </div>
+        
+        <div class="method">
+            <h3>capture_webcam_photo</h3>
+            <div class="method-signature">def capture_webcam_photo(self, output_path)</div>
+            <div class="method-description">
+                <p>Nimmt ein Foto mit der Webcam auf</p>
+            </div>
+            <div class="parameters">
+                <h4>Parameter:</h4>
+                <div class="parameter">
+                    <span class="parameter-name">output_path:</span> Pfad für das aufgenommene Foto
+                </div>
+            </div>
+            <div class="return-value">
+                <h4>Rückgabewert:</h4>
+                <div class="return-description">
+                    <p>True bei Erfolg, False bei Fehler</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="method">
+            <h3>capture_gphoto2_photo</h3>
+            <div class="method-signature">def capture_gphoto2_photo(self, output_path)</div>
+            <div class="method-description">
+                <p>Nimmt ein Foto mit einer gphoto2-kompatiblen Kamera auf</p>
+            </div>
+            <div class="parameters">
+                <h4>Parameter:</h4>
+                <div class="parameter">
+                    <span class="parameter-name">output_path:</span> Pfad für das aufgenommene Foto
+                </div>
+            </div>
+            <div class="return-value">
+                <h4>Rückgabewert:</h4>
+                <div class="return-description">
+                    <p>True bei Erfolg, False bei Fehler</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="method">
+            <h3>capture_photo</h3>
+            <div class="method-signature">def capture_photo(self, output_path)</div>
+            <div class="method-description">
+                <p>Nimmt ein Foto auf (je nach Kameratyp)</p>
+            </div>
+            <div class="parameters">
+                <h4>Parameter:</h4>
+                <div class="parameter">
+                    <span class="parameter-name">output_path:</span> Pfad für das aufgenommene Foto
+                </div>
+            </div>
+            <div class="return-value">
+                <h4>Rückgabewert:</h4>
+                <div class="return-description">
+                    <p>True bei Erfolg, False bei Fehler</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="method">
+            <h3>cleanup</h3>
+            <div class="method-signature">def cleanup(self)</div>
+            <div class="method-description">
+                <p>Ressourcen freigeben, wenn die Kamera nicht mehr benötigt wird</p>
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+        <p>&copy; 2025 360° Drehteller Steuerung</p>
+    </footer>
+</body>
+</html>
+
+
+--- Datei: /d360/dev/doc/index.html ---
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>360° Drehteller Steuerung - Dokumentation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            margin: 0;
+        }
+        
+        main {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        
+        .module-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        .module-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .module-card h2 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        
+        .module-card p {
+            margin-bottom: 1.5rem;
+        }
+        
+        a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        
+        a:hover {
+            text-decoration: underline;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 1rem;
+            background-color: #2c3e50;
+            color: white;
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>360° Drehteller Steuerung - Dokumentation</h1>
+    </header>
+    
+    <main>
+        <h2>Module</h2>
+        
+        <div class="module-list">
+            <div class="module-card">
+                <h2>App</h2>
+                <p>Hauptmodule der Anwendung.</p>
+                <ul>
+                    <li><a href="app.html">Anwendungsinitalisierung</a></li>
+                    <li><a href="config.html">Konfiguration</a></li>
+                </ul>
+            </div>
+            
+            <div class="module-card">
+                <h2>Blueprints</h2>
+                <p>Routen der Anwendung.</p>
+                <ul>
+                    <li><a href="blueprints_main.html">Hauptseiten</a></li>
+                    <li><a href="blueprints_api.html">API-Endpunkte</a></li>
+                    <li><a href="blueprints_projects.html">Projektverwaltung</a></li>
+                    <li><a href="blueprints_settings.html">Einstellungen</a></li>
+                </ul>
+            </div>
+            
+            <div class="module-card">
+                <h2>Controllers</h2>
+                <p>Steuerungskomponenten für Hardware.</p>
+                <ul>
+                    <li><a href="controllers_arduino.html">Arduino-Controller</a></li>
+                    <li><a href="controllers_camera.html">Kamera-Controller</a></li>
+                    <li><a href="controllers_turntable.html">Drehteller-Controller</a></li>
+                </ul>
+            </div>
+            
+            <div class="module-card">
+                <h2>Models</h2>
+                <p>Datenmodelle der Anwendung.</p>
+                <ul>
+                    <li><a href="models_project.html">Projekt</a></li>
+                    <li><a href="models_photosession.html">Fotosession</a></li>
+                </ul>
+            </div>
+            
+            <div class="module-card">
+                <h2>Utils</h2>
+                <p>Hilfsfunktionen und -klassen.</p>
+                <ul>
+                    <li><a href="utils_config_manager.html">Konfigurationsmanager</a></li>
+                    <li><a href="utils_path_manager.html">Pfadmanager</a></li>
+                    <li><a href="utils_device_detector.html">Geräteerkennung</a></li>
+                    <li><a href="utils_webcam_helper.html">Webcam-Helfer</a></li>
+                    <li><a href="utils_secure_path.html">Sichere Pfadverarbeitung</a></li>
+                </ul>
+            </div>
+            
+            <div class="module-card">
+                <h2>JavaScript</h2>
+                <p>Client-seitige Skripte.</p>
+                <ul>
+                    <li><a href="js_index.html">Startseite</a></li>
+                    <li><a href="js_projects.html">Projektverwaltung</a></li>
+                    <li><a href="js_settings.html">Einstellungen</a></li>
+                </ul>
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+        <p>&copy; 2025 360° Drehteller Steuerung</p>
+    </footer>
+</body>
+</html>
+
+
+--- Datei: /d360/dev/doc/media/Aufzeichnung 2025-03-22 182530.mp4 ---
+Fehler beim Lesen der Datei: 'utf-8' codec can't decode byte 0xa7 in position 33: invalid start byte
