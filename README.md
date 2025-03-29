@@ -2,8 +2,6 @@
 
 Start 27.02.2025
 
-Am 12.03.2025 war eine lauffähige Version
-
 Diese Anwendung steuert einen Arduino-basierten Drehteller für 360°-Produktfotografie und stellt einen Webserver für die Steuerung und Anzeige der Fotos bereit.
 
 ![image](https://github.com/user-attachments/assets/1002e8a1-6501-4488-9037-c9bfe3c2c7c6)
