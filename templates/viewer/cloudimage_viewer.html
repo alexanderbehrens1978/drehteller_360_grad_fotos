@@ -111,7 +111,7 @@
             </div>
             
             <!-- Export-Bereich -->
-            <div class="export-section" id="export-section" style="display: none;">
+            <div class="export-section" id="export-section">
                 <h3>360° Viewer exportieren</h3>
                 <p>Mit dieser Funktion können Sie den 360° Viewer als eigenständiges Paket exportieren und in Ihre eigene Webseite einbinden.</p>
                 
@@ -130,8 +130,28 @@
                     </div>
                     
                     <div class="form-group">
+                        <label>Viewer-Einstellungen übernehmen:</label>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="save-rotation" checked>
+                            <label for="save-rotation">Auto-Rotation</label>
+                            
+                            <input type="checkbox" id="save-zoom" checked>
+                            <label for="save-zoom">Zoom-Einstellungen</label>
+                            
+                            <input type="checkbox" id="save-speed" checked>
+                            <label for="save-speed">Rotationsgeschwindigkeit</label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
                         <button id="start-export-btn" class="btn btn-primary">Export starten</button>
                         <button id="cancel-export-btn" class="btn btn-secondary">Abbrechen</button>
+                    </div>
+                    
+                    <div class="form-group mt-3">
+                        <a href="/viewer/downloads/{{ project.id }}" class="btn btn-info">
+                            <i class="fa fa-download"></i> Frühere Exporte anzeigen
+                        </a>
                     </div>
                 </div>
                 
@@ -166,5 +186,51 @@
     </footer>
     
     <script src="/static/js/cloudimage-viewer.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Viewer-Elemente
+            const viewer = document.getElementById('product-viewer');
+            const images = viewer.querySelectorAll('.product-image');
+            const indicator = document.getElementById('circle-indicator');
+            let currentIndex = 0;
+            let autoRotate = true;
+            let autoRotateInterval;
+            let zoomLevel = 1.0;
+            let rotationSpeed = 3000; // in Millisekunden
+            
+            // Export-Elemente
+            const exportBtn = document.getElementById('export-btn');
+            const cancelExportBtn = document.getElementById('cancel-export-btn');
+            const startExportBtn = document.getElementById('start-export-btn');
+            const exportSection = document.getElementById('export-section');
+            
+            // Export-Button-Klick-Handler
+            exportBtn.addEventListener('click', function() {
+                exportSection.style.display = 'block';
+                viewer.scrollIntoView({ behavior: 'smooth' });
+            });
+            
+            cancelExportBtn.addEventListener('click', function() {
+                exportSection.style.display = 'none';
+            });
+            
+            // Speichern der aktuellen Viewer-Einstellungen beim Export
+            startExportBtn.addEventListener('click', function() {
+                // Viewer-Einstellungen sammeln
+                const viewerSettings = {
+                    autoRotate: document.getElementById('save-rotation').checked ? autoRotate : false,
+                    zoomLevel: document.getElementById('save-zoom').checked ? zoomLevel : 1.0,
+                    rotationSpeed: document.getElementById('save-speed').checked ? rotationSpeed : 3000,
+                    currentIndex: currentIndex
+                };
+                
+                // Einstellungen als URL-Parameter hinzufügen
+                let exportUrl = `/viewer/export/{{ project.id }}?settings=${encodeURIComponent(JSON.stringify(viewerSettings))}`;
+                
+                // Redirect zur Export-URL
+                window.location.href = exportUrl;
+            });
+        });
+    </script>
 </body>
 </html>

@@ -29,6 +29,55 @@
             color: #666;
             font-size: 0.9rem;
         }
+        /* Viewer Container Styles */
+        .viewer-container {
+            position: relative;
+            margin: 20px auto;
+            max-width: 800px;
+        }
+        .image-container {
+            position: relative;
+            width: 100%;
+            max-width: 100%;
+            height: 0;
+            padding-bottom: 75%; /* Seitenverhältnis 4:3 */
+            overflow: hidden;
+            background-color: #f8f8f8;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .product-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: none;
+        }
+        .product-image.active {
+            display: block;
+        }
+        .bottom-circle {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            height: 20px;
+            background-color: rgba(255,255,255,0.7);
+            border-radius: 10px;
+        }
+        .circle-indicator {
+            position: absolute;
+            top: 5px;
+            left: 0;
+            width: 10px;
+            height: 10px;
+            background-color: #3498db;
+            border-radius: 50%;
+            transition: left 0.2s ease;
+        }
     </style>
 </head>
 <body>
@@ -36,28 +85,177 @@
         <h1>{{ project.name }}</h1>
         <p>{{ project.description or "360° Ansicht" }}</p>
         
-        <div 
-            class="cloudimage-360"
-            data-image-list-x="{{ image_list|safe }}"
-            data-keys="true"
-            data-autoplay="true"
-            data-full-screen="true"
-            data-magnifier="3"
-            data-hide-360-logo="true"
-            data-bottom-circle="true"
-        ></div>
+        <div class="viewer-container">
+            <div class="image-container" id="product-viewer">
+                {% for img_path in image_list %}
+                <img src="{{ img_path }}" 
+                     class="product-image {% if loop.first %}active{% endif %}" 
+                     alt="Ansicht {{ loop.index }}"
+                     data-angle="{{ ((loop.index0) * (360 / image_list|length))|int }}"
+                     onerror="this.onerror=null; console.log('Bild konnte nicht geladen werden:', this.src);">
+                {% endfor %}
+                <div class="bottom-circle">
+                    <div class="circle-indicator" id="circle-indicator"></div>
+                </div>
+            </div>
+        </div>
     </div>
     
     <div class="footer">
         <p>Erstellt mit 360° Drehteller Steuerung</p>
     </div>
     
-    <!-- CloudImage 360° Viewer JavaScript -->
-    <script src="js/js-cloudimage-360-view.min.js"></script>
+    <!-- JavaScript für die Viewer-Funktionalität -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // CloudImage 360 Viewer initialisieren
-            CI360.init();
+            const images = document.querySelectorAll('.product-image');
+            const indicator = document.getElementById('circle-indicator');
+            const viewerContainer = document.getElementById('product-viewer');
+            let isDragging = false;
+            let startX, startAngle, currentIndex = 0;
+            const imageCount = images.length;
+            let rotationInterval = 100;
+            let isAutoRotating = true;
+            
+            // Initialisieren der Position des Indikators
+            updateIndicator(0);
+            
+            // Event Listener für Mausbewegungen
+            viewerContainer.addEventListener('mousedown', function(e) {
+                isDragging = true;
+                startX = e.pageX;
+                document.body.style.cursor = 'grabbing';
+                startAngle = getCurrentAngle();
+            });
+            
+            document.addEventListener('mousemove', function(e) {
+                if (!isDragging) return;
+                
+                const deltaX = e.pageX - startX;
+                const percentMoved = deltaX / viewerContainer.offsetWidth;
+                const degreeMoved = percentMoved * 360;
+                const targetAngle = (startAngle - degreeMoved + 360) % 360;
+                
+                showImageAtAngle(targetAngle);
+            });
+            
+            document.addEventListener('mouseup', function() {
+                isDragging = false;
+                document.body.style.cursor = 'default';
+            });
+            
+            // Zeige Bild basierend auf Winkel
+            function showImageAtAngle(angle) {
+                // Finde das nächste Bild basierend auf dem Winkel
+                let bestMatchIndex = 0;
+                let bestMatchDiff = 360;
+                
+                images.forEach((img, index) => {
+                    const imgAngle = parseInt(img.dataset.angle);
+                    let diff = Math.abs(imgAngle - angle);
+                    if (diff < bestMatchDiff) {
+                        bestMatchDiff = diff;
+                        bestMatchIndex = index;
+                    }
+                });
+                
+                // Setze das aktive Bild
+                setActiveImage(bestMatchIndex);
+            }
+            
+            // Aktuelles Bild setzen
+            function setActiveImage(index) {
+                images.forEach((img, i) => {
+                    if (i === index) {
+                        img.classList.add('active');
+                    } else {
+                        img.classList.remove('active');
+                    }
+                });
+                
+                currentIndex = index;
+                updateIndicator(index);
+            }
+            
+            // Winkel des aktuellen Bildes abrufen
+            function getCurrentAngle() {
+                return parseInt(images[currentIndex].dataset.angle);
+            }
+            
+            // Indikator-Position aktualisieren
+            function updateIndicator(index) {
+                const containerWidth = document.querySelector('.bottom-circle').offsetWidth;
+                const position = (containerWidth - 10) * (index / (imageCount - 1));
+                indicator.style.left = position + 'px';
+            }
+            
+            // Automatische Rotation
+            let autoRotateInterval;
+            
+            function startAutoRotate() {
+                autoRotateInterval = setInterval(() => {
+                    const nextIndex = (currentIndex + 1) % imageCount;
+                    setActiveImage(nextIndex);
+                }, rotationInterval);
+            }
+            
+            function stopAutoRotate() {
+                clearInterval(autoRotateInterval);
+                isAutoRotating = false;
+            }
+            
+            function toggleAutoRotate() {
+                if (isAutoRotating) {
+                    stopAutoRotate();
+                } else {
+                    isAutoRotating = true;
+                    startAutoRotate();
+                }
+            }
+            
+            // Anwenden der gespeicherten Viewer-Einstellungen
+            const viewerSettings = JSON.parse('{{ viewer_settings|tojson|safe if viewer_settings else "{}" }}');
+            console.log("Anwenden der gespeicherten Einstellungen:", viewerSettings);
+            
+            // Auto-Rotation
+            if (viewerSettings.autoRotate !== undefined) {
+                isAutoRotating = viewerSettings.autoRotate;
+            }
+            
+            // Rotationsgeschwindigkeit
+            if (viewerSettings.rotationSpeed !== undefined) {
+                rotationInterval = viewerSettings.rotationSpeed;
+            }
+            
+            // Zoom
+            if (viewerSettings.zoomLevel !== undefined) {
+                const zoomFactor = viewerSettings.zoomLevel;
+                images.forEach(img => {
+                    img.style.transform = `scale(${zoomFactor})`;
+                });
+            }
+            
+            // Aktives Bild
+            if (viewerSettings.currentIndex !== undefined) {
+                currentIndex = viewerSettings.currentIndex;
+                updateIndicator(currentIndex);
+                images.forEach((img, index) => {
+                    img.classList.toggle('active', index === currentIndex);
+                });
+            }
+            
+            // Starte Auto-Rotation, wenn aktiviert
+            if (isAutoRotating) {
+                startAutoRotate();
+            }
+            
+            // Pause und Fortsetzung der Rotation bei Klick
+            viewerContainer.addEventListener('click', function(e) {
+                // Nicht triggern wenn Drag beendet wurde
+                if (isDragging) return;
+                
+                toggleAutoRotate();
+            });
         });
     </script>
 </body>

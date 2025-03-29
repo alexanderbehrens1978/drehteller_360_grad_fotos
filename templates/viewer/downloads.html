@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+
+{% block title %}Viewer Exporte - {{ project.name }} - 360° Drehteller{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h3>Viewer Exporte für {{ project.name }}</h3>
+        </div>
+        <div class="card-body">
+            <div class="mb-4">
+                <p>Hier finden Sie alle vorherigen Exporte des 360° Viewers für dieses Projekt.</p>
+            </div>
+            
+            {% if downloads %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Dateiname</th>
+                                <th>Größe</th>
+                                <th>Datum</th>
+                                <th>Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for download in downloads %}
+                                <tr>
+                                    <td>{{ download.filename }}</td>
+                                    <td>{{ download.size }} KB</td>
+                                    <td>{{ download.date|datetime }}</td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <a href="{{ download.url }}" class="btn btn-primary btn-sm" download>
+                                                <i class="fa fa-download"></i> Herunterladen
+                                            </a>
+                                            <a href="{{ url_for('viewer.delete_export', project_id=project.id, filename=download.filename) }}" 
+                                               class="btn btn-danger btn-sm" 
+                                               onclick="return confirm('Sind Sie sicher, dass Sie diesen Export löschen möchten?');">
+                                                <i class="fa fa-trash"></i> Löschen
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    Es wurden noch keine Exporte für dieses Projekt erstellt.
+                </div>
+            {% endif %}
+            
+            <div class="mt-4">
+                <a href="{{ url_for('viewer.export_viewer', project_id=project.id) }}" class="btn btn-success">
+                    <i class="fa fa-plus"></i> Neuen Export erstellen
+                </a>
+                <a href="{{ url_for('viewer.cloudimage_viewer', project=project.id) }}" class="btn btn-outline-primary">
+                    <i class="fa fa-eye"></i> Zurück zum Viewer
+                </a>
+                <a href="{{ url_for('viewer.viewer_overview') }}" class="btn btn-outline-secondary">
+                    <i class="fa fa-list"></i> Zurück zur Übersicht
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

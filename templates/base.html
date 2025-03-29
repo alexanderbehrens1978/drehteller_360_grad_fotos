@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}360° Drehteller Fotografie-System{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='/static/css/style.css') }}">
+    <link rel="stylesheet" href="/static/css/styles.css">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -15,13 +15,27 @@
                 <h1>360° Drehteller</h1>
             </div>
             <ul class="nav-links">
-                <li><a href="{{ url_for('index') }}">Projekte</a></li>
-                <li><a href="{{ url_for('app_settings') }}">Einstellungen</a></li>
-                <li><a href="{{ url_for('viewer') }}">360° Viewer</a></li>
+                <li><a href="{{ url_for('main.index') }}">Startseite</a></li>
+                <li><a href="{{ url_for('projects.projects_page') }}">Projekte</a></li>
+                <li><a href="{{ url_for('settings.settings') }}">Einstellungen</a></li>
+                <li><a href="{{ url_for('viewer.viewer_overview') }}">360° Viewer</a></li>
             </ul>
         </nav>
 
         <main class="main-content">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages container mt-3">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Schließen"></button>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+            
             {% block content %}{% endblock %}
         </main>
 
@@ -30,7 +44,7 @@
         </footer>
     </div>
 
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="/static/js/main.js"></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

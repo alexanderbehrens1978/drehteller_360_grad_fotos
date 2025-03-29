@@ -6,7 +6,7 @@ Enthält die Routen für den 360° Viewer
 import os
 import json
 import logging
-from flask import render_template, request, redirect, url_for, jsonify, abort, send_file, g
+from flask import render_template, request, redirect, url_for, jsonify, abort, send_file, g, flash
 from app.blueprints.viewer import viewer_bp
 from app.models.project import ProjectManager
 from app.utils.path_manager import PathManager
@@ -113,11 +113,29 @@ def cloudimage_viewer():
 
 @viewer_bp.route('/export/<project_id>', methods=['GET'])
 def export_viewer(project_id):
-    """Exportiert den CloudImage 360° Viewer mit allen Bildern eines Projekts als ZIP-Datei"""
+    """Exportiert den 360° Viewer mit allen Bildern als ZIP-Datei"""
+    
+    # Validierung der Projekt-ID
     if not validate_project_id(project_id):
         return render_template('error.html', message="Ungültige Projekt-ID"), 400
-
+    
+    # Viewer-Einstellungen aus der URL lesen
+    viewer_settings = {}
+    settings_param = request.args.get('settings')
+    if settings_param:
+        try:
+            import json
+            viewer_settings = json.loads(settings_param)
+            logger.info(f"Viewer-Einstellungen übernommen: {viewer_settings}")
+        except Exception as e:
+            logger.error(f"Fehler beim Parsen der Viewer-Einstellungen: {str(e)}")
+    
     # Projekt laden
+    from app.models.project import ProjectManager
+    # Path Manager nutzen, um den korrekten Pfad zu erhalten
+    projects_dir = path_manager.projects_dir
+    project_manager = ProjectManager(projects_dir)
+    
     project = project_manager.get_project(project_id)
     if not project:
         return render_template('error.html', message="Projekt nicht gefunden"), 404
@@ -125,7 +143,7 @@ def export_viewer(project_id):
     try:
         # Benötigte Imports
         import tempfile, shutil, zipfile, json, os, time
-        from flask import send_file, current_app
+        from flask import send_file, current_app, redirect, url_for
         
         # Debug-Ausgabe
         logger.info(f"Export für Projekt {project_id} gestartet")
@@ -156,9 +174,13 @@ def export_viewer(project_id):
             dest_path = os.path.join(images_dir, dest_filename)
             
             logger.info(f"Kopiere Bild {i+1}: {source_path} -> {dest_path}")
-            shutil.copy2(source_path, dest_path)
-            image_list.append(f"images/{dest_filename}")
-
+            try:
+                shutil.copy2(source_path, dest_path)
+                # Wichtig: Relativer Pfad mit ./images/ um sicherzustellen, dass der Browser die Bilder findet
+                image_list.append(f"./images/{dest_filename}")
+            except Exception as img_error:
+                logger.error(f"Fehler beim Kopieren von Bild {source_path}: {str(img_error)}")
+        
         # JavaScript-Dateien kopieren
         js_source = os.path.join(current_app.root_path, '..', 'static', 'js', 'js-cloudimage-360-view.min.js')
         js_dest = os.path.join(js_dir, 'js-cloudimage-360-view.min.js')
@@ -175,55 +197,67 @@ def export_viewer(project_id):
             logger.warning(f"CSS-Datei nicht gefunden: {css_source}")
 
         # HTML-Template rendern
-        logger.info(f"Rendere HTML-Template")
+        logger.info(f"Rendere HTML-Template mit {len(image_list)} Bildern")
+        
+        # Korrekte Template Variablen vorbereiten
+        template_vars = {
+            'project': project,
+            'image_list': image_list,  # Diese Liste enthält bereits die richtigen relativen Pfade
+            'viewer_settings': viewer_settings
+        }
+        
         html_content = render_template(
             'viewer/export_template.html',
-            project=project,
-            image_list=json.dumps(image_list)
+            **template_vars
         )
         html_path = os.path.join(temp_dir, 'index.html')
         with open(html_path, 'w', encoding='utf-8') as f:
             f.write(html_content)
         logger.info(f"HTML-Datei geschrieben: {html_path}")
 
-        # Eindeutiger Name für ZIP-Datei
+        # Stellen Sie sicher, dass das Downloads-Verzeichnis existiert
+        downloads_dir = os.path.join(current_app.root_path, '..', 'static', 'downloads')
+        if not os.path.exists(downloads_dir):
+            os.makedirs(downloads_dir, exist_ok=True)
+            logger.info(f"Downloads-Verzeichnis erstellt: {downloads_dir}")
+
+        # Eindeutiger Name für ZIP-Datei mit Zeitstempel
+        timestamp = int(time.time())
         safe_name = project.name.replace(' ', '_').replace('/', '_').replace('\\', '_')
-        zip_filename = f"{safe_name}_360_viewer.zip"
-        zip_path = os.path.join(temp_dir, zip_filename)
+        zip_filename = f"{safe_name}_{timestamp}_360_viewer.zip"
+        zip_path = os.path.join(downloads_dir, zip_filename)
         
         # ZIP-Datei erstellen
         logger.info(f"Erstelle ZIP-Datei: {zip_path}")
         with zipfile.ZipFile(zip_path, 'w') as zipf:
-            # Alle Dateien außer die ZIP selbst hinzufügen
+            # Alle Dateien hinzufügen
             for root, dirs, files in os.walk(temp_dir):
                 for file in files:
-                    if file != zip_filename:  # Die ZIP-Datei selbst nicht hinzufügen
-                        file_path = os.path.join(root, file)
-                        rel_path = os.path.relpath(file_path, temp_dir)
-                        logger.info(f"Füge Datei zur ZIP hinzu: {rel_path}")
-                        zipf.write(file_path, rel_path)
+                    file_path = os.path.join(root, file)
+                    rel_path = os.path.relpath(file_path, temp_dir)
+                    logger.info(f"Füge Datei zur ZIP hinzu: {rel_path}")
+                    zipf.write(file_path, rel_path)
         
         logger.info(f"ZIP-Datei fertig erstellt: {zip_path}")
         
-        # Nach dem Senden der Datei aufräumen
-        @after_this_request
-        def cleanup(response):
-            try:
-                logger.info(f"Lösche temporäres Verzeichnis: {temp_dir}")
-                shutil.rmtree(temp_dir)
-            except Exception as e:
-                logger.error(f"Fehler beim Aufräumen: {str(e)}")
-            return response
+        # Temporäres Verzeichnis aufräumen
+        try:
+            logger.info(f"Lösche temporäres Verzeichnis: {temp_dir}")
+            shutil.rmtree(temp_dir)
+        except Exception as e:
+            logger.error(f"Fehler beim Aufräumen: {str(e)}")
         
-        # Datei zum Download senden
-        logger.info(f"Sende ZIP-Datei zum Download: {zip_filename}")
-        return send_file(
-            zip_path,
-            as_attachment=True,
-            download_name=zip_filename,
-            mimetype='application/zip'
-        )
-
+        # Dateigröße berechnen
+        filesize = round(os.path.getsize(zip_path) / 1024, 1)  # KB
+        
+        # URL für den Download
+        download_url = f"/static/downloads/{zip_filename}"
+        
+        # Zur Download-Seite weiterleiten
+        logger.info(f"Weiterleitung zur Download-Seite für Projekt {project_id}")
+        
+        # Relativ zum Blueprint weiterleiten
+        return redirect(url_for('.show_downloads', project_id=project_id), code=302)
     except Exception as e:
         # Im Fehlerfall aufräumen
         if 'temp_dir' in locals() and os.path.exists(temp_dir):
@@ -294,3 +328,87 @@ def export_viewer_json():
     except Exception as e:
         logger.error(f"Fehler beim Exportieren des Viewers: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
+
+@viewer_bp.route('/downloads/<project_id>', methods=['GET'])
+def show_downloads(project_id):
+    """Zeigt eine Liste aller vorherigen Exporte für ein Projekt an"""
+    if not validate_project_id(project_id):
+        return render_template('error.html', message="Ungültige Projekt-ID"), 400
+
+    # Projekt laden
+    project = project_manager.get_project(project_id)
+    if not project:
+        return render_template('error.html', message="Projekt nicht gefunden"), 404
+    
+    try:
+        import os
+        from flask import current_app
+        
+        # Download-Verzeichnis
+        downloads_dir = os.path.join(current_app.root_path, '..', 'static', 'downloads')
+        if not os.path.exists(downloads_dir):
+            os.makedirs(downloads_dir, exist_ok=True)
+        
+        # Projektname (für Filter)
+        safe_name = project.name.replace(' ', '_').replace('/', '_').replace('\\', '_')
+        
+        # Alle ZIP-Dateien im Download-Verzeichnis finden, die zu diesem Projekt gehören
+        downloads = []
+        for filename in os.listdir(downloads_dir):
+            if filename.startswith(safe_name) and filename.endswith('_360_viewer.zip'):
+                file_path = os.path.join(downloads_dir, filename)
+                file_size = round(os.path.getsize(file_path) / 1024, 1)  # KB
+                file_date = os.path.getmtime(file_path)
+                
+                downloads.append({
+                    'filename': filename,
+                    'size': file_size,
+                    'date': file_date,
+                    'url': f'/static/downloads/{filename}'
+                })
+        
+        # Nach Datum sortieren (neueste zuerst)
+        downloads.sort(key=lambda x: x['date'], reverse=True)
+        
+        return render_template(
+            'viewer/downloads.html',
+            project=project,
+            downloads=downloads
+        )
+    
+    except Exception as e:
+        logger.error(f"Fehler beim Anzeigen der Downloads: {str(e)}", exc_info=True)
+        return render_template('error.html', message=f"Fehler beim Anzeigen der Downloads: {str(e)}"), 500
+
+@viewer_bp.route('/delete_export/<project_id>/<filename>', methods=['GET'])
+def delete_export(project_id, filename):
+    """Löscht einen bestimmten Export"""
+    if not validate_project_id(project_id):
+        return render_template('error.html', message="Ungültige Projekt-ID"), 400
+    
+    try:
+        logger.info(f"Löschen des Exports: project_id={project_id}, filename={filename}")
+        
+        # Pfad zur Export-Datei
+        downloads_dir = path_manager.get_downloads_dir()
+        file_path = os.path.join(downloads_dir, filename)
+        
+        # Überprüfe, ob die Datei existiert
+        if not os.path.exists(file_path):
+            logger.warning(f"Datei nicht gefunden: {file_path}")
+            return render_template('error.html', message="Die angegebene Datei wurde nicht gefunden"), 404
+        
+        # Datei löschen
+        os.remove(file_path)
+        logger.info(f"Export gelöscht: {file_path}")
+        
+        # Erfolgsmeldung hinzufügen (verwendet Flash-Nachrichten)
+        flash('Export wurde erfolgreich gelöscht.', 'success')
+        
+        # Zurück zur Downloads-Seite
+        return redirect(url_for('.show_downloads', project_id=project_id))
+        
+    except Exception as e:
+        logger.error(f"Fehler beim Löschen des Exports: {str(e)}", exc_info=True)
+        flash(f"Fehler beim Löschen des Exports: {str(e)}", 'danger')
+        return redirect(url_for('.show_downloads', project_id=project_id))
