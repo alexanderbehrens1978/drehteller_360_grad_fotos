@@ -810,8 +810,85 @@ function offerViewerCreation() {
     // Frage Benutzer, ob ein Viewer erstellt werden soll
     if (confirm('360°-Aufnahme abgeschlossen! Möchten Sie einen 360°-Viewer aus den aufgenommenen Fotos erstellen?')) {
         showStatus("Erstelle 360°-Viewer...", 'info');
-        generateViewer();
+        
+        // Prüfe, ob die Funktion existiert (könnte in turntable.js definiert sein)
+        if (typeof generateViewer === 'function') {
+            generateViewer();
+        } else {
+            // Fallback, falls die Funktion nicht gefunden wird
+            generateViewerFallback();
+        }
     }
+}
+
+/**
+ * Fallback-Funktion zum Erstellen des 360°-Viewers (falls die Hauptfunktion nicht verfügbar ist)
+ */
+function generateViewerFallback() {
+    // Überprüfe, ob genügend Fotos vorhanden sind
+    if (capturedPhotos.length < 4) {
+        alert('Es werden mindestens 4 Fotos für einen 360°-Viewer benötigt.');
+        return;
+    }
+    
+    // Projektname abfragen
+    const viewerName = prompt('Bitte geben Sie einen Namen für den 360°-Viewer ein:', 
+                          `Projekt ${currentProjectId} - ${new Date().toLocaleDateString()}`);
+    
+    if (!viewerName) return;
+    
+    // Projekt-ID überprüfen
+    if (!currentProjectId) {
+        console.error("Fehler: project_id fehlt!");
+        alert("Fehler: Keine Projekt-ID gefunden!");
+        return;
+    }
+    
+    // Anfrage zum Generieren des Viewers senden
+    const requestData = {
+        project_id: currentProjectId,
+        name: viewerName,
+        photos: capturedPhotos.map(photo => photo.path)
+    };
+    
+    // URL direkt definieren, um sicherzustellen, dass wir den richtigen Endpunkt ansprechen
+    const url = window.location.protocol + '//' + window.location.host + '/generate_360';
+    debug(`Sende Viewer-Erstellungsanfrage an: ${url}`);
+    
+    // API-Anfrage senden
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData)
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        debug(`Antwort vom Server: ${JSON.stringify(data)}`);
+        if (data.status === 'success' || data.message) {
+            alert(`360°-Viewer erfolgreich erstellt! Sie werden weitergeleitet.`);
+            // Zur Viewer-Seite weiterleiten
+            if (data.url) {
+                window.location.href = data.url;
+            } else {
+                // Fallback zur Viewer-Seite
+                window.location.href = `/viewer/exports?project=${currentProjectId}`;
+            }
+        } else {
+            debug('Fehler beim Generieren des Viewers:', data.error || 'Unbekannter Fehler');
+            alert(`Fehler beim Generieren des 360°-Viewers: ${data.error || 'Unbekannter Fehler'}`);
+        }
+    })
+    .catch(error => {
+        debug(`Netzwerkfehler: ${error}`);
+        alert('Netzwerkfehler beim Generieren des 360°-Viewers: ' + error.message);
+    });
 }
 
 /**
