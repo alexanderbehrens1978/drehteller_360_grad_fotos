@@ -48,12 +48,19 @@
                 </div>
                 
                 <div class="controls">
+                    <button id="homeBtn" class="btn btn-info" title="Teller auf 0° Position drehen">🏠 Heimposition</button>
                     <button id="startBtn" class="btn btn-primary">Start 360°</button>
                     <button id="stopBtn" class="btn btn-danger" disabled>Stop</button>
                     <button id="rotateBtn" class="btn btn-secondary">Manuell drehen</button>
                 </div>
                 
-                <div id="rotationStatus" class="status-message" style="display: none;"></div>
+                <div id="positionIndicator" class="position-indicator">
+                    Tellerposition: <span id="currentPosition">0°</span>
+                </div>
+                
+                <div id="rotationStatus" class="status-message">
+                    <!-- Status-Meldungen werden hier angezeigt -->
+                </div>
             </div>
             
             <div class="preview card">

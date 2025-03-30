@@ -16,13 +16,19 @@ const projectSelect = document.getElementById('projectSelect');
 const startBtn = document.getElementById('startBtn');
 const stopBtn = document.getElementById('stopBtn');
 const rotateBtn = document.getElementById('rotateBtn');
+const homeBtn = document.getElementById('homeBtn');
 const imagePreview = document.getElementById('imagePreview');
 const angleInput = document.getElementById('angleInput');
 const intervalInput = document.getElementById('intervalInput');
 const rotationStatus = document.getElementById('rotationStatus');
+const currentPositionDisplay = document.getElementById('currentPosition');
 const projectModal = document.getElementById('projectModal');
 const projectForm = document.getElementById('projectForm');
 const cancelProjectBtn = document.getElementById('cancelProject');
+
+// Status-Variablen
+let tellerPosition = 0; // Speichert die aktuelle Position des Tellers
+let positionLost = false; // Wird auf true gesetzt, wenn die Position unsicher ist
 
 // Debug-Funktion - wichtig zur Fehlerbehebung
 function debug(message) {
@@ -37,81 +43,176 @@ document.addEventListener('DOMContentLoaded', function() {
     currentProjectId = document.body.getAttribute('data-project-id') || '';
     debug(`Aktuelle Projekt-ID: ${currentProjectId}`);
 
+    // Letzte bekannte Tellerposition aus dem localStorage laden
+    loadTurntablePosition();
+    
+    // Wenn ein Projekt ausgewählt ist, lade die Projektposition
+    if (currentProjectId) {
+        loadProjectPosition();
+    }
+
     // Projekte laden, wenn kein Projekt ausgewählt ist
     if (!currentProjectId && projectSelect) {
         debug("Kein Projekt ausgewählt, lade Projektliste...");
         loadProjects();
-
-        // Event-Listener für Projekt-Auswahl
-        projectSelect.addEventListener('change', function() {
-            if (this.value) {
-                if (this.value === 'new') {
-                    debug("Neues Projekt erstellen ausgewählt");
-                    showProjectModal();
-                } else {
-                    debug(`Projekt mit ID ${this.value} ausgewählt, lade Seite neu`);
-                    window.location.href = '/?project_id=' + this.value;
-                }
-            }
-        });
     }
-
-    // Event-Listener für Buttons direkt als Funktionen definieren
+    
+    // Event-Listener für die Buttons einrichten
     if (startBtn) {
-        debug("Start-Button gefunden, füge Event-Listener hinzu");
-        startBtn.onclick = function() {
-            debug("Start-Button geklickt");
-            startRotation();
-        };
-    } else {
-        debug("WARNUNG: Start-Button nicht gefunden!");
+        startBtn.addEventListener('click', startRotation);
+        debug("Event-Listener für Start-Button registriert");
     }
     
     if (stopBtn) {
-        debug("Stop-Button gefunden, füge Event-Listener hinzu");
-        stopBtn.onclick = function() {
-            debug("Stop-Button geklickt");
-            stopRotation();
-        };
-    } else {
-        debug("WARNUNG: Stop-Button nicht gefunden!");
+        stopBtn.addEventListener('click', () => stopRotation());
+        debug("Event-Listener für Stop-Button registriert");
     }
     
     if (rotateBtn) {
-        debug("Rotate-Button gefunden, füge Event-Listener hinzu");
-        rotateBtn.onclick = function() {
-            debug("Rotate-Button geklickt");
-            singleRotation();
-        };
-    } else {
-        debug("WARNUNG: Rotate-Button nicht gefunden!");
-    }
-
-    // Event-Listener für das Projektformular
-    if (projectForm) {
-        projectForm.addEventListener('submit', createProject);
-    }
-
-    // Event-Listener für den Abbrechen-Button im Modal
-    if (cancelProjectBtn) {
-        cancelProjectBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            hideProjectModal();
-        });
-    }
-
-    // Wenn kein Projekt ausgewählt ist, Modal anzeigen
-    if (!currentProjectId && !projectSelect && projectModal) {
-        showProjectModal();
+        rotateBtn.addEventListener('click', startSingleRotation);
+        debug("Event-Listener für Rotate-Button registriert");
     }
     
-    // Stop-Button initial deaktivieren
-    if (stopBtn) {
-        stopBtn.disabled = true;
+    if (homeBtn) {
+        homeBtn.addEventListener('click', moveToHomePosition);
+        debug("Event-Listener für Home-Button registriert");
+    }
+    
+    if (projectSelect) {
+        projectSelect.addEventListener('change', function() {
+            const selectedProjectId = this.value;
+            if (selectedProjectId) {
+                // Neues Projekt ausgewählt -> laden
+                window.location.href = `/?project_id=${selectedProjectId}`;
+            }
+        });
+        debug("Event-Listener für Projekt-Auswahl registriert");
+    }
+    
+    // Event-Listener für das Projekt-Modal
+    if (projectModal && projectForm && cancelProjectBtn) {
+        projectForm.addEventListener('submit', createProject);
+        cancelProjectBtn.addEventListener('click', function() {
+            projectModal.style.display = 'none';
+        });
+        debug("Event-Listener für Projekt-Modal registriert");
     }
     
     debug("Initialisierung abgeschlossen");
 });
+
+/**
+ * Lädt die Position des Drehtellers aus dem localStorage
+ */
+function loadTurntablePosition() {
+    const storedPosition = localStorage.getItem('turntablePosition');
+    if (storedPosition) {
+        tellerPosition = parseInt(storedPosition);
+        debug(`Tellerposition aus localStorage geladen: ${tellerPosition}°`);
+        updatePositionDisplay(tellerPosition, false);
+        
+        // Wenn ein Projekt ausgewählt ist, aktualisiere die Position im Projekt
+        if (currentProjectId) {
+            syncProjectPosition(tellerPosition);
+        }
+    } else {
+        debug("Keine gespeicherte Tellerposition gefunden");
+        tellerPosition = 0;
+        updatePositionDisplay(tellerPosition, false);
+    }
+}
+
+/**
+ * Synchronisiere die Tellerposition mit dem Projekt
+ * @param {number} position - Die aktuelle Position des Tellers
+ */
+function syncProjectPosition(position) {
+    if (!currentProjectId) {
+        debug("Kein Projekt ausgewählt, kann Position nicht synchronisieren");
+        return;
+    }
+    
+    debug(`Synchronisiere Tellerposition ${position}° mit Projekt ${currentProjectId}`);
+    
+    fetch(`/api/project/${currentProjectId}/update_position`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ position: position })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            debug(`Position im Projekt aktualisiert: ${position}°`);
+        } else {
+            debug(`Fehler beim Aktualisieren der Position: ${data.error || 'Unbekannter Fehler'}`);
+        }
+    })
+    .catch(error => {
+        debug(`Fehler bei der Positionssynchronisierung: ${error}`);
+    });
+}
+
+/**
+ * Lädt die Position des Drehtellers aus dem aktuellen Projekt
+ */
+function loadProjectPosition() {
+    if (!currentProjectId) {
+        debug("Kein Projekt ausgewählt, kann Projektposition nicht laden");
+        return;
+    }
+    
+    debug(`Lade Projektposition für Projekt ${currentProjectId}`);
+    
+    fetch(`/api/project/${currentProjectId}`)
+        .then(response => response.json())
+        .then(project => {
+            if (project && 'current_position' in project) {
+                // Wenn die Tellerposition aus dem localStorage abweicht, 
+                // verwenden wir die physische Position (localStorage)
+                const storedPosition = localStorage.getItem('turntablePosition');
+                if (storedPosition && parseInt(storedPosition) !== project.current_position) {
+                    debug(`Unterschiedliche Positionen gefunden: Projekt=${project.current_position}°, Teller=${storedPosition}°`);
+                    // Wir vertrauen dem localStorage für die tatsächliche Position
+                    tellerPosition = parseInt(storedPosition);
+                    // Synchronisieren diese mit dem Projekt
+                    syncProjectPosition(tellerPosition);
+                } else {
+                    // Kein Unterschied oder kein localStorage, verwende Projektposition
+                    tellerPosition = project.current_position;
+                    // Aktualisiere den localStorage
+                    localStorage.setItem('turntablePosition', tellerPosition);
+                }
+                
+                debug(`Tellerposition aus Projekt geladen: ${tellerPosition}°`);
+                
+                // Anzeige aktualisieren
+                updatePositionDisplay(tellerPosition, false);
+                
+                // Check if session needs to be resumed
+                if (project.active_session && project.last_captured_angle !== null) {
+                    showStatus(`Letzte Sitzung wurde bei ${project.last_captured_angle}° unterbrochen. Möchten Sie fortsetzen?`, 'warning');
+                    
+                    // Biete an, die Sitzung fortzusetzen
+                    const resumeButton = document.createElement('button');
+                    resumeButton.innerText = "Sitzung fortsetzen";
+                    resumeButton.classList.add('btn', 'btn-primary', 'ml-2');
+                    resumeButton.addEventListener('click', () => {
+                        resumeSession(project.last_captured_angle);
+                    });
+                    
+                    const statusContainer = document.getElementById('statusContainer');
+                    if (statusContainer) {
+                        statusContainer.appendChild(resumeButton);
+                    }
+                }
+            }
+        })
+        .catch(error => {
+            debug(`Fehler beim Laden der Projektposition: ${error}`);
+        });
+}
 
 // Projekte laden
 function loadProjects() {
@@ -202,12 +303,12 @@ function createProject(e) {
 }
 
 // Einzelne Rotation und Fotoaufnahme
-function singleRotation() {
+function startSingleRotation() {
     if (isRotating) {
         debug("Rotation bereits aktiv, ignoriere Anfrage");
         return;
     }
-
+    
     // Überprüfen, ob ein Projekt ausgewählt wurde
     if (!currentProjectId) {
         debug("Kein Projekt ausgewählt");
@@ -217,16 +318,13 @@ function singleRotation() {
 
     const angle = parseInt(angleInput.value) || 15;
     debug(`Starte einzelne Rotation mit ${angle}°`);
-
+    
     isRotating = true;
     if (rotateBtn) rotateBtn.disabled = true;
 
     // Statusmeldung anzeigen
-    if (rotationStatus) {
-        rotationStatus.textContent = "Nehme Foto auf und drehe dann...";
-        rotationStatus.style.display = "block";
-    }
-
+    showStatus(`Drehe Teller um ${angle}°...`, 'info');
+    
     // Formular-Daten vorbereiten
     const formData = new FormData();
     formData.append('degrees', angle);
@@ -244,7 +342,6 @@ function singleRotation() {
         return response.json();
     })
     .then(data => {
-        debug(`Server-Antwort: ${JSON.stringify(data)}`);
         if (data.status === 'success') {
             // Foto zur Liste hinzufügen
             capturedPhotos.push({
@@ -255,33 +352,33 @@ function singleRotation() {
             // Bild anzeigen
             displayImage(data.photo, angle);
 
+            // Positionsanzeige aktualisieren
+            updatePositionDisplay((tellerPosition + angle) % 360);
+
             // Statusmeldung aktualisieren
-            if (rotationStatus) {
-                rotationStatus.textContent = `Foto aufgenommen bei ${angle}°`;
-                setTimeout(() => {
-                    rotationStatus.style.display = "none";
-                }, 3000);
-            }
+            showStatus(`Foto aufgenommen bei ${data.angle}°`, 'success');
 
             debug(`Erfolgreich Foto aufgenommen und gedreht: ${data.photo}`);
         } else {
             console.error('Fehler:', data.error);
             alert(`Fehler bei der Rotation: ${data.error}`);
 
+            // Position als unsicher markieren
+            updatePositionDisplay(tellerPosition, true);
+
             // Statusmeldung aktualisieren
-            if (rotationStatus) {
-                rotationStatus.textContent = `Fehler: ${data.error}`;
-            }
+            showStatus(`Fehler: ${data.error}`, 'error');
         }
     })
     .catch(error => {
         console.error('Netzwerkfehler:', error);
         alert(`Netzwerkfehler beim Drehen des Tellers: ${error.message}`);
 
+        // Position als unsicher markieren
+        updatePositionDisplay(tellerPosition, true);
+
         // Statusmeldung aktualisieren
-        if (rotationStatus) {
-            rotationStatus.textContent = `Netzwerkfehler: ${error.message}`;
-        }
+        showStatus(`Netzwerkfehler: ${error.message}`, 'error');
     })
     .finally(() => {
         isRotating = false;
@@ -377,22 +474,23 @@ function startRotation() {
         debug("Rotate-Button deaktiviert");
     }
     
+    if (homeBtn) {
+        homeBtn.disabled = true;
+        debug("Home-Button deaktiviert");
+    }
+    
     isRotating = true;
 
     // Statusmeldung anzeigen
-    if (rotationStatus) {
-        rotationStatus.textContent = `Rotation gestartet: Nehme erstes Foto auf`;
-        rotationStatus.style.display = "block";
-    }
+    showStatus(`Rotation gestartet: Nehme erstes Foto auf`, 'info');
 
     // Ersten Schritt starten - nehme erstes Foto auf der Position 0
     debug("Nehme erstes Foto auf");
-    takePhotoAndContinue();
+    takePhotoForSequence();
 }
 
-// Nehme Foto auf und fahre dann mit der Sequenz fort
-function takePhotoAndContinue() {
-    debug(`takePhotoAndContinue() - Schritt ${currentStep+1}/${totalSteps}`);
+function takePhotoForSequence() {
+    // Abbruch, wenn Rotation gestoppt
     
     if (!isRotating) {
         debug("Rotation wurde gestoppt, breche Sequenz ab");
@@ -403,142 +501,165 @@ function takePhotoAndContinue() {
     const angle = parseInt(angleInput.value) || 15;
 
     // Aktuelle Winkelposition berechnen (0, 15, 30, ...)
-    // KORREKTUR: Setze Winkel auf mindestens 1 für das erste Foto
-    const currentAngle = Math.max(1, currentStep * angle);
+    // Winkel der ersten Position ist 0 Grad
+    const currentAngle = currentStep * angle;
     
     // Statusmeldung aktualisieren
-    if (rotationStatus) {
-        rotationStatus.textContent = `Nehme Foto ${currentStep+1}/${totalSteps} bei ${currentAngle}° auf`;
-    }
+    showStatus(`Nehme Foto ${currentStep+1}/${totalSteps} bei ${currentAngle}° auf`, 'info');
 
     // Nur Foto aufnehmen - an der aktuellen Position
     debug(`Nehme Foto bei Position ${currentAngle}° auf`);
     const formData = new FormData();
-    formData.append('degrees', currentAngle);  // Winkel für die Metadaten
     formData.append('project_id', currentProjectId);
-    formData.append('mode', 'photo_only');     // Nur Foto, keine Drehung
-    
+    formData.append('mode', 'photo_only');
+    formData.append('degrees', currentAngle); // WICHTIG: Backend erwartet 'degrees', nicht 'angle'
+
+    // Foto aufnehmen und dann rotieren
+    debug("Sende Anfrage an den Server");
     fetch('/rotate', {
         method: 'POST',
         body: formData
     })
-    .then(response => response.json())
+    .then(response => {
+        debug(`Server-Antwort Status: ${response.status}`);
+        return response.json();
+    })
     .then(data => {
         if (data.status === 'success') {
             // Foto zur Liste hinzufügen
             capturedPhotos.push({
                 path: data.photo,
-                angle: currentAngle
+                angle: data.angle
             });
 
             // Bild anzeigen
-            displayImage(data.photo, currentAngle);
+            displayImage(data.photo, angle);
 
-            // Schritt abgeschlossen
+            // Positionsanzeige aktualisieren
+            updatePositionDisplay(currentAngle, false);
+            
+            // Nächstes Foto aufnehmen
             currentStep++;
             
-            // Wenn alle Fotos gemacht wurden, fertig
-            if (currentStep >= totalSteps) {
-                debug("Alle Fotos aufgenommen, Sequenz abgeschlossen");
-                completeRotation();
-                return;
+            if (currentStep < totalSteps) {
+                // Als nächstes drehen
+                setTimeout(rotateForSequence, 500);
+            } else {
+                // Sequenz abschließen
+                completedSequence();
             }
-            
-            // Sonst: Zur nächsten Position drehen
-            rotateToNextPosition();
         } else {
-            console.error('Fehler beim Aufnehmen des Fotos:', data.error);
-            alert(`Fehler beim Aufnehmen des Fotos: ${data.error}`);
-            stopRotation();
+            // Bei Fehler Position als unsicher markieren
+            updatePositionDisplay(tellerPosition, true);
+            showStatus(`Fehler beim Aufnehmen des Fotos: ${data.error}`, 'error');
+            stopRotation(true);
         }
     })
     .catch(error => {
-        console.error('Netzwerkfehler beim Aufnehmen des Fotos:', error);
-        alert(`Netzwerkfehler beim Aufnehmen des Fotos: ${error.message}`);
-        stopRotation();
+        debug(`Fehler beim Aufnehmen des Fotos: ${error}`);
+        updatePositionDisplay(tellerPosition, true);
+        showStatus(`Netzwerkfehler beim Aufnehmen des Fotos: ${error.message}`, 'error');
+        stopRotation(true);
     });
 }
 
-// Drehe zur nächsten Position
-function rotateToNextPosition() {
-    debug(`rotateToNextPosition() - Drehe zu Position ${currentStep+1}/${totalSteps}`);
-    
+function rotateForSequence() {
+    // Abbruch, wenn Rotation gestoppt
     if (!isRotating) {
         debug("Rotation wurde gestoppt, breche Sequenz ab");
         return;
     }
-    
+
+    // Der gewünschte Drehwinkel pro Schritt
     const angle = parseInt(angleInput.value) || 15;
-    
-    // Statusmeldung aktualisieren
+
     if (rotationStatus) {
-        rotationStatus.textContent = `Drehe um ${angle}° zur nächsten Position...`;
+        showStatus(`Drehe um ${angle}° zur nächsten Position...`, 'info');
     }
-    
-    // Drehe um den eingestellten Winkel
+
     debug(`Drehe um ${angle}° weiter`);
+
+    // Formular-Daten vorbereiten
     const formData = new FormData();
     formData.append('degrees', angle);          // Drehwinkel
     formData.append('project_id', currentProjectId);
-    formData.append('mode', 'rotate_only');     // Nur drehen, kein Foto
-    
+    formData.append('mode', 'rotate_only');    // Nur drehen ohne Foto
+
+    // API-Anfrage zum Drehen des Tellers
     fetch('/rotate', {
         method: 'POST',
         body: formData
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.status === 'success') {
-            debug("Drehung erfolgreich, warte für Stabilisierung");
+            debug("Rotation erfolgreich");
             
-            // Kurze Pause für Stabilisierung
-            setTimeout(() => {
-                // Prüfen ob Rotation noch aktiv ist
-                if (!isRotating) {
-                    debug("Rotation wurde während der Stabilisierungspause gestoppt");
-                    return;
-                }
-                
-                // Intervall-Pause vor dem nächsten Foto
-                const intervalTime = parseInt(intervalInput.value) || 5;
-                debug(`Warte ${intervalTime} Sekunden bis zur nächsten Aufnahme...`);
-                
-                if (rotationStatus) {
-                    rotationStatus.textContent = `Warte ${intervalTime}s für nächste Aufnahme...`;
-                }
-                
-                setTimeout(() => {
-                    // Erneut prüfen ob Rotation noch aktiv ist
-                    if (!isRotating) {
-                        debug("Rotation wurde während der Intervall-Pause gestoppt");
-                        return;
-                    }
-                    
-                    // Nächstes Foto aufnehmen
-                    takePhotoAndContinue();
-                }, intervalTime * 1000);
-                
-            }, 2000); // 2 Sekunden Pause für Stabilisierung
+            // Position aktualisieren
+            const newPosition = (tellerPosition + angle) % 360;
+            updatePositionDisplay(newPosition, false);
+            
+            // Nach kurzer Pause das nächste Foto aufnehmen
+            setTimeout(takePhotoForSequence, 500);
         } else {
-            console.error('Fehler bei der Drehung:', data.error);
-            alert(`Fehler bei der Drehung: ${data.error}`);
-            stopRotation();
+            debug(`Fehler bei der Rotation: ${data.error}`);
+            // Bei Fehler Position als unsicher markieren
+            updatePositionDisplay(tellerPosition, true);
+            showStatus(`Fehler bei der Rotation: ${data.error}`, 'error');
+            stopRotation(true);
         }
     })
     .catch(error => {
-        console.error('Netzwerkfehler bei der Drehung:', error);
-        alert(`Netzwerkfehler bei der Drehung: ${error.message}`);
-        stopRotation();
+        debug(`Netzwerkfehler bei der Rotation: ${error}`);
+        // Bei Fehler Position als unsicher markieren
+        updatePositionDisplay(tellerPosition, true);
+        showStatus(`Netzwerkfehler bei der Rotation: ${error.message}`, 'error');
+        stopRotation(true);
     });
 }
 
-// Beende die Rotation (Server-seitig UND client-seitig)
-function stopRotation() {
-    debug("stopRotation() aufgerufen");
+function completedSequence() {
+    debug("360°-Aufnahmesession abgeschlossen");
+    showStatus("360°-Aufnahmesession erfolgreich abgeschlossen!", 'success');
+    
+    // Position aktualisieren - sollte bei 0 oder 360 sein
+    updatePositionDisplay(0, false);
+    
+    // UI zurücksetzen
+    isRotating = false;
+    if (startBtn) startBtn.disabled = false;
+    if (stopBtn) stopBtn.disabled = true;
+    if (rotateBtn) rotateBtn.disabled = false;
+    if (homeBtn) homeBtn.disabled = false;
+
+    // 360°-Viewer erstellen anbieten
+    offerViewerCreation();
+}
+
+/**
+ * Stoppt die laufende Rotation und Fotoaufnahme
+ * @param {boolean} isError - Ob der Stopp aufgrund eines Fehlers erfolgt
+ */
+function stopRotation(isError = false) {
+    if (!isRotating) {
+        return;
+    }
+
+    debug(`Stoppe Rotation${isError ? ' (nach Fehler)' : ''}`);
     
     // Setze zuerst den Client-Status - SOFORT!
     isRotating = false;
     
+    if (!isError) {
+        showStatus("Rotation gestoppt", 'warning');
+    }
+    
+    // UI zurücksetzen
     if (startBtn) {
         startBtn.disabled = false;
         debug("Start-Button aktiviert");
@@ -553,13 +674,18 @@ function stopRotation() {
         rotateBtn.disabled = false;
         debug("Rotate-Button aktiviert");
     }
-
-    if (rotationStatus) {
-        rotationStatus.textContent = 'Rotation wird gestoppt...';
+    
+    if (homeBtn) {
+        homeBtn.disabled = false;
+        debug("Home-Button aktiviert");
     }
     
-    // Dann den Server-Befehl senden
-    debug("Sende Stop-Befehl an den Server");
+    // Unsichere Position markieren, wenn wir in der Mitte abbrechen
+    if (currentStep > 0 && currentStep < totalSteps) {
+        updatePositionDisplay(tellerPosition, true);
+    }
+    
+    // Server-seitige Anfrage zum Stoppen der Rotation
     fetch('/stop_rotation', {
         method: 'POST',
         headers: {
@@ -567,54 +693,13 @@ function stopRotation() {
         },
         body: JSON.stringify({ project_id: currentProjectId })
     })
-    .then(response => {
-        debug(`Server-Antwort Status: ${response.status}`);
-        return response.json();
-    })
+    .then(response => response.json())
     .then(data => {
-        debug(`Stop-Antwort vom Server: ${JSON.stringify(data)}`);
-        
-        if (rotationStatus) {
-            rotationStatus.textContent = 'Rotation gestoppt';
-            setTimeout(() => {
-                rotationStatus.style.display = "none";
-            }, 3000);
-        }
+        debug("Server-Antwort für Stop:", data);
     })
     .catch(error => {
-        console.error("Fehler beim Stoppen der Rotation:", error);
-        
-        if (rotationStatus) {
-            rotationStatus.textContent = `Fehler beim Stoppen: ${error.message}`;
-            setTimeout(() => {
-                rotationStatus.style.display = "none";
-            }, 3000);
-        }
+        debug(`Fehler beim Stoppen der Rotation: ${error}`);
     });
-    
-    debug("Rotation wurde gestoppt");
-}
-
-// Rotation abschließen
-function completeRotation() {
-    debug("completeRotation() aufgerufen - Rotation abgeschlossen");
-    isRotating = false;
-
-    if (startBtn) startBtn.disabled = false;
-    if (stopBtn) stopBtn.disabled = true;
-    if (rotateBtn) rotateBtn.disabled = false;
-
-    if (rotationStatus) {
-        rotationStatus.textContent = 'Rotation abgeschlossen!';
-        setTimeout(() => {
-            rotationStatus.style.display = "none";
-        }, 3000);
-    }
-
-    // Nachfragen, ob ein 360°-Viewer erstellt werden soll
-    if (confirm('Rotation abgeschlossen! Möchten Sie einen 360°-Viewer aus den aufgenommenen Fotos erstellen?')) {
-        generateViewer();
-    }
 }
 
 function generateViewer() {
@@ -655,17 +740,166 @@ function generateViewer() {
         return response.json();
     })
     .then(data => {
-        debug(`Antwort vom Server: ${JSON.stringify(data)}`);
         if (data.status === 'success') {
-            alert(`360°-CloudImage-Viewer erfolgreich erstellt! Sie werden weitergeleitet.`);
-            window.location.href = data.url;
+            debug(`Viewer erstellt: ${data.viewer_url}`);
+            alert(`360°-Viewer erfolgreich erstellt! Sie können ihn unter folgendem Link aufrufen: ${data.viewer_url}`);
+            window.open(data.viewer_url, '_blank');
         } else {
-            console.error('Fehler beim Generieren des Viewers:', data.error);
-            alert(`Fehler beim Generieren des 360°-CloudImage-Viewers: ${data.error}`);
+            console.error('Fehler beim Erstellen des Viewers:', data.error);
+            alert(`Fehler beim Erstellen des 360°-Viewers: ${data.error}`);
         }
     })
     .catch(error => {
-        console.error('Netzwerkfehler:', error);
-        alert(`Netzwerkfehler beim Generieren des 360°-CloudImage-Viewers: ${error.message}`);
+        console.error('Netzwerkfehler beim Erstellen des Viewers:', error);
+        alert(`Netzwerkfehler beim Erstellen des 360°-Viewers: ${error.message}`);
     });
+}
+
+/**
+ * Bietet dem Benutzer an, einen 360°-Viewer zu erstellen
+ */
+function offerViewerCreation() {
+    debug("Biete Erstellung des 360°-Viewers an");
+    
+    // Prüfe, ob genügend Fotos aufgenommen wurden
+    if (capturedPhotos.length < 4) {
+        showStatus("Zu wenige Fotos für 360°-Viewer (mindestens 4 erforderlich)", 'warning');
+        return;
+    }
+    
+    // Frage Benutzer, ob ein Viewer erstellt werden soll
+    if (confirm('360°-Aufnahme abgeschlossen! Möchten Sie einen 360°-Viewer aus den aufgenommenen Fotos erstellen?')) {
+        showStatus("Erstelle 360°-Viewer...", 'info');
+        generateViewer();
+    }
+}
+
+/**
+ * Dreht den Teller zur Home-Position (0°)
+ */
+function moveToHomePosition() {
+    if (isRotating) {
+        debug("Rotation bereits aktiv, kann nicht zur Heimposition fahren");
+        showStatus('Bitte stoppen Sie zuerst die aktuelle Rotation.', 'warning');
+        return;
+    }
+    
+    // Berechne den kürzesten Weg zur Heimposition
+    let degreesToMove = 0;
+    
+    if (tellerPosition > 180) {
+        // Wenn wir über 180° sind, ist es kürzer, im Uhrzeigersinn weiterzudrehen
+        degreesToMove = 360 - tellerPosition;
+    } else {
+        // Andernfalls gegen den Uhrzeigersinn zurück zu 0°
+        degreesToMove = tellerPosition;
+    }
+    
+    if (degreesToMove === 0) {
+        debug("Teller bereits in Heimposition");
+        showStatus('Teller befindet sich bereits in der Heimposition (0°).', 'success');
+        return;
+    }
+    
+    // Richtung festlegen (positiv für vorwärts, negativ für rückwärts)
+    const direction = tellerPosition > 180 ? 1 : -1;
+    
+    debug(`Fahre zur Heimposition: ${Math.abs(degreesToMove)}° in Richtung ${direction > 0 ? 'vorwärts' : 'rückwärts'}`);
+    showStatus(`Fahre zur Heimposition (0°)...`, 'info');
+    
+    // API-Anfrage zum Drehen des Tellers
+    const formData = new FormData();
+    formData.append('degrees', Math.abs(degreesToMove));
+    
+    // Stelle sicher, dass eine gültige Projekt-ID verwendet wird
+    if (!currentProjectId) {
+        debug("Keine Projekt-ID vorhanden, kann nicht zur Heimposition fahren");
+        showStatus('Bitte wählen Sie zuerst ein Projekt aus.', 'warning');
+        return;
+    }
+    
+    formData.append('project_id', currentProjectId);
+    formData.append('mode', 'rotate_only');
+    formData.append('reset_position', 'true'); // Spezielle Flagge für Heimposition
+    
+    // URL direkt definieren, um sicherzustellen, dass wir den richtigen Endpunkt ansprechen
+    const url = window.location.protocol + '//' + window.location.host + '/rotate';
+    debug(`Sende Home-Position Anfrage an: ${url}`);
+    
+    fetch(url, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        debug(`Server-Antwort Status: ${response.status}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        debug("Heimpositionierung erfolgreich");
+        showStatus('Teller erfolgreich auf Heimposition (0°) gesetzt.', 'success');
+        tellerPosition = 0; // Setze lokale Position auf 0
+        localStorage.setItem('turntablePosition', 0); // Speichere in localStorage
+        updatePositionDisplay(0, false);
+    })
+    .catch(error => {
+        debug(`Fehler bei Heimpositionierung: ${error}`);
+        showStatus(`Fehler beim Zurückfahren zur Heimposition: ${error.message}`, 'error');
+    });
+}
+
+/**
+ * Aktualisiert die Anzeige der Tellerposition
+ * @param {number} position - Die aktuelle Position in Grad
+ * @param {boolean} uncertain - Ob die Position unsicher ist
+ */
+function updatePositionDisplay(position, uncertain = false) {
+    if (currentPositionDisplay) {
+        // Position auf ganze Zahlen runden
+        position = Math.round(position);
+        
+        // Anzeige aktualisieren
+        currentPositionDisplay.textContent = `${position}°`;
+        
+        // Speichern im localStorage
+        localStorage.setItem('turntablePosition', position.toString());
+        
+        // Aktualisieren der globalen Variable
+        tellerPosition = position;
+        
+        // Visuelle Markierung für unsichere Position
+        if (uncertain) {
+            currentPositionDisplay.classList.add('uncertain');
+            if (!positionLost) {
+                showStatus('Die genaue Tellerposition ist möglicherweise nicht korrekt. Empfehlung: Zur Heimposition zurückfahren.', 'warning');
+                positionLost = true;
+            }
+        } else {
+            currentPositionDisplay.classList.remove('uncertain');
+            positionLost = false;
+        }
+    }
+}
+
+/**
+ * Zeigt eine Statusmeldung an
+ * @param {string} message - Die anzuzeigende Nachricht
+ * @param {string} type - Der Typ der Nachricht (success, error, warning, info)
+ */
+function showStatus(message, type = 'info') {
+    if (rotationStatus) {
+        // Klassen entfernen
+        rotationStatus.classList.remove('success', 'error', 'warning', 'info');
+        
+        // Klasse für den Typ hinzufügen
+        rotationStatus.classList.add(type);
+        
+        // Inhalt setzen
+        rotationStatus.textContent = message;
+        
+        // Sichtbar machen
+        rotationStatus.classList.add('visible');
+    }
 }

@@ -31,6 +31,11 @@
     border-left: 4px solid #6c757d;
     border-radius: 4px;
     margin-top: 1rem;
+    display: none; /* Standardmäßig ausgeblendet */
+}
+
+.status-message.visible {
+    display: block;
 }
 
 .status-message.success {
@@ -41,6 +46,21 @@
 .status-message.error {
     border-left-color: #dc3545;
     background-color: #f8d7da;
+}
+
+.position-indicator {
+    background-color: #e8f5e9;
+    padding: 0.75rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+    border-left: 4px solid #28a745;
+    font-size: 1.1rem;
+    font-weight: 500;
+}
+
+#currentPosition {
+    font-weight: bold;
+    color: #28a745;
 }
 
 .preview {
