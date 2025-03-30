@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Benutzeranleitung - 360° Drehteller Steuerung</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            margin: 0;
+        }
+        
+        nav {
+            margin-top: 1rem;
+        }
+        
+        nav a {
+            color: white;
+            margin-right: 1rem;
+            text-decoration: none;
+        }
+        
+        nav a:hover {
+            text-decoration: underline;
+        }
+        
+        main {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        
+        .module-info {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+        
+        .user-section {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .user-section h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        
+        .screenshot {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 1rem 0;
+        }
+        
+        .workflow {
+            background: #f5f5f5;
+            padding: 1rem;
+            border-radius: 4px;
+            margin: 1rem 0;
+        }
+        
+        .tip {
+            background: #e8f4f8;
+            border-left: 4px solid #3498db;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 4px;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 1rem;
+            background-color: #2c3e50;
+            color: white;
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Benutzeranleitung - 360° Drehteller Steuerung</h1>
+        <nav>
+            <a href="index.html">Zurück zur Übersicht</a>
+        </nav>
+    </header>
+    
+    <main>
+        <div class="module-info">
+            <h2>Benutzeranleitung</h2>
+            <p>Diese Anleitung erklärt die Verwendung der 360° Drehteller Steuerungsanwendung. Sie führt Sie durch alle wichtigen Funktionen der Software, von der Projekterstellung bis zur Generierung von 360°-Ansichten.</p>
+        </div>
+        
+        <div class="user-section">
+            <h3>1. Übersicht der Benutzeroberfläche</h3>
+            <p>Die Anwendung besteht aus vier Hauptbereichen, die über die Navigationsleiste erreichbar sind:</p>
+            <ul>
+                <li><strong>Startseite</strong>: Überblick und Schnellzugriff auf Hauptfunktionen</li>
+                <li><strong>Projekte</strong>: Verwaltung von Fotoprojekten</li>
+                <li><strong>Einstellungen</strong>: Konfiguration der Hardware und Software</li>
+                <li><strong>360° Viewer</strong>: Anzeige der erstellten 360°-Ansichten</li>
+            </ul>
+            <div class="tip">
+                <strong>Tipp:</strong> Der aktuelle Status der Hardware (Arduino und Kamera) wird immer in der Statusleiste unten angezeigt.
+            </div>
+        </div>
+        
+        <div class="user-section">
+            <h3>2. Projektverwaltung</h3>
+            <p>Die Projektverwaltung ist der zentrale Bereich für alle Ihre 360°-Fotoprojekte.</p>
+            
+            <h4>2.1 Neues Projekt erstellen</h4>
+            <ol>
+                <li>Navigieren Sie zu <strong>Projekte</strong> in der Hauptnavigation</li>
+                <li>Klicken Sie auf <strong>Neues Projekt</strong></li>
+                <li>Geben Sie einen Namen und optional eine Beschreibung ein</li>
+                <li>Wählen Sie einen Winkelschritt (Standardwert: 15°)</li>
+                <li>Klicken Sie auf <strong>Erstellen</strong></li>
+            </ol>
+            <p>Der Winkelschritt bestimmt, wie viele Fotos für eine vollständige 360°-Ansicht aufgenommen werden:</p>
+            <ul>
+                <li>5° = 72 Fotos</li>
+                <li>10° = 36 Fotos</li>
+                <li>15° = 24 Fotos</li>
+                <li>30° = 12 Fotos</li>
+            </ul>
+            <div class="tip">
+                <strong>Tipp:</strong> Ein kleinerer Winkelschritt führt zu einer flüssigeren 360°-Ansicht, erhöht aber die Fotosession-Dauer und den Speicherbedarf.
+            </div>
+            
+            <h4>2.2 Projekte verwalten</h4>
+            <p>In der Projektübersicht können Sie:</p>
+            <ul>
+                <li>Bestehende Projekte anzeigen und bearbeiten</li>
+                <li>Projekt-Details einsehen (Erstellungsdatum, Anzahl der Fotos)</li>
+                <li>Projekte löschen</li>
+                <li>360°-Ansichten generieren</li>
+                <li>Fotosessions starten</li>
+            </ul>
+        </div>
+        
+        <div class="user-section">
+            <h3>3. Fotosession durchführen</h3>
+            
+            <h4>3.1 Vorbereitungen</h4>
+            <ol>
+                <li>Stellen Sie sicher, dass Arduino und Kamera korrekt angeschlossen und erkannt sind</li>
+                <li>Platzieren Sie das Objekt mittig auf dem Drehteller</li>
+                <li>Stellen Sie die Beleuchtung ein (gleichmäßige Ausleuchtung empfohlen)</li>
+                <li>Richten Sie die Kamera auf das Objekt aus</li>
+            </ol>
+            
+            <h4>3.2 Session starten</h4>
+            <ol>
+                <li>Wählen Sie ein Projekt aus der Projektliste</li>
+                <li>Klicken Sie auf <strong>Fotosession starten</strong></li>
+                <li>Überprüfen Sie die Kamera- und Drehteller-Einstellungen</li>
+                <li>Klicken Sie auf <strong>Session starten</strong></li>
+            </ol>
+            <p>Die Session läuft nun automatisch ab:</p>
+            <div class="workflow">
+                1. Foto aufnehmen → 2. Drehteller rotieren → 3. Nächstes Foto aufnehmen → ... → N. Session abschließen
+            </div>
+            <div class="tip">
+                <strong>Tipp:</strong> Sie können eine laufende Session jederzeit mit dem <strong>Stop</strong>-Button abbrechen.
+            </div>
+            
+            <h4>3.3 Manuelle Steuerung</h4>
+            <p>Alternativ zur automatischen Session können Sie den Drehteller auch manuell steuern:</p>
+            <ol>
+                <li>Gehen Sie zur <strong>Startseite</strong></li>
+                <li>Nutzen Sie die Steuerelemente im Bereich "Manuelle Steuerung"</li>
+                <li>Stellen Sie den Drehwinkel ein (5°-90°)</li>
+                <li>Klicken Sie auf <strong>Drehen</strong> oder <strong>Foto + Drehen</strong></li>
+            </ol>
+        </div>
+        
+        <div class="user-section">
+            <h3>4. 360°-Ansicht generieren</h3>
+            <p>Nach Abschluss einer Fotosession können Sie eine interaktive 360°-Ansicht erstellen:</p>
+            <ol>
+                <li>Gehen Sie zur Projektübersicht</li>
+                <li>Wählen Sie das gewünschte Projekt</li>
+                <li>Klicken Sie auf <strong>360° Viewer generieren</strong></li>
+                <li>Wählen Sie die gewünschte Session aus (falls mehrere vorhanden)</li>
+                <li>Klicken Sie auf <strong>Generieren</strong></li>
+            </ol>
+            <p>Die Anwendung erstellt nun eine HTML-Datei mit der interaktiven 360°-Ansicht.</p>
+            <div class="tip">
+                <strong>Tipp:</strong> Sie können die Qualität der generierten Ansicht im Bereich "Viewer-Einstellungen" anpassen (Bildgröße, Kompression).
+            </div>
+        </div>
+        
+        <div class="user-section">
+            <h3>5. 360°-Ansicht betrachten und teilen</h3>
+            <p>Die generierten 360°-Ansichten können direkt in der Anwendung betrachtet werden:</p>
+            <ol>
+                <li>Gehen Sie zum Bereich <strong>360° Viewer</strong> in der Hauptnavigation</li>
+                <li>Wählen Sie das Projekt und die Session aus</li>
+                <li>Die 360°-Ansicht wird geladen und kann interaktiv bedient werden</li>
+            </ol>
+            <p>Bedienung des Viewers:</p>
+            <ul>
+                <li>Ziehen Sie mit der Maus, um das Objekt zu drehen</li>
+                <li>Verwenden Sie das Scrollrad zum Zoomen</li>
+                <li>Nutzen Sie die Steuerelemente für Autorotation und Vollbild</li>
+            </ul>
+            
+            <h4>5.1 Export und Teilen</h4>
+            <p>Sie können die 360°-Ansicht exportieren und teilen:</p>
+            <ol>
+                <li>Klicken Sie im Viewer auf <strong>Exportieren</strong></li>
+                <li>Wählen Sie zwischen folgenden Optionen:
+                    <ul>
+                        <li><strong>HTML-Paket</strong>: Komplette Viewer-Dateien zum Hochladen auf einen Webserver</li>
+                        <li><strong>Einzelbilder</strong>: Alle Fotos als ZIP-Archiv</li>
+                        <li><strong>GIF/Video</strong>: Animierte Darstellung der 360°-Ansicht</li>
+                    </ul>
+                </li>
+                <li>Folgen Sie den Anweisungen zum Speichern oder Teilen</li>
+            </ol>
+        </div>
+        
+        <div class="user-section">
+            <h3>6. Einstellungen anpassen</h3>
+            <p>Im Bereich <strong>Einstellungen</strong> können Sie die Anwendung konfigurieren:</p>
+            
+            <h4>6.1 Hardware-Einstellungen</h4>
+            <ul>
+                <li><strong>Arduino</strong>: Port, Baudrate, Motorgeschwindigkeit</li>
+                <li><strong>Kamera</strong>: Typ (Webcam/DSLR), Gerätepfad, Auflösung, Belichtungseinstellungen</li>
+            </ul>
+            
+            <h4>6.2 Software-Einstellungen</h4>
+            <ul>
+                <li><strong>Pfade</strong>: Speicherorte für Projekte und Fotos</li>
+                <li><strong>Rotation</strong>: Standard-Winkelschritt, Drehrichtung</li>
+                <li><strong>Viewer</strong>: Bildgröße, Kompression, Autorotation</li>
+            </ul>
+            <div class="tip">
+                <strong>Tipp:</strong> Wenn Sie Einstellungen ändern, müssen Sie auf <strong>Speichern</strong> klicken, damit diese wirksam werden.
+            </div>
+        </div>
+        
+        <div class="user-section">
+            <h3>7. Tipps und Fehlerbehebung</h3>
+            
+            <h4>7.1 Optimale Fotosessions</h4>
+            <ul>
+                <li>Verwenden Sie eine gleichmäßige Beleuchtung ohne starke Schatten</li>
+                <li>Stellen Sie sicher, dass der Hintergrund konstant und möglichst neutral ist</li>
+                <li>Befestigen Sie kleine Objekte sicher auf dem Drehteller</li>
+                <li>Verwenden Sie ein Stativ für die Kamera und halten Sie den Fokus konstant</li>
+            </ul>
+            
+            <h4>7.2 Häufige Probleme</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Problem</th>
+                        <th>Mögliche Lösung</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Arduino wird nicht erkannt</td>
+                        <td>
+                            <ul>
+                                <li>USB-Kabel und Anschluss überprüfen</li>
+                                <li>Korrekten Port in den Einstellungen auswählen</li>
+                                <li>Arduino-Treiber neu installieren</li>
+                            </ul>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Kamera wird nicht erkannt</td>
+                        <td>
+                            <ul>
+                                <li>USB-Verbindung prüfen</li>
+                                <li>Bei DSLR: Kamera einschalten und in PC-Verbindungsmodus setzen</li>
+                                <li>Bei Webcam: Gerätemanager/lsusb prüfen</li>
+                            </ul>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Drehteller bewegt sich nicht</td>
+                        <td>
+                            <ul>
+                                <li>Arduino-Verbindung überprüfen</li>
+                                <li>Motoranschlüsse kontrollieren</li>
+                                <li>Stromversorgung des Motors prüfen</li>
+                            </ul>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Fotos sind unscharf</td>
+                        <td>
+                            <ul>
+                                <li>Manuellen Fokus verwenden</li>
+                                <li>Ausreichende Beleuchtung sicherstellen</li>
+                                <li>Längere Belichtungszeit in den Kameraeinstellungen wählen</li>
+                            </ul>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+    
+    <footer>
+        <p>&copy; 2025 360° Drehteller Steuerung</p>
+    </footer>
+</body>
+</html>

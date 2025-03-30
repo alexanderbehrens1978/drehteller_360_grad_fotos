@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Funktionsübersicht - 360° Drehteller Steuerung</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            margin: 0;
+        }
+        
+        nav {
+            margin-top: 1rem;
+        }
+        
+        nav a {
+            color: white;
+            margin-right: 1rem;
+            text-decoration: none;
+        }
+        
+        nav a:hover {
+            text-decoration: underline;
+        }
+        
+        main {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        
+        .module-info {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+        
+        .function-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 2rem;
+        }
+        
+        .function-table th, .function-table td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        
+        .function-table th {
+            background-color: #f5f5f5;
+        }
+        
+        .function-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        
+        .function-table tr:hover {
+            background-color: #f1f1f1;
+        }
+        
+        .module-section {
+            margin-bottom: 3rem;
+        }
+        
+        .status-used {
+            color: #27ae60;
+            font-weight: bold;
+        }
+        
+        .status-unused {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 1rem;
+            background-color: #2c3e50;
+            color: white;
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Funktionsübersicht - 360° Drehteller Steuerung</h1>
+        <nav>
+            <a href="index.html">Zurück zur Übersicht</a>
+        </nav>
+    </header>
+    
+    <main>
+        <div class="module-info">
+            <h2>Übersicht aller Funktionen und deren Verwendung</h2>
+            <p>Diese Dokumentation bietet eine vollständige Übersicht über alle wichtigen Funktionen des 360° Drehteller Projekts und zeigt, wo und wie sie verwendet werden.</p>
+        </div>
+        
+        <div class="module-section">
+            <h2>Hauptanwendungsmodule</h2>
+            
+            <h3>run.py - Einstiegspunkt</h3>
+            <table class="function-table">
+                <thead>
+                    <tr>
+                        <th>Funktion</th>
+                        <th>Beschreibung</th>
+                        <th>Verwendung</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>parse_arguments()</td>
+                        <td>Parst Kommandozeilenargumente für die Anwendung</td>
+                        <td>In run.py (Zeile 36)</td>
+                        <td class="status-used">Wird verwendet</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h3>app/__init__.py - Anwendungsinitialisierung</h3>
+            <table class="function-table">
+                <thead>
+                    <tr>
+                        <th>Funktion</th>
+                        <th>Beschreibung</th>
+                        <th>Verwendung</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>create_app()</td>
+                        <td>Erstellt und konfiguriert die Flask-Anwendung</td>
+                        <td>In run.py (Zeile 39)</td>
+                        <td class="status-used">Wird verwendet</td>
+                    </tr>
+                    <tr>
+                        <td>create_directories()</td>
+                        <td>Stellt sicher, dass alle erforderlichen Verzeichnisse existieren</td>
+                        <td>In create_app() (Zeile 58)</td>
+                        <td class="status-used">Wird verwendet</td>
+                    </tr>
+                    <tr>
+                        <td>initialize_controllers()</td>
+                        <td>Initialisiert die gemeinsam genutzten Controller</td>
+                        <td>In create_app() (Zeile 60)</td>
+                        <td class="status-used">Wird verwendet</td>
+                    </tr>
+                    <tr>
+                        <td>configure_logging()</td>
+                        <td>Konfiguriert das Logging für die App</td>
+                        <td>In create_app() (Zeile 63)</td>
+                        <td class="status-used">Wird verwendet</td>
+                    </tr>
+                    <tr>
+                        <td>register_blueprints()</td>
+                        <td>Registriert alle Blueprints bei der App</td>
+                        <td>In create_app() (Zeile 66)</td>
+                        <td class="status-used">Wird verwendet</td>
+                    </tr>
+                    <tr>
+                        <td>format_datetime()</td>
+                        <td>Formatiert einen Zeitstempel als lesbares Datum</td>
+                        <td>Als Template-Filter registriert</td>
+                        <td class="status-used">Wird verwendet</td>
+                    </tr>
+                    <tr>
+                        <td>call_after_request_functions()</td>
+                        <td>Führt alle nach einem Request registrierten Funktionen aus</td>
+                        <td>Als Flask after_request Handler</td>
+                        <td class="status-used">Wird verwendet</td>
+                    </tr>
+                    <tr>
+                        <td>add_security_headers()</td>
+                        <td>Fügt Sicherheits-Header zu allen Antworten hinzu</td>
+                        <td>Als Flask after_request Handler</td>
+                        <td class="status-used">Wird verwendet</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="module-section">
+            <h2>Controller</h2>
+            
+            <h3>app/controllers/turntable_controller.py</h3>
+            <table class="function-table">
+                <thead>
+                    <tr>
+                        <th>Funktion</th>
+                        <th>Beschreibung</th>
+                        <th>Verwendung</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>__init__()</td>
+                        <td>Initialisiert den Drehteller-Controller</td>
+                        <td>In initialize_controllers()</td>
+                        <td class="status-used">Wird verwendet</td>
+                    </tr>
+                    <tr>
+                        <td>calculate_rotation_time()</td>
+                        <td>Berechnet die Zeit für eine Rotation</td>
+                        <td>In move_degrees()</td>
+                        <td class="status-used">Wird verwendet</td>
+                    </tr>
+                    <tr>
+                        <td>move_degrees()</td>
+                        <td>Bewegt den Drehteller um einen bestimmten Winkel</td>
+                        <td>In blueprints/main/routes.py und API</td>
+                        <td class="status-used">Wird verwendet</td>
+                    </tr>
+                    <tr>
+                        <td>reset_position()</td>
+                        <td>Setzt die Position auf 0 Grad zurück</td>
+                        <td>In start_session()</td>
+                        <td class="status-used">Wird verwendet</td>
+                    </tr>
+                    <tr>
+                        <td>stop_session()</td>
+                        <td>Stoppt die laufende Fotosession</td>
+                        <td>In blueprints/main/routes.py</td>
+                        <td class="status-used">Wird verwendet</td>
+                    </tr>
+                    <tr>
+                        <td>start_session()</td>
+                        <td>Startet eine Fotosession für ein Projekt</td>
+                        <td>In blueprints/main/routes.py</td>
+                        <td class="status-used">Wird verwendet</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h3>app/controllers/camera_controller.py</h3>
+            <table class="function-table">
+                <thead>
+                    <tr>
+                        <th>Funktion</th>
+                        <th>Beschreibung</th>
+                        <th>Verwendung</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>__init__()</td>
+                        <td>Initialisiert den Kamera-Controller</td>
+                        <td>In initialize_controllers()</td>
+                        <td class="status-used">Wird verwendet</td>
+                    </tr>
+                    <tr>
+                        <td>detect_cameras()</td>
+                        <td>Erkennt verfügbare Kameras</td>
+                        <td>In verschiedenen Endpunkten</td>
+                        <td class="status-used">Wird verwendet</td>
+                    </tr>
+                    <tr>
+                        <td>capture_photo()</td>
+                        <td>Nimmt ein Foto auf</td>
+                        <td>In TurntableController.start_session()</td>
+                        <td class="status-used">Wird verwendet</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h3>app/controllers/arduino_controller.py</h3>
+            <table class="function-table">
+                <thead>
+                    <tr>
+                        <th>Funktion</th>
+                        <th>Beschreibung</th>
+                        <th>Verwendung</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>__init__()</td>
+                        <td>Initialisiert den Arduino-Controller</td>
+                        <td>In initialize_controllers()</td>
+                        <td class="status-used">Wird verwendet</td>
+                    </tr>
+                    <tr>
+                        <td>connect()</td>
+                        <td>Stellt eine Verbindung zum Arduino her</td>
+                        <td>In verschiedenen Endpunkten</td>
+                        <td class="status-used">Wird verwendet</td>
+                    </tr>
+                    <tr>
+                        <td>turn_motor_on()</td>
+                        <td>Schaltet den Motor ein</td>
+                        <td>In TurntableController.move_degrees()</td>
+                        <td class="status-used">Wird verwendet</td>
+                    </tr>
+                    <tr>
+                        <td>turn_motor_off()</td>
+                        <td>Schaltet den Motor aus</td>
+                        <td>In TurntableController.move_degrees()</td>
+                        <td class="status-used">Wird verwendet</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="module-section">
+            <h2>Blueprints</h2>
+            
+            <h3>app/blueprints/main/routes.py</h3>
+            <table class="function-table">
+                <thead>
+                    <tr>
+                        <th>Funktion</th>
+                        <th>Beschreibung</th>
+                        <th>Verwendung</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>index()</td>
+                        <td>Hauptseiten-Handler</td>
+                        <td>Route für '/'</td>
+                        <td class="status-used">Wird verwendet</td>
+                    </tr>
+                    <tr>
+                        <td>viewer_overview()</td>
+                        <td>Übersichtsseite für den Viewer</td>
+                        <td>Route für '/viewer_overview'</td>
+                        <td class="status-used">Wird verwendet</td>
+                    </tr>
+                    <tr>
+                        <td>rotate()</td>
+                        <td>Steuert die Drehung des Tellers</td>
+                        <td>Route für '/rotate'</td>
+                        <td class="status-used">Wird verwendet</td>
+                    </tr>
+                    <tr>
+                        <td>stop_rotation()</td>
+                        <td>Stoppt die Drehung</td>
+                        <td>Route für '/stop'</td>
+                        <td class="status-used">Wird verwendet</td>
+                    </tr>
+                    <tr>
+                        <td>serve_photo()</td>
+                        <td>Liefert ein Foto aus</td>
+                        <td>Route für '/photo/<filename>'</td>
+                        <td class="status-used">Wird verwendet</td>
+                    </tr>
+                    <tr>
+                        <td>get_config()</td>
+                        <td>Liefert die Konfiguration</td>
+                        <td>Route für '/config'</td>
+                        <td class="status-used">Wird verwendet</td>
+                    </tr>
+                    <tr>
+                        <td>save_config()</td>
+                        <td>Speichert die Konfiguration</td>
+                        <td>Route für '/config'</td>
+                        <td class="status-used">Wird verwendet</td>
+                    </tr>
+                    <tr>
+                        <td>generate_360()</td>
+                        <td>Generiert eine 360°-Ansicht</td>
+                        <td>Route für '/generate_360'</td>
+                        <td class="status-used">Wird verwendet</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="module-section">
+            <h2>Utilities</h2>
+            
+            <h3>app/utils/config_manager.py</h3>
+            <table class="function-table">
+                <thead>
+                    <tr>
+                        <th>Funktion</th>
+                        <th>Beschreibung</th>
+                        <th>Verwendung</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>get()</td>
+                        <td>Holt einen Konfigurationswert</td>
+                        <td>Im gesamten Projekt</td>
+                        <td class="status-used">Wird verwendet</td>
+                    </tr>
+                    <tr>
+                        <td>set()</td>
+                        <td>Setzt einen Konfigurationswert</td>
+                        <td>In blueprints/main/routes.py und settings/routes.py</td>
+                        <td class="status-used">Wird verwendet</td>
+                    </tr>
+                    <tr>
+                        <td>save()</td>
+                        <td>Speichert die Konfiguration in eine Datei</td>
+                        <td>In set()</td>
+                        <td class="status-used">Wird verwendet</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h3>app/utils/path_manager.py</h3>
+            <table class="function-table">
+                <thead>
+                    <tr>
+                        <th>Funktion</th>
+                        <th>Beschreibung</th>
+                        <th>Verwendung</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>ensure_directories()</td>
+                        <td>Stellt sicher, dass Verzeichnisse existieren</td>
+                        <td>In create_directories()</td>
+                        <td class="status-used">Wird verwendet</td>
+                    </tr>
+                    <tr>
+                        <td>get_photos_path()</td>
+                        <td>Gibt den Pfad zum Foto-Verzeichnis</td>
+                        <td>In verschiedenen Modulen</td>
+                        <td class="status-used">Wird verwendet</td>
+                    </tr>
+                    <tr>
+                        <td>get_project_path()</td>
+                        <td>Gibt den Pfad zum Projekt-Verzeichnis</td>
+                        <td>In verschiedenen Modulen</td>
+                        <td class="status-used">Wird verwendet</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="module-section">
+            <h2>Zusammenfassung</h2>
+            <div class="module-info">
+                <p>Die Codeanalyse zeigt, dass fast alle definierten Funktionen im Projekt aktiv verwendet werden. Die Anwendung folgt einer klaren Struktur:</p>
+                <ul>
+                    <li>Der Einstiegspunkt in run.py initialisiert die Anwendung</li>
+                    <li>app/__init__.py konfiguriert die Flask-App und initialisiert die Controller</li>
+                    <li>Die Controller steuern die Hardware-Komponenten (Drehteller, Kamera, Arduino)</li>
+                    <li>Blueprints definieren die verschiedenen Bereiche der Webanwendung</li>
+                    <li>Utility-Funktionen bieten projekt-übergreifende Funktionalität</li>
+                </ul>
+                <p>Die Aufteilung der Verantwortlichkeiten ist klar erkennbar und der Datenfluss zwischen den Modulen ist gut strukturiert, was die Wartbarkeit des Projekts erhöht.</p>
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+        <p>&copy; 2025 360° Drehteller Steuerung</p>
+    </footer>
+</body>
+</html>

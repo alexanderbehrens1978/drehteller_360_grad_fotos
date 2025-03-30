@@ -104,4 +104,53 @@
     .sessions-list {
         grid-template-columns: 1fr;
     }
+
+    .project-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    
+    .project-actions .btn {
+        flex: 1 0 auto;
+        margin-bottom: 0.5rem;
+        text-align: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .image-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 0.7rem;
+    }
+    
+    .image-info {
+        padding: 0.2rem 0.4rem;
+        font-size: 0.7rem;
+    }
+    
+    .project-info p {
+        margin-bottom: 0.7rem;
+    }
+    
+    .project-actions {
+        flex-direction: column;
+    }
+    
+    .project-actions .btn {
+        width: 100%;
+        margin-right: 0;
+    }
+    
+    .session-item {
+        padding: 0.8rem;
+    }
+    
+    .session-item h4 {
+        font-size: 1rem;
+    }
+    
+    .session-item p {
+        font-size: 0.85rem;
+    }
 }

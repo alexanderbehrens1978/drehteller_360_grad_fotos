@@ -317,7 +317,7 @@ function displayImage(imagePath, angle) {
     // Fehlerbehandlung für Bilder
     img.onerror = function() {
         console.error(`Fehler beim Laden des Bildes: ${imagePath}`);
-        this.src = '/static/img/error.jpg'; // Fallback-Bild
+        this.src = '/static/img/error.svg'; // Fallback-Bild (SVG für bessere Skalierbarkeit)
         this.alt = 'Fehler beim Laden des Bildes';
     };
 

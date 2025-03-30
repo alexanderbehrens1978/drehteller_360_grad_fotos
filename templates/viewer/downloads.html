@@ -2,20 +2,24 @@
 
 {% block title %}Viewer Exporte - {{ project.name }} - 360° Drehteller{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/downloads.css">
+{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-    <div class="card">
-        <div class="card-header">
+<div class="downloads-container">
+    <div class="downloads-card">
+        <div class="downloads-header">
             <h3>Viewer Exporte für {{ project.name }}</h3>
         </div>
-        <div class="card-body">
-            <div class="mb-4">
+        <div class="downloads-body">
+            <div class="description">
                 <p>Hier finden Sie alle vorherigen Exporte des 360° Viewers für dieses Projekt.</p>
             </div>
             
             {% if downloads %}
-                <div class="table-responsive">
-                    <table class="table table-striped">
+                <div class="table-wrapper">
+                    <table class="downloads-table">
                         <thead>
                             <tr>
                                 <th>Dateiname</th>
@@ -31,12 +35,12 @@
                                     <td>{{ download.size }} KB</td>
                                     <td>{{ download.date|datetime }}</td>
                                     <td>
-                                        <div class="btn-group">
-                                            <a href="{{ download.url }}" class="btn btn-primary btn-sm" download>
+                                        <div class="downloads-actions">
+                                            <a href="{{ download.url }}" class="btn btn-primary" download>
                                                 <i class="fa fa-download"></i> Herunterladen
                                             </a>
                                             <a href="{{ url_for('viewer.delete_export', project_id=project.id, filename=download.filename) }}" 
-                                               class="btn btn-danger btn-sm" 
+                                               class="btn btn-danger" 
                                                onclick="return confirm('Sind Sie sicher, dass Sie diesen Export löschen möchten?');">
                                                 <i class="fa fa-trash"></i> Löschen
                                             </a>
@@ -48,19 +52,19 @@
                     </table>
                 </div>
             {% else %}
-                <div class="alert alert-info">
+                <div class="no-downloads">
                     Es wurden noch keine Exporte für dieses Projekt erstellt.
                 </div>
             {% endif %}
             
-            <div class="mt-4">
+            <div class="action-buttons">
                 <a href="{{ url_for('viewer.export_viewer', project_id=project.id) }}" class="btn btn-success">
                     <i class="fa fa-plus"></i> Neuen Export erstellen
                 </a>
-                <a href="{{ url_for('viewer.cloudimage_viewer', project=project.id) }}" class="btn btn-outline-primary">
+                <a href="{{ url_for('viewer.cloudimage_viewer', project=project.id) }}" class="btn btn-outline">
                     <i class="fa fa-eye"></i> Zurück zum Viewer
                 </a>
-                <a href="{{ url_for('viewer.viewer_overview') }}" class="btn btn-outline-secondary">
+                <a href="{{ url_for('viewer.viewer_overview') }}" class="btn btn-outline">
                     <i class="fa fa-list"></i> Zurück zur Übersicht
                 </a>
             </div>

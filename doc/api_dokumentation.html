@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API-Dokumentation - 360° Drehteller Steuerung</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            margin: 0;
+        }
+        
+        nav {
+            margin-top: 1rem;
+        }
+        
+        nav a {
+            color: white;
+            margin-right: 1rem;
+            text-decoration: none;
+        }
+        
+        nav a:hover {
+            text-decoration: underline;
+        }
+        
+        main {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        
+        .module-info {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+        
+        .api-endpoint {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .api-endpoint h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        
+        .http-method {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        .get {
+            background-color: #27ae60;
+            color: white;
+        }
+        
+        .post {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        .put {
+            background-color: #f39c12;
+            color: white;
+        }
+        
+        .delete {
+            background-color: #e74c3c;
+            color: white;
+        }
+        
+        .endpoint-url {
+            font-family: monospace;
+            background: #eee;
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+        
+        .parameter-table, .response-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+        
+        .parameter-table th, .parameter-table td,
+        .response-table th, .response-table td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        
+        .parameter-table th, .response-table th {
+            background-color: #f5f5f5;
+        }
+        
+        .parameter-table tr:nth-child(even), 
+        .response-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        
+        .code-example {
+            background: #2c3e50;
+            color: white;
+            padding: 1rem;
+            border-radius: 4px;
+            font-family: monospace;
+            overflow-x: auto;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 1rem;
+            background-color: #2c3e50;
+            color: white;
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>API-Dokumentation - 360° Drehteller Steuerung</h1>
+        <nav>
+            <a href="index.html">Zurück zur Übersicht</a>
+        </nav>
+    </header>
+    
+    <main>
+        <div class="module-info">
+            <h2>API-Endpunkte</h2>
+            <p>Diese Dokumentation beschreibt die verfügbaren API-Endpunkte der 360° Drehteller Steuerung. Die API ermöglicht die programmatische Interaktion mit der Anwendung und kann für Integrationen und Erweiterungen genutzt werden.</p>
+        </div>
+        
+        <h2>Basis-URL</h2>
+        <p>Alle API-Endpunkte sind unter dem Pfad <code>/api</code> verfügbar. Beispiel: <code>http://localhost:5000/api/projects</code></p>
+        
+        <h2>Projekte</h2>
+        
+        <div class="api-endpoint">
+            <h3>
+                <span class="http-method get">GET</span>
+                <span class="endpoint-url">/api/projects</span>
+            </h3>
+            <p>Gibt eine Liste aller verfügbaren Projekte zurück.</p>
+            
+            <h4>Parameter</h4>
+            <p>Keine</p>
+            
+            <h4>Antwort</h4>
+            <table class="response-table">
+                <thead>
+                    <tr>
+                        <th>Feld</th>
+                        <th>Typ</th>
+                        <th>Beschreibung</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>projects</td>
+                        <td>Array</td>
+                        <td>Liste von Projektobjekten</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4>Beispielantwort</h4>
+            <div class="code-example">
+{
+  "projects": [
+    {
+      "id": "project_12345",
+      "name": "Produktfoto Vase",
+      "description": "Blumenvase für Webshop",
+      "created_at": 1648291200,
+      "angle_step": 15,
+      "sessions": [
+        {
+          "id": "session_67890",
+          "name": "Session 2025-03-29 14:30",
+          "timestamp": 1648299000,
+          "photo_count": 24
+        }
+      ]
+    },
+    {
+      "id": "project_54321",
+      "name": "Schmuckstück",
+      "description": "Silberring mit Edelstein",
+      "created_at": 1648378800,
+      "angle_step": 10,
+      "sessions": []
+    }
+  ]
+}
+            </div>
+        </div>
+        
+        <div class="api-endpoint">
+            <h3>
+                <span class="http-method get">GET</span>
+                <span class="endpoint-url">/api/projects/{project_id}</span>
+            </h3>
+            <p>Gibt die Details eines bestimmten Projekts zurück.</p>
+            
+            <h4>Parameter</h4>
+            <table class="parameter-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Typ</th>
+                        <th>Ort</th>
+                        <th>Beschreibung</th>
+                        <th>Erforderlich</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>project_id</td>
+                        <td>String</td>
+                        <td>Pfad</td>
+                        <td>ID des Projekts</td>
+                        <td>Ja</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4>Antwort</h4>
+            <table class="response-table">
+                <thead>
+                    <tr>
+                        <th>Feld</th>
+                        <th>Typ</th>
+                        <th>Beschreibung</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>id</td>
+                        <td>String</td>
+                        <td>Projekt-ID</td>
+                    </tr>
+                    <tr>
+                        <td>name</td>
+                        <td>String</td>
+                        <td>Projektname</td>
+                    </tr>
+                    <tr>
+                        <td>description</td>
+                        <td>String</td>
+                        <td>Projektbeschreibung</td>
+                    </tr>
+                    <tr>
+                        <td>created_at</td>
+                        <td>Integer</td>
+                        <td>Zeitstempel der Erstellung (Unix-Zeit)</td>
+                    </tr>
+                    <tr>
+                        <td>angle_step</td>
+                        <td>Integer</td>
+                        <td>Winkelschritt in Grad</td>
+                    </tr>
+                    <tr>
+                        <td>sessions</td>
+                        <td>Array</td>
+                        <td>Liste der Fotosessions in diesem Projekt</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="api-endpoint">
+            <h3>
+                <span class="http-method post">POST</span>
+                <span class="endpoint-url">/api/projects</span>
+            </h3>
+            <p>Erstellt ein neues Projekt.</p>
+            
+            <h4>Parameter</h4>
+            <table class="parameter-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Typ</th>
+                        <th>Ort</th>
+                        <th>Beschreibung</th>
+                        <th>Erforderlich</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>name</td>
+                        <td>String</td>
+                        <td>Body</td>
+                        <td>Projektname</td>
+                        <td>Ja</td>
+                    </tr>
+                    <tr>
+                        <td>description</td>
+                        <td>String</td>
+                        <td>Body</td>
+                        <td>Projektbeschreibung</td>
+                        <td>Nein</td>
+                    </tr>
+                    <tr>
+                        <td>angle_step</td>
+                        <td>Integer</td>
+                        <td>Body</td>
+                        <td>Winkelschritt in Grad</td>
+                        <td>Nein (Standard: 15)</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4>Antwort</h4>
+            <table class="response-table">
+                <thead>
+                    <tr>
+                        <th>Feld</th>
+                        <th>Typ</th>
+                        <th>Beschreibung</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>success</td>
+                        <td>Boolean</td>
+                        <td>Status der Operation</td>
+                    </tr>
+                    <tr>
+                        <td>project</td>
+                        <td>Object</td>
+                        <td>Das neu erstellte Projekt</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4>Beispielanfrage</h4>
+            <div class="code-example">
+POST /api/projects
+Content-Type: application/json
+
+{
+  "name": "Neues Produktfoto",
+  "description": "Testprodukt für den Webshop",
+  "angle_step": 10
+}
+            </div>
+        </div>
+        
+        <div class="api-endpoint">
+            <h3>
+                <span class="http-method delete">DELETE</span>
+                <span class="endpoint-url">/api/projects/{project_id}</span>
+            </h3>
+            <p>Löscht ein Projekt.</p>
+            
+            <h4>Parameter</h4>
+            <table class="parameter-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Typ</th>
+                        <th>Ort</th>
+                        <th>Beschreibung</th>
+                        <th>Erforderlich</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>project_id</td>
+                        <td>String</td>
+                        <td>Pfad</td>
+                        <td>ID des zu löschenden Projekts</td>
+                        <td>Ja</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4>Antwort</h4>
+            <table class="response-table">
+                <thead>
+                    <tr>
+                        <th>Feld</th>
+                        <th>Typ</th>
+                        <th>Beschreibung</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>success</td>
+                        <td>Boolean</td>
+                        <td>Status der Operation</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <h2>Hardware-Steuerung</h2>
+        
+        <div class="api-endpoint">
+            <h3>
+                <span class="http-method post">POST</span>
+                <span class="endpoint-url">/api/rotate</span>
+            </h3>
+            <p>Dreht den Drehteller um einen bestimmten Winkel.</p>
+            
+            <h4>Parameter</h4>
+            <table class="parameter-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Typ</th>
+                        <th>Ort</th>
+                        <th>Beschreibung</th>
+                        <th>Erforderlich</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>degrees</td>
+                        <td>Number</td>
+                        <td>Body</td>
+                        <td>Drehwinkel in Grad (1-360)</td>
+                        <td>Ja</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4>Antwort</h4>
+            <table class="response-table">
+                <thead>
+                    <tr>
+                        <th>Feld</th>
+                        <th>Typ</th>
+                        <th>Beschreibung</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>success</td>
+                        <td>Boolean</td>
+                        <td>Status der Operation</td>
+                    </tr>
+                    <tr>
+                        <td>position</td>
+                        <td>Number</td>
+                        <td>Aktuelle Position des Drehtellers in Grad</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4>Beispielanfrage</h4>
+            <div class="code-example">
+POST /api/rotate
+Content-Type: application/json
+
+{
+  "degrees": 15
+}
+            </div>
+        </div>
+        
+        <div class="api-endpoint">
+            <h3>
+                <span class="http-method post">POST</span>
+                <span class="endpoint-url">/api/capture</span>
+            </h3>
+            <p>Nimmt ein Foto mit der konfigurierten Kamera auf.</p>
+            
+            <h4>Parameter</h4>
+            <table class="parameter-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Typ</th>
+                        <th>Ort</th>
+                        <th>Beschreibung</th>
+                        <th>Erforderlich</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>project_id</td>
+                        <td>String</td>
+                        <td>Body</td>
+                        <td>Projekt-ID, in der das Foto gespeichert werden soll</td>
+                        <td>Ja</td>
+                    </tr>
+                    <tr>
+                        <td>filename</td>
+                        <td>String</td>
+                        <td>Body</td>
+                        <td>Dateiname für das Foto</td>
+                        <td>Nein (automatisch generiert, wenn nicht angegeben)</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4>Antwort</h4>
+            <table class="response-table">
+                <thead>
+                    <tr>
+                        <th>Feld</th>
+                        <th>Typ</th>
+                        <th>Beschreibung</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>success</td>
+                        <td>Boolean</td>
+                        <td>Status der Operation</td>
+                    </tr>
+                    <tr>
+                        <td>filepath</td>
+                        <td>String</td>
+                        <td>Pfad zum aufgenommenen Foto</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="api-endpoint">
+            <h3>
+                <span class="http-method post">POST</span>
+                <span class="endpoint-url">/api/session/start</span>
+            </h3>
+            <p>Startet eine automatische Fotosession.</p>
+            
+            <h4>Parameter</h4>
+            <table class="parameter-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Typ</th>
+                        <th>Ort</th>
+                        <th>Beschreibung</th>
+                        <th>Erforderlich</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>project_id</td>
+                        <td>String</td>
+                        <td>Body</td>
+                        <td>Projekt-ID, für die die Session gestartet werden soll</td>
+                        <td>Ja</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4>Antwort</h4>
+            <table class="response-table">
+                <thead>
+                    <tr>
+                        <th>Feld</th>
+                        <th>Typ</th>
+                        <th>Beschreibung</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>success</td>
+                        <td>Boolean</td>
+                        <td>Status der Operation</td>
+                    </tr>
+                    <tr>
+                        <td>session_id</td>
+                        <td>String</td>
+                        <td>ID der gestarteten Session</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="api-endpoint">
+            <h3>
+                <span class="http-method post">POST</span>
+                <span class="endpoint-url">/api/session/stop</span>
+            </h3>
+            <p>Stoppt die laufende Fotosession.</p>
+            
+            <h4>Parameter</h4>
+            <p>Keine</p>
+            
+            <h4>Antwort</h4>
+            <table class="response-table">
+                <thead>
+                    <tr>
+                        <th>Feld</th>
+                        <th>Typ</th>
+                        <th>Beschreibung</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>success</td>
+                        <td>Boolean</td>
+                        <td>Status der Operation</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <h2>Viewer-Generierung</h2>
+        
+        <div class="api-endpoint">
+            <h3>
+                <span class="http-method post">POST</span>
+                <span class="endpoint-url">/api/viewer/generate</span>
+            </h3>
+            <p>Generiert einen 360°-Viewer für eine Fotosession.</p>
+            
+            <h4>Parameter</h4>
+            <table class="parameter-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Typ</th>
+                        <th>Ort</th>
+                        <th>Beschreibung</th>
+                        <th>Erforderlich</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>project_id</td>
+                        <td>String</td>
+                        <td>Body</td>
+                        <td>Projekt-ID</td>
+                        <td>Ja</td>
+                    </tr>
+                    <tr>
+                        <td>session_id</td>
+                        <td>String</td>
+                        <td>Body</td>
+                        <td>Session-ID</td>
+                        <td>Ja</td>
+                    </tr>
+                    <tr>
+                        <td>options</td>
+                        <td>Object</td>
+                        <td>Body</td>
+                        <td>Generierungsoptionen (Bildgröße, Qualität, etc.)</td>
+                        <td>Nein</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4>Antwort</h4>
+            <table class="response-table">
+                <thead>
+                    <tr>
+                        <th>Feld</th>
+                        <th>Typ</th>
+                        <th>Beschreibung</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>success</td>
+                        <td>Boolean</td>
+                        <td>Status der Operation</td>
+                    </tr>
+                    <tr>
+                        <td>viewer_url</td>
+                        <td>String</td>
+                        <td>URL zum generierten Viewer</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4>Beispielanfrage</h4>
+            <div class="code-example">
+POST /api/viewer/generate
+Content-Type: application/json
+
+{
+  "project_id": "project_12345",
+  "session_id": "session_67890",
+  "options": {
+    "image_size": [800, 600],
+    "quality": 85,
+    "auto_rotate": true
+  }
+}
+            </div>
+        </div>
+        
+        <h2>Status und Diagnose</h2>
+        
+        <div class="api-endpoint">
+            <h3>
+                <span class="http-method get">GET</span>
+                <span class="endpoint-url">/api/status</span>
+            </h3>
+            <p>Gibt den Status der Hardware-Komponenten zurück.</p>
+            
+            <h4>Parameter</h4>
+            <p>Keine</p>
+            
+            <h4>Antwort</h4>
+            <table class="response-table">
+                <thead>
+                    <tr>
+                        <th>Feld</th>
+                        <th>Typ</th>
+                        <th>Beschreibung</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>arduino</td>
+                        <td>Object</td>
+                        <td>Status des Arduino (connected, port)</td>
+                    </tr>
+                    <tr>
+                        <td>camera</td>
+                        <td>Object</td>
+                        <td>Status der Kamera (connected, type, device)</td>
+                    </tr>
+                    <tr>
+                        <td>turntable</td>
+                        <td>Object</td>
+                        <td>Status des Drehtellers (ready, current_position)</td>
+                    </tr>
+                    <tr>
+                        <td>session</td>
+                        <td>Object</td>
+                        <td>Status einer laufenden Session (active, project_id, session_id)</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4>Beispielantwort</h4>
+            <div class="code-example">
+{
+  "arduino": {
+    "connected": true,
+    "port": "/dev/ttyUSB0"
+  },
+  "camera": {
+    "connected": true,
+    "type": "webcam",
+    "device": "/dev/video0"
+  },
+  "turntable": {
+    "ready": true,
+    "current_position": 45
+  },
+  "session": {
+    "active": false,
+    "project_id": null,
+    "session_id": null
+  }
+}
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+        <p>&copy; 2025 360° Drehteller Steuerung</p>
+    </footer>
+</body>
+</html>
