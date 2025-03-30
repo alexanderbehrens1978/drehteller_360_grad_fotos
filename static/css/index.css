@@ -108,6 +108,28 @@
     font-size: 0.9rem;
 }
 
+/* Styling für die gespeicherte Projektposition */
+.saved-position-info {
+    margin-top: 8px;
+    font-size: 14px;
+    color: #666;
+    background-color: #f8f8f8;
+    padding: 5px 8px;
+    border-radius: 4px;
+    border-left: 3px solid #0066cc;
+}
+
+#projectPositionBtn {
+    margin-right: 5px;
+    background-color: #5bc0de;
+    border-color: #46b8da;
+}
+
+#projectPositionBtn:hover {
+    background-color: #31b0d5;
+    border-color: #269abc;
+}
+
 /* Popup für Projekterstellung */
 .modal {
     display: none;

@@ -90,6 +90,17 @@
                     moveToSavedPosition(projectId, savedPosition);
                 });
             }
+            
+            // Automatisch zur gespeicherten Position fahren, wenn ein Projekt geöffnet wird
+            const projectId = "{{ project.id }}";
+            const savedPosition = parseInt("{{ project.current_position }}");
+            // Nur anfahren, wenn eine Position gespeichert wurde und diese nicht 0 ist
+            if (savedPosition && savedPosition !== 0) {
+                // Kurze Verzögerung, um sicherzustellen, dass die Seite vollständig geladen ist
+                setTimeout(() => {
+                    moveToSavedPosition(projectId, savedPosition);
+                }, 1000);
+            }
         });
         
         // Funktion zum Anfahren der gespeicherten Position

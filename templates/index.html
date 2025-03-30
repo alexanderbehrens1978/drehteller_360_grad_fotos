@@ -49,6 +49,9 @@
                 
                 <div class="controls">
                     <button id="homeBtn" class="btn btn-info" title="Teller auf 0° Position drehen">🏠 Heimposition</button>
+                    {% if project %}
+                    <button id="projectPositionBtn" class="btn btn-info" title="Teller auf die gespeicherte Projektposition drehen">📌 Projektposition ({{ project.current_position }}°)</button>
+                    {% endif %}
                     <button id="startBtn" class="btn btn-primary">Start 360°</button>
                     <button id="stopBtn" class="btn btn-danger" disabled>Stop</button>
                     <button id="rotateBtn" class="btn btn-secondary">Manuell drehen</button>
@@ -56,6 +59,11 @@
                 
                 <div id="positionIndicator" class="position-indicator">
                     Tellerposition: <span id="currentPosition">0°</span>
+                    {% if project %}
+                    <div class="saved-position-info">
+                        Gespeicherte Position im Projekt: <span id="savedProjectPosition">{{ project.current_position }}°</span>
+                    </div>
+                    {% endif %}
                 </div>
                 
                 <div id="rotationStatus" class="status-message">

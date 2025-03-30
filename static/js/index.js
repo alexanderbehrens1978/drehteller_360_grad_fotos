@@ -17,11 +17,13 @@ const startBtn = document.getElementById('startBtn');
 const stopBtn = document.getElementById('stopBtn');
 const rotateBtn = document.getElementById('rotateBtn');
 const homeBtn = document.getElementById('homeBtn');
+const projectPositionBtn = document.getElementById('projectPositionBtn');
 const imagePreview = document.getElementById('imagePreview');
 const angleInput = document.getElementById('angleInput');
 const intervalInput = document.getElementById('intervalInput');
 const rotationStatus = document.getElementById('rotationStatus');
 const currentPositionDisplay = document.getElementById('currentPosition');
+const savedProjectPositionDisplay = document.getElementById('savedProjectPosition');
 const projectModal = document.getElementById('projectModal');
 const projectForm = document.getElementById('projectForm');
 const cancelProjectBtn = document.getElementById('cancelProject');
@@ -39,21 +41,29 @@ function debug(message) {
 document.addEventListener('DOMContentLoaded', function() {
     debug("DOM geladen, initialisiere Anwendung...");
     
-    // Initialisiere die Projekt-ID aus den Datenelementen
-    currentProjectId = document.body.getAttribute('data-project-id') || '';
-    debug(`Aktuelle Projekt-ID: ${currentProjectId}`);
+    // Initialisiere die Projekt-ID aus den Datenelementen oder dem localStorage
+    const bodyProjectId = document.body.getAttribute('data-project-id');
+    
+    if (bodyProjectId && bodyProjectId.trim() !== '') {
+        currentProjectId = bodyProjectId;
+        debug(`Aktuelle Projekt-ID aus Datenelement: ${currentProjectId}`);
+        
+        // Speichere die aktuelle Projekt-ID im localStorage
+        saveCurrentProject(currentProjectId);
+        
+        // Lade die Projektposition
+        loadProjectPosition();
+    } else {
+        // Wenn keine Projekt-ID im Body definiert ist, versuche sie aus dem localStorage zu laden
+        loadCurrentProject();
+    }
 
     // Letzte bekannte Tellerposition aus dem localStorage laden
     loadTurntablePosition();
     
-    // Wenn ein Projekt ausgewählt ist, lade die Projektposition
-    if (currentProjectId) {
-        loadProjectPosition();
-    }
-
-    // Projekte laden, wenn kein Projekt ausgewählt ist
-    if (!currentProjectId && projectSelect) {
-        debug("Kein Projekt ausgewählt, lade Projektliste...");
+    // Projekte laden, wenn kein Projekt ausgewählt ist aber ein Select vorhanden
+    if (projectSelect) {
+        debug("Lade Projektliste...");
         loadProjects();
     }
     
@@ -76,6 +86,11 @@ document.addEventListener('DOMContentLoaded', function() {
     if (homeBtn) {
         homeBtn.addEventListener('click', moveToHomePosition);
         debug("Event-Listener für Home-Button registriert");
+    }
+    
+    if (projectPositionBtn) {
+        projectPositionBtn.addEventListener('click', moveToProjectPosition);
+        debug("Event-Listener für Projektpositions-Button registriert");
     }
     
     if (projectSelect) {
@@ -103,55 +118,155 @@ document.addEventListener('DOMContentLoaded', function() {
 
 /**
  * Lädt die Position des Drehtellers aus dem localStorage
+ * oder setzt den Standardwert
  */
 function loadTurntablePosition() {
-    const storedPosition = localStorage.getItem('turntablePosition');
-    if (storedPosition) {
-        tellerPosition = parseInt(storedPosition);
-        debug(`Tellerposition aus localStorage geladen: ${tellerPosition}°`);
-        updatePositionDisplay(tellerPosition, false);
+    try {
+        // Versuche Position aus localStorage zu laden
+        const savedPosition = localStorage.getItem('tellerPosition');
         
-        // Wenn ein Projekt ausgewählt ist, aktualisiere die Position im Projekt
-        if (currentProjectId) {
-            syncProjectPosition(tellerPosition);
+        if (savedPosition !== null) {
+            tellerPosition = parseInt(savedPosition);
+            debug(`Tellerposition aus dem Speicher geladen: ${tellerPosition}°`);
+        } else {
+            tellerPosition = 0;
+            debug("Keine gespeicherte Tellerposition gefunden, verwende 0°");
         }
-    } else {
-        debug("Keine gespeicherte Tellerposition gefunden");
+        
+        // Aktualisiere die Anzeige
+        if (currentPositionDisplay) {
+            currentPositionDisplay.textContent = `${tellerPosition}°`;
+        }
+    } catch (error) {
+        debug(`Fehler beim Laden der Tellerposition: ${error}`);
         tellerPosition = 0;
-        updatePositionDisplay(tellerPosition, false);
     }
 }
 
 /**
- * Synchronisiere die Tellerposition mit dem Projekt
- * @param {number} position - Die aktuelle Position des Tellers
+ * Speichert die aktuelle Position im localStorage
+ * @param {number} position - Die zu speichernde Position
  */
-function syncProjectPosition(position) {
-    if (!currentProjectId) {
-        debug("Kein Projekt ausgewählt, kann Position nicht synchronisieren");
-        return;
+function saveTurntablePosition(position) {
+    try {
+        localStorage.setItem('tellerPosition', position);
+        debug(`Tellerposition ${position}° im Speicher gespeichert`);
+    } catch (error) {
+        debug(`Fehler beim Speichern der Tellerposition: ${error}`);
+    }
+}
+
+/**
+ * Speichert die aktuelle Projekt-ID im localStorage
+ * @param {string} projectId - Die zu speichernde Projekt-ID oder null, wenn kein Projekt ausgewählt ist
+ */
+function saveCurrentProject(projectId) {
+    try {
+        if (projectId) {
+            localStorage.setItem('currentProjectId', projectId);
+            debug(`Aktuelle Projekt-ID ${projectId} im Speicher gespeichert`);
+        } else {
+            localStorage.removeItem('currentProjectId');
+            debug("Aktuelle Projekt-ID aus dem Speicher entfernt");
+        }
+    } catch (error) {
+        debug(`Fehler beim Speichern der Projekt-ID: ${error}`);
+    }
+}
+
+/**
+ * Lädt die Projekt-ID aus dem localStorage
+ */
+function loadCurrentProject() {
+    try {
+        // Versuche Projekt-ID aus localStorage zu laden
+        const savedProjectId = localStorage.getItem('currentProjectId');
+        
+        if (savedProjectId) {
+            debug(`Projekt-ID aus dem Speicher geladen: ${savedProjectId}`);
+            
+            // Verifiziere, ob das Projekt noch existiert
+            verifyProject(savedProjectId).then(exists => {
+                if (exists) {
+                    currentProjectId = savedProjectId;
+                    debug(`Geladenes Projekt ${savedProjectId} existiert und wurde aktiviert`);
+                    
+                    // Wenn es ein Projekt-Select gibt, wähle es aus
+                    if (projectSelect) {
+                        projectSelect.value = currentProjectId;
+                    }
+                    
+                    // Lade die Projektposition
+                    loadProjectPosition();
+                } else {
+                    debug(`Geladenes Projekt ${savedProjectId} existiert nicht mehr, entferne es aus dem Speicher`);
+                    localStorage.removeItem('currentProjectId');
+                    currentProjectId = null;
+                    
+                    // Deaktiviere projektbezogene UI-Elemente
+                    resetProjectUI();
+                }
+            });
+        } else {
+            debug("Keine gespeicherte Projekt-ID gefunden");
+            currentProjectId = null;
+            
+            // Deaktiviere projektbezogene UI-Elemente, wenn kein Projekt geladen wurde
+            resetProjectUI();
+        }
+    } catch (error) {
+        debug(`Fehler beim Laden der Projekt-ID: ${error}`);
+        currentProjectId = null;
+    }
+}
+
+/**
+ * Überprüft, ob ein Projekt existiert
+ * @param {string} projectId - Die zu überprüfende Projekt-ID
+ * @returns {Promise<boolean>} - True, wenn das Projekt existiert, sonst False
+ */
+function verifyProject(projectId) {
+    return fetch(`/api/project/${projectId}`)
+        .then(response => {
+            if (response.ok) {
+                return true;
+            }
+            if (response.status === 404) {
+                return false;
+            }
+            throw new Error(`Server-Fehler: ${response.status}`);
+        })
+        .catch(error => {
+            debug(`Fehler bei der Projekt-Überprüfung: ${error}`);
+            return false;
+        });
+}
+
+/**
+ * Setzt die projektbezogenen UI-Elemente zurück, wenn kein Projekt ausgewählt ist
+ */
+function resetProjectUI() {
+    debug("Setze projektbezogene UI-Elemente zurück");
+    
+    // Deaktiviere den Projektpositions-Button
+    if (projectPositionBtn) {
+        projectPositionBtn.disabled = true;
+        projectPositionBtn.classList.add('btn-secondary');
+        projectPositionBtn.classList.remove('btn-info');
+        projectPositionBtn.title = "Kein Projekt ausgewählt";
+        projectPositionBtn.textContent = "📌 Projektposition";
     }
     
-    debug(`Synchronisiere Tellerposition ${position}° mit Projekt ${currentProjectId}`);
+    // Aktualisiere die Anzeige der gespeicherten Position
+    if (savedProjectPositionDisplay && savedProjectPositionDisplay.parentElement) {
+        savedProjectPositionDisplay.parentElement.innerHTML = 
+            '<div class="text-secondary">Kein Projekt ausgewählt</div>';
+    }
     
-    fetch(`/api/project/${currentProjectId}/update_position`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ position: position })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            debug(`Position im Projekt aktualisiert: ${position}°`);
-        } else {
-            debug(`Fehler beim Aktualisieren der Position: ${data.error || 'Unbekannter Fehler'}`);
-        }
-    })
-    .catch(error => {
-        debug(`Fehler bei der Positionssynchronisierung: ${error}`);
-    });
+    // Zeige Hinweis, wenn kein Projekt ausgewählt ist
+    if (rotationStatus) {
+        showStatus('Bitte wählen Sie ein Projekt aus, um die Aufnahme zu starten.', 'info');
+    }
 }
 
 /**
@@ -166,91 +281,113 @@ function loadProjectPosition() {
     debug(`Lade Projektposition für Projekt ${currentProjectId}`);
     
     fetch(`/api/project/${currentProjectId}`)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                // Wenn das Projekt nicht gefunden wurde (404) oder andere Fehler
+                if (response.status === 404) {
+                    throw new Error(`Projekt mit ID ${currentProjectId} wurde nicht gefunden`);
+                }
+                throw new Error(`Server-Fehler: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(project => {
             if (project && 'current_position' in project) {
-                // Wenn die Tellerposition aus dem localStorage abweicht, 
-                // verwenden wir die physische Position (localStorage)
-                const storedPosition = localStorage.getItem('turntablePosition');
-                if (storedPosition && parseInt(storedPosition) !== project.current_position) {
-                    debug(`Unterschiedliche Positionen gefunden: Projekt=${project.current_position}°, Teller=${storedPosition}°`);
-                    // Wir vertrauen dem localStorage für die tatsächliche Position
-                    tellerPosition = parseInt(storedPosition);
-                    // Synchronisieren diese mit dem Projekt
-                    syncProjectPosition(tellerPosition);
-                } else {
-                    // Kein Unterschied oder kein localStorage, verwende Projektposition
-                    tellerPosition = project.current_position;
-                    // Aktualisiere den localStorage
-                    localStorage.setItem('turntablePosition', tellerPosition);
+                debug(`Projektposition geladen: ${project.current_position}°`);
+                
+                // Aktualisiere die Anzeige der gespeicherten Projektposition
+                if (savedProjectPositionDisplay) {
+                    savedProjectPositionDisplay.textContent = `${project.current_position}°`;
                 }
                 
-                debug(`Tellerposition aus Projekt geladen: ${tellerPosition}°`);
-                
-                // Anzeige aktualisieren
-                updatePositionDisplay(tellerPosition, false);
-                
-                // Check if session needs to be resumed
-                if (project.active_session && project.last_captured_angle !== null) {
-                    showStatus(`Letzte Sitzung wurde bei ${project.last_captured_angle}° unterbrochen. Möchten Sie fortsetzen?`, 'warning');
-                    
-                    // Biete an, die Sitzung fortzusetzen
-                    const resumeButton = document.createElement('button');
-                    resumeButton.innerText = "Sitzung fortsetzen";
-                    resumeButton.classList.add('btn', 'btn-primary', 'ml-2');
-                    resumeButton.addEventListener('click', () => {
-                        resumeSession(project.last_captured_angle);
-                    });
-                    
-                    const statusContainer = document.getElementById('statusContainer');
-                    if (statusContainer) {
-                        statusContainer.appendChild(resumeButton);
-                    }
+                // Aktualisiere auch den Projektpositions-Button
+                if (projectPositionBtn) {
+                    projectPositionBtn.title = `Teller auf die gespeicherte Projektposition drehen (${project.current_position}°)`;
+                    // Extrahiere den ersten Teil des Textes (alles vor der Klammer)
+                    const buttonText = projectPositionBtn.textContent.split('(')[0];
+                    projectPositionBtn.textContent = `${buttonText}(${project.current_position}°)`;
                 }
+                
+                // NICHT die tellerPosition aktualisieren oder syncProjectPosition aufrufen,
+                // da dies die tatsächliche Position des Tellers ist, nicht die Projektposition
             }
         })
         .catch(error => {
             debug(`Fehler beim Laden der Projektposition: ${error}`);
+            showStatus(`Fehler: ${error.message}`, 'error');
+            
+            // Bei Fehler: Deaktiviere den Projektpositions-Button oder markiere ihn als nicht verfügbar
+            if (projectPositionBtn) {
+                projectPositionBtn.disabled = true;
+                projectPositionBtn.title = "Projektposition nicht verfügbar";
+                projectPositionBtn.classList.add('btn-secondary');
+                projectPositionBtn.classList.remove('btn-info');
+            }
+            
+            // Bei Fehler: Anzeige der gespeicherten Position ausblenden oder als nicht verfügbar markieren
+            if (savedProjectPositionDisplay) {
+                savedProjectPositionDisplay.parentElement.innerHTML = 
+                    '<div class="text-danger">Projektposition nicht verfügbar</div>';
+            }
         });
 }
 
 // Projekte laden
 function loadProjects() {
-    debug("Lade Projekte vom Server...");
+    if (!projectSelect) {
+        debug("Kein Projekt-Select gefunden");
+        return;
+    }
+    
     fetch('/api/projects')
         .then(response => {
-            debug(`Server-Antwort Status: ${response.status}`);
+            if (!response.ok) {
+                throw new Error(`Server-Fehler: ${response.status}`);
+            }
             return response.json();
         })
-        .then(projects => {
-            debug(`${projects.length} Projekte geladen`);
-            if (!projectSelect) return;
-
-            projectSelect.innerHTML = '<option value="">Bitte wählen...</option>';
-            projectSelect.innerHTML += '<option value="new">+ Neues Projekt erstellen</option>';
-
-            if (projects.length === 0) {
-                return;
+        .then(data => {
+            // Alle Optionen außer den ersten beiden entfernen (Placeholder und "Neues Projekt")
+            while (projectSelect.options.length > 2) {
+                projectSelect.remove(2);
             }
-
-            // Projekte zum Dropdown hinzufügen
-            projects.forEach(project => {
-                const option = document.createElement('option');
-                option.value = project.id;
-                option.textContent = project.name;
-                projectSelect.appendChild(option);
-            });
-
-            // Wenn eine Projekt-ID vorhanden ist, diese auswählen
-            if (currentProjectId && projectSelect.querySelector(`option[value="${currentProjectId}"]`)) {
-                projectSelect.value = currentProjectId;
+            
+            if (Array.isArray(data)) {
+                // Projekte hinzufügen
+                data.forEach(project => {
+                    const option = document.createElement('option');
+                    option.value = project.id;
+                    option.textContent = project.name;
+                    projectSelect.appendChild(option);
+                });
+                
+                // Wenn eine aktuelle Projekt-ID gesetzt ist, wähle sie aus
+                if (currentProjectId) {
+                    // Überprüfe, ob das Projekt in der Liste ist
+                    let projectExists = false;
+                    for (let i = 0; i < projectSelect.options.length; i++) {
+                        if (projectSelect.options[i].value === currentProjectId) {
+                            projectSelect.selectedIndex = i;
+                            projectExists = true;
+                            break;
+                        }
+                    }
+                    
+                    // Wenn das Projekt nicht in der Liste ist, entferne es aus dem Speicher
+                    if (!projectExists) {
+                        debug(`Aktuelles Projekt ${currentProjectId} nicht in der Projektliste gefunden, entferne es aus dem Speicher`);
+                        saveCurrentProject(null);
+                        currentProjectId = null;
+                        
+                        // Deaktiviere projektbezogene UI-Elemente
+                        resetProjectUI();
+                    }
+                }
             }
         })
         .catch(error => {
-            console.error('Fehler beim Laden der Projekte:', error);
-            if (projectSelect) {
-                projectSelect.innerHTML = '<option value="">Fehler beim Laden der Projekte</option>';
-            }
+            debug(`Fehler beim Laden der Projekte: ${error}`);
+            showStatus(`Fehler: ${error.message}`, 'error');
         });
 }
 
@@ -331,9 +468,12 @@ function startSingleRotation() {
     formData.append('project_id', currentProjectId);
     formData.append('mode', 'photo_and_rotate'); // Beide Aktionen ausführen
 
+    // URL direkt definieren, um sicherzustellen, dass wir den richtigen Endpunkt ansprechen
+    const url = window.location.protocol + '//' + window.location.host + '/rotate';
+    debug(`Sende Rotationsanfrage an: ${url} mit Projektion: ${currentProjectId}, Winkel: ${angle}°`);
+
     // Foto aufnehmen und dann rotieren
-    debug("Sende Rotationsanfrage an den Server");
-    fetch('/rotate', {
+    fetch(url, {
         method: 'POST',
         body: formData
     })
@@ -500,9 +640,9 @@ function takePhotoForSequence() {
     // Der gewünschte Drehwinkel pro Schritt
     const angle = parseInt(angleInput.value) || 15;
 
-    // Aktuelle Winkelposition berechnen (0, 15, 30, ...)
-    // Winkel der ersten Position ist 0 Grad
-    const currentAngle = currentStep * angle;
+    // Aktuelle Winkelposition berechnen basierend auf der aktuellen Tellerposition, nicht auf dem Schritt
+    // Wichtig: Wir verwenden die aktuelle tatsächliche Tellerposition statt einer theoretischen Position
+    const currentAngle = tellerPosition;
     
     // Statusmeldung aktualisieren
     showStatus(`Nehme Foto ${currentStep+1}/${totalSteps} bei ${currentAngle}° auf`, 'info');
@@ -514,30 +654,41 @@ function takePhotoForSequence() {
     formData.append('mode', 'photo_only');
     formData.append('degrees', currentAngle); // WICHTIG: Backend erwartet 'degrees', nicht 'angle'
 
+    // URL direkt definieren, um sicherzustellen, dass wir den richtigen Endpunkt ansprechen
+    const url = window.location.protocol + '//' + window.location.host + '/rotate';
+    debug(`Sende Foto-Anfrage an: ${url} mit Projektion: ${currentProjectId}, Winkel: ${currentAngle}°`);
+
     // Foto aufnehmen und dann rotieren
-    debug("Sende Anfrage an den Server");
-    fetch('/rotate', {
+    fetch(url, {
         method: 'POST',
         body: formData
     })
     .then(response => {
         debug(`Server-Antwort Status: ${response.status}`);
+        if (!response.ok) {
+            throw new Error(`Server-Fehler: ${response.status}`);
+        }
         return response.json();
     })
     .then(data => {
         if (data.status === 'success') {
-            // Foto zur Liste hinzufügen
+            // Foto zur Liste hinzufügen und das korrekte Pfad-Format sicherstellen
+            const photoPath = data.photo;
+            debug(`Foto erfolgreich aufgenommen: ${photoPath}`);
+            
             capturedPhotos.push({
-                path: data.photo,
-                angle: data.angle
+                path: photoPath,
+                angle: data.angle || currentAngle // Fallback auf currentAngle, wenn kein angle vom Server kommt
             });
 
-            // Bild anzeigen
-            displayImage(data.photo, angle);
+            // Bild anzeigen mit dem korrekten Pfad
+            try {
+                displayImage(photoPath, currentAngle);
+                debug("Bild erfolgreich angezeigt");
+            } catch (err) {
+                debug(`Fehler beim Anzeigen des Bildes: ${err}`);
+            }
 
-            // Positionsanzeige aktualisieren
-            updatePositionDisplay(currentAngle, false);
-            
             // Nächstes Foto aufnehmen
             currentStep++;
             
@@ -551,7 +702,8 @@ function takePhotoForSequence() {
         } else {
             // Bei Fehler Position als unsicher markieren
             updatePositionDisplay(tellerPosition, true);
-            showStatus(`Fehler beim Aufnehmen des Fotos: ${data.error}`, 'error');
+            showStatus(`Fehler beim Aufnehmen des Fotos: ${data.error || 'Unbekannter Fehler'}`, 'error');
+            debug(`Fehler vom Server bei Fotoaufnahme: ${JSON.stringify(data)}`);
             stopRotation(true);
         }
     })
@@ -592,14 +744,16 @@ function rotateForSequence() {
     })
     .then(response => {
         if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
+            // Wenn das Projekt nicht gefunden wurde (404) oder andere Fehler
+            if (response.status === 404) {
+                throw new Error(`Projekt mit ID ${currentProjectId} wurde nicht gefunden`);
+            }
+            throw new Error(`Server-Fehler: ${response.status}`);
         }
         return response.json();
     })
     .then(data => {
         if (data.status === 'success') {
-            debug("Rotation erfolgreich");
-            
             // Position aktualisieren
             const newPosition = (tellerPosition + angle) % 360;
             updatePositionDisplay(newPosition, false);
@@ -642,120 +796,6 @@ function completedSequence() {
 }
 
 /**
- * Stoppt die laufende Rotation und Fotoaufnahme
- * @param {boolean} isError - Ob der Stopp aufgrund eines Fehlers erfolgt
- */
-function stopRotation(isError = false) {
-    if (!isRotating) {
-        return;
-    }
-
-    debug(`Stoppe Rotation${isError ? ' (nach Fehler)' : ''}`);
-    
-    // Setze zuerst den Client-Status - SOFORT!
-    isRotating = false;
-    
-    if (!isError) {
-        showStatus("Rotation gestoppt", 'warning');
-    }
-    
-    // UI zurücksetzen
-    if (startBtn) {
-        startBtn.disabled = false;
-        debug("Start-Button aktiviert");
-    }
-    
-    if (stopBtn) {
-        stopBtn.disabled = true;
-        debug("Stop-Button deaktiviert");
-    }
-    
-    if (rotateBtn) {
-        rotateBtn.disabled = false;
-        debug("Rotate-Button aktiviert");
-    }
-    
-    if (homeBtn) {
-        homeBtn.disabled = false;
-        debug("Home-Button aktiviert");
-    }
-    
-    // Unsichere Position markieren, wenn wir in der Mitte abbrechen
-    if (currentStep > 0 && currentStep < totalSteps) {
-        updatePositionDisplay(tellerPosition, true);
-    }
-    
-    // Server-seitige Anfrage zum Stoppen der Rotation
-    fetch('/stop_rotation', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ project_id: currentProjectId })
-    })
-    .then(response => response.json())
-    .then(data => {
-        debug("Server-Antwort für Stop:", data);
-    })
-    .catch(error => {
-        debug(`Fehler beim Stoppen der Rotation: ${error}`);
-    });
-}
-
-function generateViewer() {
-    debug("generateViewer() aufgerufen");
-    debug(`Erfasste Fotos: ${capturedPhotos.length}`);
-    
-    if (capturedPhotos.length < 4) {
-        alert('Es werden mindestens 4 Fotos für einen 360°-Viewer benötigt.');
-        return;
-    }
-
-    // Prüfe die aktuelle Projekt-ID
-    debug(`Aktuelle Projekt-ID: ${currentProjectId}`);
-
-    if (!currentProjectId) {
-        alert("Fehler: Keine Projekt-ID gefunden!");
-        console.error("Fehler: currentProjectId ist null oder undefined!");
-        return;
-    }
-
-    // Anfrage-Daten zusammenstellen
-    const requestData = {
-        project_id: currentProjectId,
-        photos: capturedPhotos.map(photo => photo.path)
-    };
-
-    debug(`Sende Anfrage mit Daten: ${JSON.stringify(requestData)}`);
-
-    fetch('/generate_360', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestData)
-    })
-    .then(response => {
-        debug(`Server-Antwort Status: ${response.status}`);
-        return response.json();
-    })
-    .then(data => {
-        if (data.status === 'success') {
-            debug(`Viewer erstellt: ${data.viewer_url}`);
-            alert(`360°-Viewer erfolgreich erstellt! Sie können ihn unter folgendem Link aufrufen: ${data.viewer_url}`);
-            window.open(data.viewer_url, '_blank');
-        } else {
-            console.error('Fehler beim Erstellen des Viewers:', data.error);
-            alert(`Fehler beim Erstellen des 360°-Viewers: ${data.error}`);
-        }
-    })
-    .catch(error => {
-        console.error('Netzwerkfehler beim Erstellen des Viewers:', error);
-        alert(`Netzwerkfehler beim Erstellen des 360°-Viewers: ${error.message}`);
-    });
-}
-
-/**
  * Bietet dem Benutzer an, einen 360°-Viewer zu erstellen
  */
 function offerViewerCreation() {
@@ -784,15 +824,13 @@ function moveToHomePosition() {
         return;
     }
     
-    // Berechne den kürzesten Weg zur Heimposition
+    // Berechne den Weg zur Heimposition
+    // HINWEIS: Motor kann nur vorwärts drehen, daher immer vorwärts bis zur 0-Position
     let degreesToMove = 0;
     
-    if (tellerPosition > 180) {
-        // Wenn wir über 180° sind, ist es kürzer, im Uhrzeigersinn weiterzudrehen
+    // Da der Motor nur vorwärts drehen kann, immer im Uhrzeigersinn weiterdrehen
+    if (tellerPosition > 0) {
         degreesToMove = 360 - tellerPosition;
-    } else {
-        // Andernfalls gegen den Uhrzeigersinn zurück zu 0°
-        degreesToMove = tellerPosition;
     }
     
     if (degreesToMove === 0) {
@@ -801,15 +839,13 @@ function moveToHomePosition() {
         return;
     }
     
-    // Richtung festlegen (positiv für vorwärts, negativ für rückwärts)
-    const direction = tellerPosition > 180 ? 1 : -1;
-    
-    debug(`Fahre zur Heimposition: ${Math.abs(degreesToMove)}° in Richtung ${direction > 0 ? 'vorwärts' : 'rückwärts'}`);
+    debug(`Fahre zur Heimposition: ${degreesToMove}° in Richtung vorwärts`);
     showStatus(`Fahre zur Heimposition (0°)...`, 'info');
     
     // API-Anfrage zum Drehen des Tellers
     const formData = new FormData();
-    formData.append('degrees', Math.abs(degreesToMove));
+    formData.append('degrees', degreesToMove);
+    formData.append('direction', 'cw'); // Immer im Uhrzeigersinn (cw) drehen
     
     // Stelle sicher, dass eine gültige Projekt-ID verwendet wird
     if (!currentProjectId) {
@@ -831,9 +867,12 @@ function moveToHomePosition() {
         body: formData
     })
     .then(response => {
-        debug(`Server-Antwort Status: ${response.status}`);
         if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
+            // Wenn das Projekt nicht gefunden wurde (404) oder andere Fehler
+            if (response.status === 404) {
+                throw new Error(`Projekt mit ID ${currentProjectId} wurde nicht gefunden`);
+            }
+            throw new Error(`Server-Fehler: ${response.status}`);
         }
         return response.json();
     })
@@ -841,8 +880,8 @@ function moveToHomePosition() {
         debug("Heimpositionierung erfolgreich");
         showStatus('Teller erfolgreich auf Heimposition (0°) gesetzt.', 'success');
         tellerPosition = 0; // Setze lokale Position auf 0
-        localStorage.setItem('turntablePosition', 0); // Speichere in localStorage
-        updatePositionDisplay(0, false);
+        saveTurntablePosition(0); // Speichere in localStorage mit der neuen Funktion
+        updatePositionDisplay(0, false); // false, da wir hier nicht mit dem Projekt synchronisieren wollen
     })
     .catch(error => {
         debug(`Fehler bei Heimpositionierung: ${error}`);
@@ -851,23 +890,223 @@ function moveToHomePosition() {
 }
 
 /**
- * Aktualisiert die Anzeige der Tellerposition
- * @param {number} position - Die aktuelle Position in Grad
- * @param {boolean} uncertain - Ob die Position unsicher ist
+ * Dreht den Teller zur Projektposition
  */
-function updatePositionDisplay(position, uncertain = false) {
+function moveToProjectPosition() {
+    if (isRotating) {
+        debug("Rotation bereits aktiv, kann nicht zur Projektposition fahren");
+        showStatus('Bitte stoppen Sie zuerst die aktuelle Rotation.', 'warning');
+        return;
+    }
+    
+    // Prüfe die aktuelle Projekt-ID
+    if (!currentProjectId) {
+        debug("Keine Projekt-ID vorhanden, kann nicht zur Projektposition fahren");
+        showStatus('Bitte wählen Sie zuerst ein Projekt aus.', 'warning');
+        return;
+    }
+    
+    // Lade die Projektposition direkt vom Server, um die aktuellsten Daten zu haben
+    fetch(`/api/project/${currentProjectId}`)
+        .then(response => {
+            if (!response.ok) {
+                // Wenn das Projekt nicht gefunden wurde (404) oder andere Fehler
+                if (response.status === 404) {
+                    throw new Error(`Projekt mit ID ${currentProjectId} wurde nicht gefunden`);
+                }
+                throw new Error(`Server-Fehler: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(project => {
+            if (project && 'current_position' in project) {
+                const targetPosition = parseInt(project.current_position);
+                const currentPosition = parseInt(tellerPosition);
+                
+                debug(`Zielposition aus Server: ${targetPosition}°, Aktuelle Position: ${currentPosition}°`);
+                
+                // Aktualisiere die Anzeige der Projekt-Position im UI
+                if (savedProjectPositionDisplay) {
+                    savedProjectPositionDisplay.textContent = `${targetPosition}°`;
+                }
+                
+                // Aktualisiere auch den Projektpositions-Button
+                if (projectPositionBtn) {
+                    projectPositionBtn.title = `Teller auf die gespeicherte Projektposition drehen (${targetPosition}°)`;
+                    // Extrahiere den ersten Teil des Textes (alles vor der Klammer)
+                    const buttonText = projectPositionBtn.textContent.split('(')[0];
+                    projectPositionBtn.textContent = `${buttonText}(${targetPosition}°)`;
+                }
+                
+                // Prüfe, ob die aktuelle Position und die Zielposition wirklich identisch sind
+                // Aufgrund von Rundungsfehlern oder anderen Problemen könnte die Gleichheitsüberprüfung fehlschlagen
+                const positionTolerance = 0.1; // Toleranz von 0.1 Grad
+                if (Math.abs(currentPosition - targetPosition) < positionTolerance) {
+                    debug(`Teller bereits in Projektposition (${targetPosition}°)`);
+                    showStatus(`Teller befindet sich bereits in der Projektposition (${targetPosition}°).`, 'success');
+                    return;
+                }
+                
+                // Berechne den Winkel zum Drehen (nur vorwärts möglich)
+                let degreesToMove = 0;
+                
+                // Da der Motor nur vorwärts drehen kann, berechnen wir die Drehung im Uhrzeigersinn
+                if (currentPosition < targetPosition) {
+                    // Einfach vorwärts drehen
+                    degreesToMove = targetPosition - currentPosition;
+                } else {
+                    // Muss einmal herum drehen
+                    degreesToMove = 360 - currentPosition + targetPosition;
+                }
+                
+                debug(`Fahre zur Projektposition: ${degreesToMove}° im Uhrzeigersinn (vorwärts)`);
+                showStatus(`Fahre zur Projektposition (${targetPosition}°)...`, 'info');
+                
+                // API-Anfrage zum Drehen des Tellers
+                const formData = new FormData();
+                formData.append('degrees', degreesToMove);
+                formData.append('direction', 'cw'); // Immer im Uhrzeigersinn (cw) drehen
+                formData.append('target_position', targetPosition); // Zielposition mitgeben
+                
+                // Stelle sicher, dass eine gültige Projekt-ID verwendet wird
+                formData.append('project_id', currentProjectId);
+                formData.append('mode', 'rotate_only');
+                
+                // URL direkt definieren, um sicherzustellen, dass wir den richtigen Endpunkt ansprechen
+                const url = window.location.protocol + '//' + window.location.host + '/rotate';
+                debug(`Sende Projektposition Anfrage an: ${url} (Zielposition: ${targetPosition}°)`);
+                
+                fetch(url, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        // Wenn das Projekt nicht gefunden wurde (404) oder andere Fehler
+                        if (response.status === 404) {
+                            throw new Error(`Projekt mit ID ${currentProjectId} wurde nicht gefunden`);
+                        }
+                        throw new Error(`Server-Fehler: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    debug(`Positionierung erfolgreich, Serverantwort: ${JSON.stringify(data)}`);
+                    showStatus(`Teller erfolgreich auf Projektposition (${targetPosition}°) gesetzt.`, 'success');
+                    
+                    // Aktualisiere die lokale Position und speichere sie
+                    tellerPosition = targetPosition;
+                    saveTurntablePosition(targetPosition);
+                    updatePositionDisplay(targetPosition, false); // false, da wir nicht wieder mit dem Projekt synchronisieren wollen
+                })
+                .catch(error => {
+                    debug(`Fehler bei Projektpositionierung: ${error}`);
+                    showStatus(`Fehler beim Fahren zur Projektposition: ${error.message}`, 'error');
+                });
+            } else {
+                debug(`Ungültige Projektdaten, keine Position gefunden: ${JSON.stringify(project)}`);
+                showStatus('Fehler: Keine gültige Projektkonfiguration gefunden.', 'error');
+            }
+        })
+        .catch(error => {
+            debug(`Fehler beim Laden der Projektposition: ${error}`);
+            showStatus(`Fehler beim Laden der Projektdaten: ${error.message}`, 'error');
+            
+            // Wenn das Projekt nicht gefunden wurde, aus dem Speicher entfernen
+            if (error.message.includes('nicht gefunden')) {
+                saveCurrentProject(null);
+                currentProjectId = null;
+                
+                // UI aktualisieren
+                resetProjectUI();
+            }
+        });
+}
+
+/**
+ * Synchronisiere die Tellerposition mit dem Projekt
+ * @param {number} position - Die aktuelle Position des Tellers
+ */
+function syncProjectPosition(position) {
+    if (!currentProjectId) {
+        debug("Kein Projekt ausgewählt, kann Position nicht synchronisieren");
+        return;
+    }
+    
+    debug(`Synchronisiere Tellerposition ${position}° mit Projekt ${currentProjectId}`);
+    
+    fetch(`/api/project/${currentProjectId}/update_position`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ position: position })
+    })
+    .then(response => {
+        if (!response.ok) {
+            // Wenn das Projekt nicht gefunden wurde (404) oder andere Fehler
+            if (response.status === 404) {
+                throw new Error(`Projekt mit ID ${currentProjectId} wurde nicht gefunden`);
+            }
+            throw new Error(`Server-Fehler: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.status === 'success') {
+            debug(`Position im Projekt aktualisiert: ${position}°`);
+            
+            // Aktualisiere die Anzeige der gespeicherten Projektposition
+            if (savedProjectPositionDisplay) {
+                savedProjectPositionDisplay.textContent = `${position}°`;
+            }
+            
+            // Aktualisiere auch den Projektpositions-Button
+            if (projectPositionBtn) {
+                projectPositionBtn.title = `Teller auf die gespeicherte Projektposition drehen (${position}°)`;
+                // Extrahiere den ersten Teil des Textes (alles vor der Klammer)
+                const buttonText = projectPositionBtn.textContent.split('(')[0];
+                projectPositionBtn.textContent = `${buttonText}(${position}°)`;
+            }
+        } else {
+            debug(`Fehler beim Aktualisieren der Position: ${data.error || 'Unbekannter Fehler'}`);
+        }
+    })
+    .catch(error => {
+        debug(`Fehler bei der Positionssynchronisierung: ${error}`);
+        showStatus(`Fehler: ${error.message}`, 'error');
+        
+        // Wenn das Projekt nicht gefunden wurde, entferne es aus dem Speicher
+        if (error.message.includes('nicht gefunden')) {
+            debug(`Projekt ${currentProjectId} wurde nicht gefunden, entferne es aus dem Speicher`);
+            saveCurrentProject(null);
+            currentProjectId = null;
+            
+            // UI aktualisieren
+            resetProjectUI();
+        }
+    });
+}
+
+/**
+ * Aktualisiert die Position des Tellers im UI und speichert sie lokal
+ * @param {number} position - Die neue Position in Grad
+ * @param {boolean} syncWithProject - Ob die Position mit dem Projekt synchronisiert werden soll
+ * @param {boolean} uncertain - Ob die Position unsicher ist (z.B. nach Stromausfall)
+ */
+function updatePositionDisplay(position, syncWithProject = true, uncertain = false) {
+    // Stelle sicher, dass die Position eine Zahl ist
+    position = parseInt(position);
+    
+    // Aktualisiere die globale Variable
+    tellerPosition = position;
+    
+    // Speichere die Position im localStorage
+    saveTurntablePosition(position);
+    
+    // Aktualisiere die Anzeige
     if (currentPositionDisplay) {
-        // Position auf ganze Zahlen runden
-        position = Math.round(position);
-        
-        // Anzeige aktualisieren
         currentPositionDisplay.textContent = `${position}°`;
-        
-        // Speichern im localStorage
-        localStorage.setItem('turntablePosition', position.toString());
-        
-        // Aktualisieren der globalen Variable
-        tellerPosition = position;
         
         // Visuelle Markierung für unsichere Position
         if (uncertain) {
@@ -880,6 +1119,11 @@ function updatePositionDisplay(position, uncertain = false) {
             currentPositionDisplay.classList.remove('uncertain');
             positionLost = false;
         }
+    }
+    
+    // Synchronisiere die Position mit dem Projekt, wenn gewünscht und ein Projekt ausgewählt ist
+    if (syncWithProject && currentProjectId) {
+        syncProjectPosition(position);
     }
 }
 
@@ -902,4 +1146,64 @@ function showStatus(message, type = 'info') {
         // Sichtbar machen
         rotationStatus.classList.add('visible');
     }
+}
+
+/**
+ * Projekt löschen
+ * @param {string} projectId - Die ID des zu löschenden Projekts
+ */
+function deleteProject(projectId) {
+    if (!confirm('Sind Sie sicher, dass Sie dieses Projekt löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.')) {
+        return;
+    }
+
+    debug(`Lösche Projekt: ${projectId}`);
+    
+    fetch(`/projects/delete/${projectId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            if (response.status === 404) {
+                throw new Error(`Projekt mit ID ${projectId} wurde nicht gefunden`);
+            }
+            throw new Error(`Server-Fehler: ${response.status}`);
+        }
+        return response;
+    })
+    .then(() => {
+        debug(`Projekt ${projectId} erfolgreich gelöscht`);
+        showStatus('Projekt erfolgreich gelöscht.', 'success');
+        
+        // Wenn das aktuelle Projekt gelöscht wurde, setze die aktuelle Projekt-ID zurück
+        if (currentProjectId === projectId) {
+            // Entferne es aus dem localStorage
+            saveCurrentProject(null);
+            currentProjectId = null;
+            
+            // UI aktualisieren
+            resetProjectUI();
+        }
+        
+        // Umleitung zur Projektübersicht oder Aktualisierung der Projektliste
+        setTimeout(function() {
+            window.location.href = '/projects';
+        }, 1000);
+    })
+    .catch(error => {
+        debug(`Fehler beim Löschen des Projekts: ${error}`);
+        showStatus(`Fehler: ${error.message}`, 'error');
+        
+        // Wenn das Projekt nicht gefunden wurde, entferne es aus dem localStorage
+        if (error.message.includes('nicht gefunden') && currentProjectId === projectId) {
+            saveCurrentProject(null);
+            currentProjectId = null;
+            
+            // UI aktualisieren
+            resetProjectUI();
+        }
+    });
 }
