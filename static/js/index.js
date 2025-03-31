@@ -10,6 +10,8 @@ let capturedPhotos = [];
 let isRotating = false;
 let currentStep = 0;
 let totalSteps = 0;
+let homePositionTimer = null; // Timer für die Heimpositions-Bewegung
+let homePositionStartTime = null; // Startzeit für die Heimpositions-Bewegung
 
 // DOM-Elemente
 const projectSelect = document.getElementById('projectSelect');
@@ -35,6 +37,22 @@ let positionLost = false; // Wird auf true gesetzt, wenn die Position unsicher i
 // Debug-Funktion - wichtig zur Fehlerbehebung
 function debug(message) {
     console.log(`[DEBUG] ${message}`);
+    
+    // Debug-Meldung auch im UI anzeigen, wenn ein Statuselement vorhanden ist
+    if (rotationStatus) {
+        const debugEntry = document.createElement('div');
+        debugEntry.className = 'debug-message';
+        debugEntry.innerHTML = `<span class="debug-time">[${new Date().toLocaleTimeString()}]</span> ${message}`;
+        rotationStatus.appendChild(debugEntry);
+        
+        // Scrolle zum Ende des Debug-Bereichs
+        rotationStatus.scrollTop = rotationStatus.scrollHeight;
+        
+        // Begrenze die Anzahl der Nachrichten (maximal 20)
+        while (rotationStatus.children.length > 20) {
+            rotationStatus.removeChild(rotationStatus.firstChild);
+        }
+    }
 }
 
 // Initialisierung
@@ -74,7 +92,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     if (stopBtn) {
-        stopBtn.addEventListener('click', () => stopRotation());
+        stopBtn.addEventListener('click', function() {
+            debug("Stop-Button wurde geklickt");
+            stopRotation(false);
+        });
         debug("Event-Listener für Stop-Button registriert");
     }
     
@@ -531,53 +552,6 @@ function startSingleRotation() {
     });
 }
 
-// Zeigt ein Bild in der Vorschau an
-function displayImage(imagePath, angle) {
-    if (!imagePreview) {
-        debug("WARNUNG: Image-Preview-Element nicht gefunden!");
-        return;
-    }
-
-    debug(`Zeige Bild an: ${imagePath}`);
-
-    // Bisherige Vorschau löschen
-    imagePreview.innerHTML = '';
-
-    // Bild-Element erstellen
-    const img = document.createElement('img');
-    
-    // Stellen sicher, dass der Pfad korrekt ist
-    if (!imagePath.startsWith('/')) {
-        imagePath = '/' + imagePath;
-    }
-    
-    img.src = imagePath;
-    img.alt = `Foto bei ${angle}°`;
-    img.className = 'captured-image';
-    
-    // Fehlerbehandlung für Bilder
-    img.onerror = function() {
-        console.error(`Fehler beim Laden des Bildes: ${imagePath}`);
-        this.src = '/static/img/error.svg'; // Fallback-Bild (SVG für bessere Skalierbarkeit)
-        this.alt = 'Fehler beim Laden des Bildes';
-    };
-
-    // Winkel-Anzeige erstellen
-    const angleLabel = document.createElement('div');
-    angleLabel.className = 'angle-label';
-    angleLabel.textContent = `${angle}°`;
-
-    // Container erstellen und Elemente hinzufügen
-    const container = document.createElement('div');
-    container.className = 'image-container';
-    container.appendChild(img);
-    container.appendChild(angleLabel);
-
-    // Container zur Vorschau hinzufügen
-    imagePreview.appendChild(container);
-    debug("Bild erfolgreich angezeigt");
-}
-
 // Automatische Rotation und Fotoaufnahme - Verbesserte Version
 // WICHTIG: Wir nehmen jetzt das erste Foto und beginnen danach mit der Sequenz
 function startRotation() {
@@ -595,12 +569,39 @@ function startRotation() {
         return;
     }
 
+    // Der gewünschte Drehwinkel pro Schritt
     const angle = parseInt(angleInput.value) || 15;
-    const interval = parseInt(intervalInput.value) || 5;
-    totalSteps = Math.floor(360 / angle);
-    currentStep = 0;
+    debug(`Eingestellter Winkel: ${angle}°`);
+
+    // Prüfen, ob eine pausierte Aufnahme fortgesetzt werden soll
+    const savedStep = parseInt(localStorage.getItem('lastSequenceStep') || "0");
+    const savedTotalSteps = parseInt(localStorage.getItem('lastSequenceTotalSteps') || "0");
     
-    debug(`Starte 360° Rotation mit ${totalSteps} Schritten, Winkel=${angle}°, Intervall=${interval}s`);
+    debug(`Gespeicherter Fortschritt gefunden: Schritt ${savedStep}/${savedTotalSteps}`);
+    
+    if (!isNaN(savedStep) && !isNaN(savedTotalSteps) && savedStep > 0 && savedStep < savedTotalSteps) {
+        if (confirm(`Es gibt eine pausierte Aufnahme bei Schritt ${savedStep}/${savedTotalSteps}. Möchten Sie diese fortsetzen?`)) {
+            // Werte wiederherstellen
+            currentStep = savedStep;
+            totalSteps = savedTotalSteps;
+            debug(`Setze pausierte Aufnahme fort bei Schritt ${currentStep}/${totalSteps}`);
+        } else {
+            // Neue Aufnahme starten
+            localStorage.removeItem('lastSequenceStep');
+            localStorage.removeItem('lastSequenceTotalSteps');
+            totalSteps = Math.floor(360 / angle);
+            currentStep = 0;
+            debug(`Starte neue 360° Rotation mit ${totalSteps} Schritten, Winkel=${angle}°`);
+        }
+    } else {
+        // Neue Aufnahme starten
+        localStorage.removeItem('lastSequenceStep');
+        localStorage.removeItem('lastSequenceTotalSteps');
+        const interval = parseInt(intervalInput.value) || 5;
+        totalSteps = Math.floor(360 / angle);
+        currentStep = 0;
+        debug(`Starte 360° Rotation mit ${totalSteps} Schritten, Winkel=${angle}°, Intervall=${interval}s`);
+    }
 
     // UI aktualisieren
     if (startBtn) {
@@ -626,11 +627,43 @@ function startRotation() {
     isRotating = true;
 
     // Statusmeldung anzeigen
-    showStatus(`Rotation gestartet: Nehme erstes Foto auf`, 'info');
+    if (currentStep === 0) {
+        showStatus(`Rotation gestartet: Nehme erstes Foto auf`, 'info');
+        // Ersten Schritt starten - nehme erstes Foto auf der Position 0
+        debug("Nehme erstes Foto auf");
+        takePhotoForSequence();
+    } else {
+        showStatus(`Rotation wird fortgesetzt ab Schritt ${currentStep+1}/${totalSteps}`, 'info');
+        // Fortsetzen mit dem nächsten Schritt
+        debug(`Setze mit Schritt ${currentStep+1}/${totalSteps} fort`);
+        takePhotoForSequence();
+    }
+}
 
-    // Ersten Schritt starten - nehme erstes Foto auf der Position 0
-    debug("Nehme erstes Foto auf");
-    takePhotoForSequence();
+function stopRotation(withError = false) {
+    debug("stopRotation() aufgerufen");
+    
+    // Setze die Rotation-Flag
+    isRotating = false;
+    
+    // Speichere den aktuellen Fortschritt für spätere Fortsetzung
+    localStorage.setItem('lastSequenceStep', currentStep.toString());
+    localStorage.setItem('lastSequenceTotalSteps', totalSteps.toString());
+    debug(`Fortschritt gespeichert: Schritt ${currentStep}/${totalSteps}`);
+    
+    // UI aktualisieren
+    if (startBtn) startBtn.disabled = false;
+    if (stopBtn) stopBtn.disabled = true;
+    if (rotateBtn) rotateBtn.disabled = false;
+    if (homeBtn) homeBtn.disabled = false;
+    
+    // Statusmeldung aktualisieren
+    if (!withError) {
+        debug("Rotation gestoppt durch Benutzer");
+        showStatus("Aufnahme pausiert. Drücken Sie 'Start', um die Aufnahme fortzusetzen.", 'warning');
+    } else {
+        debug("Rotation gestoppt wegen eines Fehlers");
+    }
 }
 
 function takePhotoForSequence() {
@@ -644,23 +677,24 @@ function takePhotoForSequence() {
     // Der gewünschte Drehwinkel pro Schritt
     const angle = parseInt(angleInput.value) || 15;
 
-    // Aktuelle Winkelposition berechnen basierend auf der aktuellen Tellerposition, nicht auf dem Schritt
-    // Wichtig: Wir verwenden die aktuelle tatsächliche Tellerposition statt einer theoretischen Position
+    // Aktuelle Winkelposition berechnen basierend auf der aktuellen Tellerposition
     const currentAngle = tellerPosition;
     
     // Statusmeldung aktualisieren
     showStatus(`Nehme Foto ${currentStep+1}/${totalSteps} bei ${currentAngle}° auf`, 'info');
 
     // Nur Foto aufnehmen - an der aktuellen Position
-    debug(`Nehme Foto bei Position ${currentAngle}° auf`);
+    debug(`Nehme Foto bei Position ${currentAngle}° auf (Schritt ${currentStep+1}/${totalSteps})`);
     const formData = new FormData();
     formData.append('project_id', currentProjectId);
     formData.append('mode', 'photo_only');
     formData.append('degrees', currentAngle); // WICHTIG: Backend erwartet 'degrees', nicht 'angle'
+    formData.append('step', currentStep+1);  // Schrittnummer mitgeben
+    formData.append('total_steps', totalSteps); // Gesamtschrittzahl mitgeben
 
     // URL direkt definieren, um sicherzustellen, dass wir den richtigen Endpunkt ansprechen
     const url = window.location.protocol + '//' + window.location.host + '/rotate';
-    debug(`Sende Foto-Anfrage an: ${url} mit Projektion: ${currentProjectId}, Winkel: ${currentAngle}°`);
+    debug(`Sende Foto-Anfrage an: ${url} mit Projektion: ${currentProjectId}, Winkel: ${currentAngle}°, Schritt: ${currentStep+1}`);
 
     // Foto aufnehmen und dann rotieren
     fetch(url, {
@@ -669,44 +703,50 @@ function takePhotoForSequence() {
     })
     .then(response => {
         debug(`Server-Antwort Status: ${response.status}`);
-        if (!response.ok) {
-            throw new Error(`Server-Fehler: ${response.status}`);
-        }
         return response.json();
     })
     .then(data => {
         if (data.status === 'success') {
-            // Foto zur Liste hinzufügen und das korrekte Pfad-Format sicherstellen
-            const photoPath = data.photo;
-            debug(`Foto erfolgreich aufgenommen: ${photoPath}`);
-            
+            // Foto zur Liste hinzufügen
             capturedPhotos.push({
-                path: photoPath,
-                angle: data.angle || currentAngle // Fallback auf currentAngle, wenn kein angle vom Server kommt
+                path: data.photo,
+                angle: data.angle || currentAngle, // Fallback auf currentAngle, wenn kein angle vom Server kommt
+                step: currentStep+1
             });
 
-            // Bild anzeigen mit dem korrekten Pfad
-            try {
-                displayImage(photoPath, currentAngle);
-                debug("Bild erfolgreich angezeigt");
-            } catch (err) {
-                debug(`Fehler beim Anzeigen des Bildes: ${err}`);
-            }
+            // Bild anzeigen
+            displayImage(data.photo, currentAngle);
 
-            // Nächstes Foto aufnehmen
+            debug(`Erfolgreich Foto aufgenommen: ${data.photo} (Schritt ${currentStep+1}/${totalSteps})`);
+
+            // Nächsten Schritt vorbereiten
             currentStep++;
             
+            // Sofort den Fortschritt speichern
+            localStorage.setItem('lastSequenceStep', currentStep.toString());
+            
+            // Prüfen, ob wir alle Fotos aufgenommen haben
             if (currentStep < totalSteps) {
-                // Als nächstes drehen
-                setTimeout(rotateForSequence, 500);
+                // Weiter zum nächsten Schritt - zuerst drehen
+                debug(`Schritt ${currentStep+1}/${totalSteps} - Drehe zur nächsten Position`);
+                setTimeout(rotateForSequence, 1000);
             } else {
-                // Sequenz abschließen
+                // Sequenz abschließen, wenn wir alle Fotos haben
+                debug(`Alle ${totalSteps} Fotos aufgenommen, schließe Sequenz ab`);
+                // Fortschritt zurücksetzen
+                localStorage.removeItem('lastSequenceStep');
+                localStorage.removeItem('lastSequenceTotalSteps');
                 completedSequence();
             }
         } else {
-            // Bei Fehler Position als unsicher markieren
+            console.error('Fehler:', data.error);
+            alert(`Fehler bei der Fotoaufnahme: ${data.error}`);
+
+            // Position als unsicher markieren
             updatePositionDisplay(tellerPosition, true);
-            showStatus(`Fehler beim Aufnehmen des Fotos: ${data.error || 'Unbekannter Fehler'}`, 'error');
+
+            // Statusmeldung aktualisieren
+            showStatus(`Fehler: ${data.error}`, 'error');
             debug(`Fehler vom Server bei Fotoaufnahme: ${JSON.stringify(data)}`);
             stopRotation(true);
         }
@@ -737,7 +777,7 @@ function rotateForSequence() {
 
     // Formular-Daten vorbereiten
     const formData = new FormData();
-    formData.append('degrees', angle);          // Drehwinkel
+    formData.append('degrees', angle);          // Drehwinkel (wichtig: hier den korrekten Winkelwert übergeben)
     formData.append('project_id', currentProjectId);
     formData.append('mode', 'rotate_only');    // Nur drehen ohne Foto
 
@@ -760,10 +800,11 @@ function rotateForSequence() {
         if (data.status === 'success') {
             // Position aktualisieren
             const newPosition = (tellerPosition + angle) % 360;
+            tellerPosition = newPosition; // Aktualisiere die globale Variable
             updatePositionDisplay(newPosition, false);
             
             // Nach kurzer Pause das nächste Foto aufnehmen
-            setTimeout(takePhotoForSequence, 500);
+            setTimeout(takePhotoForSequence, 1000);
         } else {
             debug(`Fehler bei der Rotation: ${data.error}`);
             // Bei Fehler Position als unsicher markieren
@@ -819,7 +860,7 @@ function offerViewerCreation() {
         if (typeof generateViewer === 'function') {
             generateViewer();
         } else {
-            // Fallback, falls die Funktion nicht gefunden wird
+            // Fallback-Funktion zum Erstellen des 360°-Viewers (falls die Hauptfunktion nicht verfügbar ist)
             generateViewerFallback();
         }
     }
@@ -920,6 +961,10 @@ function moveToHomePosition() {
         return;
     }
     
+    // Setze die Startzeit und starte den Timer
+    homePositionStartTime = new Date();
+    startHomePositionTimer();
+    
     debug(`Fahre zur Heimposition: ${degreesToMove}° in Richtung vorwärts`);
     showStatus(`Fahre zur Heimposition (0°)...`, 'info');
     
@@ -932,6 +977,7 @@ function moveToHomePosition() {
     if (!currentProjectId) {
         debug("Keine Projekt-ID vorhanden, kann nicht zur Heimposition fahren");
         showStatus('Bitte wählen Sie zuerst ein Projekt aus.', 'warning');
+        stopHomePositionTimer(); // Timer stoppen, falls ein Fehler auftritt
         return;
     }
     
@@ -941,7 +987,7 @@ function moveToHomePosition() {
     
     // URL direkt definieren, um sicherzustellen, dass wir den richtigen Endpunkt ansprechen
     const url = window.location.protocol + '//' + window.location.host + '/rotate';
-    debug(`Sende Home-Position Anfrage an: ${url}`);
+    debug(`Sende Home-Position Anfrage an: ${url} mit ${degreesToMove}° Drehung`);
     
     fetch(url, {
         method: 'POST',
@@ -958,6 +1004,7 @@ function moveToHomePosition() {
         return response.json();
     })
     .then(data => {
+        stopHomePositionTimer(); // Timer stoppen
         debug("Heimpositionierung erfolgreich");
         showStatus('Teller erfolgreich auf Heimposition (0°) gesetzt.', 'success');
         tellerPosition = 0; // Setze lokale Position auf 0
@@ -965,9 +1012,58 @@ function moveToHomePosition() {
         updatePositionDisplay(0, false); // false, da wir hier nicht mit dem Projekt synchronisieren wollen
     })
     .catch(error => {
+        stopHomePositionTimer(); // Timer stoppen bei Fehler
         debug(`Fehler bei Heimpositionierung: ${error}`);
         showStatus(`Fehler beim Zurückfahren zur Heimposition: ${error.message}`, 'error');
     });
+}
+
+/**
+ * Startet einen Timer, der jede Sekunde die Zeit seit Beginn der Heimpositionierung anzeigt
+ */
+function startHomePositionTimer() {
+    // Alte Timer löschen, falls vorhanden
+    stopHomePositionTimer();
+    
+    // Speichere die Ausgangsposition für die Berechnung
+    const startPosition = tellerPosition;
+    const degreesToMove = (startPosition > 0) ? 360 - startPosition : 0;
+    
+    // Timer starten, der jede Sekunde aktualisiert wird
+    homePositionTimer = setInterval(() => {
+        if (homePositionStartTime) {
+            const currentTime = new Date();
+            const elapsedSeconds = Math.floor((currentTime - homePositionStartTime) / 1000);
+            
+            // Schätze die aktuelle Position basierend auf der verstrichenen Zeit
+            // Annahme: gleichmäßige Drehung über die Zeit (kann in der Realität abweichen)
+            // Berechne Rotationsgeschwindigkeit (Grad pro Sekunde)
+            const totalRotationTimeEstimate = 15; // Geschätzte Zeit für eine vollständige Umdrehung in Sekunden
+            const degreesPerSecond = 360 / totalRotationTimeEstimate;
+            
+            // Schätze die aktuelle Position
+            const movedDegrees = Math.min(elapsedSeconds * degreesPerSecond, degreesToMove);
+            const estimatedCurrentPosition = (startPosition + movedDegrees) % 360;
+            
+            // Berechne die verbleibenden Grad bis zur Heimposition
+            const remainingDegrees = degreesToMove - movedDegrees;
+            
+            debug(`Zeit seit Start der Heimpositionierung: ${elapsedSeconds} Sekunden, `
+                + `Geschätzte Position: ${Math.round(estimatedCurrentPosition)}°, `
+                + `Verbleibend bis Heimposition: ~${Math.max(0, Math.round(remainingDegrees))}°`);
+        }
+    }, 1000);
+}
+
+/**
+ * Stoppt den Timer für die Heimpositionierung
+ */
+function stopHomePositionTimer() {
+    if (homePositionTimer) {
+        clearInterval(homePositionTimer);
+        homePositionTimer = null;
+    }
+    homePositionStartTime = null;
 }
 
 /**
@@ -1193,7 +1289,7 @@ function updatePositionDisplay(position, syncWithProject = true, uncertain = fal
         if (uncertain) {
             currentPositionDisplay.classList.add('uncertain');
             if (!positionLost) {
-                showStatus('Die genaue Tellerposition ist möglicherweise nicht korrekt. Empfehlung: Zur Heimposition zurückfahren.', 'warning');
+                showStatus('Die genaue Tellerposition ist möglicherweise nicht korrekt. Empfehlung: Zur Heimpositions-Bewegung zurückfahren.', 'warning');
                 positionLost = true;
             }
         } else {
@@ -1214,18 +1310,20 @@ function updatePositionDisplay(position, syncWithProject = true, uncertain = fal
  * @param {string} type - Der Typ der Nachricht (success, error, warning, info)
  */
 function showStatus(message, type = 'info') {
+    debug(`Status-Update: ${message} (Typ: ${type})`);
+    
     if (rotationStatus) {
-        // Klassen entfernen
-        rotationStatus.classList.remove('success', 'error', 'warning', 'info');
-        
-        // Klasse für den Typ hinzufügen
-        rotationStatus.classList.add(type);
-        
-        // Inhalt setzen
-        rotationStatus.textContent = message;
-        
-        // Sichtbar machen
+        // Klasse hinzufügen, um sicherzustellen, dass die Nachricht sichtbar ist
         rotationStatus.classList.add('visible');
+        
+        // Status-Klasse basierend auf Typ setzen
+        rotationStatus.className = rotationStatus.className.replace(/status-\w+/g, '');
+        rotationStatus.classList.add(`status-${type}`);
+        
+        // Nachricht anzeigen
+        const statusMessage = document.createElement('div');
+        statusMessage.textContent = message;
+        rotationStatus.appendChild(statusMessage);
     }
 }
 
@@ -1278,7 +1376,7 @@ function deleteProject(projectId) {
         debug(`Fehler beim Löschen des Projekts: ${error}`);
         showStatus(`Fehler: ${error.message}`, 'error');
         
-        // Wenn das Projekt nicht gefunden wurde, entferne es aus dem localStorage
+        // Wenn das Projekt nicht gefunden wurde, entferne es aus dem Speicher
         if (error.message.includes('nicht gefunden') && currentProjectId === projectId) {
             saveCurrentProject(null);
             currentProjectId = null;
@@ -1287,4 +1385,55 @@ function deleteProject(projectId) {
             resetProjectUI();
         }
     });
+}
+
+/**
+ * Zeigt ein Bild in der Vorschau an
+ * @param {string} imagePath - Der Pfad zum Bild
+ * @param {number} angle - Der Winkel, bei dem das Bild aufgenommen wurde
+ */
+function displayImage(imagePath, angle) {
+    if (!imagePreview) {
+        debug("WARNUNG: Image-Preview-Element nicht gefunden!");
+        return;
+    }
+
+    debug(`Zeige Bild an: ${imagePath}`);
+
+    // Bisherige Vorschau löschen
+    imagePreview.innerHTML = '';
+
+    // Bild-Element erstellen
+    const img = document.createElement('img');
+    
+    // Stellen sicher, dass der Pfad korrekt ist
+    if (!imagePath.startsWith('/')) {
+        imagePath = '/' + imagePath;
+    }
+    
+    img.src = imagePath;
+    img.alt = `Foto bei ${angle}°`;
+    img.className = 'captured-image';
+    
+    // Fehlerbehandlung für Bilder
+    img.onerror = function() {
+        console.error(`Fehler beim Laden des Bildes: ${imagePath}`);
+        this.src = '/static/img/error.svg'; // Fallback-Bild (SVG für bessere Skalierbarkeit)
+        this.alt = 'Fehler beim Laden des Bildes';
+    };
+
+    // Winkel-Anzeige erstellen
+    const angleLabel = document.createElement('div');
+    angleLabel.className = 'angle-label';
+    angleLabel.textContent = `${angle}°`;
+
+    // Container erstellen und Elemente hinzufügen
+    const container = document.createElement('div');
+    container.className = 'image-container';
+    container.appendChild(img);
+    container.appendChild(angleLabel);
+
+    // Container zur Vorschau hinzufügen
+    imagePreview.appendChild(container);
+    debug("Bild erfolgreich angezeigt");
 }

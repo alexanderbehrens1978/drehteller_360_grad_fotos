@@ -26,16 +26,14 @@
 }
 
 .status-message {
-    padding: 1rem;
-    background-color: #f8f9fa;
-    border-left: 4px solid #6c757d;
+    display: block; /* Immer sichtbar statt none */
+    max-height: 250px;
+    overflow-y: auto;
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
     border-radius: 4px;
-    margin-top: 1rem;
-    display: none; /* Standardmäßig ausgeblendet */
-}
-
-.status-message.visible {
-    display: block;
+    padding: 5px;
+    margin-top: 10px;
 }
 
 .status-message.success {
@@ -106,6 +104,21 @@
     padding: 0.3rem 0.6rem;
     border-radius: 4px;
     font-size: 0.9rem;
+}
+
+/* Stile für Debug-Nachrichten */
+.debug-message {
+    font-family: monospace;
+    font-size: 0.85em;
+    padding: 2px 5px;
+    margin: 1px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.debug-time {
+    color: #666;
+    margin-right: 5px;
+    font-weight: bold;
 }
 
 /* Styling für die gespeicherte Projektposition */
