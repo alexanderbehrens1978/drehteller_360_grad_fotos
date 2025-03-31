@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Installation und Einrichtung - 360° Drehteller Steuerung</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            margin: 0;
+        }
+        
+        nav {
+            margin-top: 1rem;
+        }
+        
+        nav a {
+            color: white;
+            margin-right: 1rem;
+            text-decoration: none;
+        }
+        
+        nav a:hover {
+            text-decoration: underline;
+        }
+        
+        main {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        
+        .module-info {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+        
+        .installation-step {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .installation-step h3 {
+            margin-top: 0;
+        }
+        
+        .command-block {
+            background: #2c3e50;
+            color: white;
+            padding: 1rem;
+            border-radius: 4px;
+            font-family: monospace;
+            overflow-x: auto;
+        }
+        
+        .note {
+            background: #fef9e7;
+            border-left: 4px solid #f39c12;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 4px;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+        
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        
+        th {
+            background-color: #f5f5f5;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 1rem;
+            background-color: #2c3e50;
+            color: white;
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Installation und Einrichtung</h1>
+        <nav>
+            <a href="index.html">Zurück zur Übersicht</a>
+        </nav>
+    </header>
+    
+    <main>
+        <div class="module-info">
+            <h2>Installation der 360° Drehteller Steuerung</h2>
+            <p>Diese Anleitung führt Sie durch den Prozess der Installation und Ersteinrichtung der 360° Drehteller Steuerungsanwendung. Folgen Sie den Schritten in der angegebenen Reihenfolge, um eine vollständige und korrekte Installation sicherzustellen.</p>
+        </div>
+        
+        <div class="installation-step">
+            <h3>1. Systemvoraussetzungen</h3>
+            <p>Stellen Sie sicher, dass Ihr System die folgenden Mindestanforderungen erfüllt:</p>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Komponente</th>
+                            <th>Anforderung</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Betriebssystem</td>
+                            <td>Linux (empfohlen: Raspberry Pi OS, Ubuntu) oder Windows</td>
+                        </tr>
+                        <tr>
+                            <td>Python</td>
+                            <td>Version 3.7 oder höher</td>
+                        </tr>
+                        <tr>
+                            <td>Arduino</td>
+                            <td>Arduino Nano, Uno oder kompatibel</td>
+                        </tr>
+                        <tr>
+                            <td>Kamera</td>
+                            <td>USB-Webcam oder gphoto2-kompatible DSLR</td>
+                        </tr>
+                        <tr>
+                            <td>Drehteller-Hardware</td>
+                            <td>Schrittmotor oder DC-Motor mit Zahnradgetriebe</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="installation-step">
+            <h3>2. Python-Abhängigkeiten installieren</h3>
+            <p>Die Anwendung benötigt verschiedene Python-Pakete. Diese können mit pip installiert werden:</p>
+            <div class="command-block">
+                # Virtuelle Umgebung erstellen (optional, aber empfohlen)
+                python -m venv myenv
+                
+                # Virtuelle Umgebung aktivieren
+                # Unter Linux/macOS:
+                source myenv/bin/activate
+                # Unter Windows:
+                myenv\Scripts\activate
+                
+                # Abhängigkeiten installieren
+                pip install flask gphoto2 pyserial pillow numpy opencv-python
+            </div>
+            <p>Alternativ können Sie das Setup-Skript verwenden, das alle Abhängigkeiten automatisch installiert:</p>
+            <div class="command-block">
+                # Skript ausführbar machen
+                chmod +x setup_and_autostart.sh
+                
+                # Skript ausführen
+                sudo ./setup_and_autostart.sh
+            </div>
+            <div class="note">
+                <strong>Hinweis:</strong> Das Setup-Skript benötigt Administratorrechte, um alle erforderlichen Komponenten zu installieren.
+            </div>
+        </div>
+        
+        <div class="installation-step">
+            <h3>3. Arduino-Sketch hochladen</h3>
+            <p>Der Arduino muss mit dem entsprechenden Sketch programmiert werden, um mit der Anwendung kommunizieren zu können:</p>
+            <ol>
+                <li>Stellen Sie sicher, dass die Arduino IDE installiert ist</li>
+                <li>Öffnen Sie den Sketch aus dem Verzeichnis <code>arduino_drehteller_steuerung</code></li>
+                <li>Verbinden Sie den Arduino über USB</li>
+                <li>Wählen Sie das richtige Board und den seriellen Port in der Arduino IDE</li>
+                <li>Klicken Sie auf "Hochladen", um den Sketch auf den Arduino zu übertragen</li>
+            </ol>
+            <p>Alternativ können Sie das Upload-Skript verwenden:</p>
+            <div class="command-block">
+                # Skript ausführbar machen
+                chmod +x upload_arduino_sketch.sh
+                
+                # Skript mit dem Arduino-Port ausführen
+                ./upload_arduino_sketch.sh /dev/ttyUSB0
+            </div>
+            <div class="note">
+                <strong>Hinweis:</strong> Der serielle Port kann je nach System variieren. Häufige Werte sind:
+                <ul>
+                    <li>Linux: <code>/dev/ttyUSB0</code> oder <code>/dev/ttyACM0</code></li>
+                    <li>Windows: <code>COM3</code>, <code>COM4</code>, etc.</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="installation-step">
+            <h3>4. Konfiguration anpassen</h3>
+            <p>Erstellen Sie eine Konfigurationsdatei <code>config.json</code> im Hauptverzeichnis oder passen Sie die vorhandene an:</p>
+            <div class="command-block">
+                {
+                    "arduino": {
+                        "port": "/dev/ttyUSB0",
+                        "baudrate": 9600
+                    },
+                    "camera": {
+                        "type": "webcam",
+                        "device_path": "/dev/video0",
+                        "resolution": [1920, 1080]
+                    },
+                    "rotation": {
+                        "default_degrees": 15
+                    },
+                    "paths": {
+                        "projects": "projects",
+                        "photos": "photos"
+                    }
+                }
+            </div>
+            <p>Passen Sie die Pfade und Einstellungen entsprechend Ihrem System an.</p>
+        </div>
+        
+        <div class="installation-step">
+            <h3>5. Anwendung starten</h3>
+            <p>Starten Sie die Anwendung mit dem folgenden Befehl:</p>
+            <div class="command-block">
+                # Normale Ausführung
+                python run.py
+                
+                # Mit bestimmter Host-Adresse und Port
+                python run.py --host 0.0.0.0 --port 5000
+                
+                # Im Produktionsmodus
+                python run.py --env production
+            </div>
+            <p>Alternativ können Sie das Start-Skript verwenden:</p>
+            <div class="command-block">
+                # Skript ausführbar machen
+                chmod +x drehteller.sh
+                
+                # Skript starten
+                ./drehteller.sh
+            </div>
+        </div>
+        
+        <div class="installation-step">
+            <h3>6. Autostart einrichten (optional)</h3>
+            <p>Wenn die Anwendung automatisch beim Systemstart gestartet werden soll, können Sie dies mit dem Setup-Script konfigurieren:</p>
+            <div class="command-block">
+                # Autostart-Option aktivieren
+                sudo ./setup_and_autostart.sh --autostart
+            </div>
+            <p>Dies erstellt einen Systemd-Service unter Linux, der die Anwendung automatisch startet.</p>
+        </div>
+        
+        <div class="installation-step">
+            <h3>7. Hardware anschließen</h3>
+            <p>Verbinden Sie die Hardware mit dem System:</p>
+            <ol>
+                <li>Arduino über USB anschließen</li>
+                <li>Kamera (Webcam oder DSLR) über USB anschließen</li>
+                <li>Überprüfen Sie die Verbindungen zum Drehteller und den Motoranschluss</li>
+            </ol>
+            <div class="note">
+                <strong>Wichtig:</strong> Stellen Sie sicher, dass die Stromversorgung des Motors ausreichend ist. Bei Verwendung eines externen Netzteils für den Motor ist eine gemeinsame Masse mit dem Arduino erforderlich.
+            </div>
+        </div>
+        
+        <div class="installation-step">
+            <h3>8. Zugriff auf die Weboberfläche</h3>
+            <p>Öffnen Sie einen Webbrowser und navigieren Sie zur Anwendung:</p>
+            <ul>
+                <li>Lokal: <code>http://localhost:5000</code></li>
+                <li>Von einem anderen Gerät im Netzwerk: <code>http://[IP-ADRESSE]:5000</code></li>
+            </ul>
+            <p>Sie sollten nun die Startseite der 360° Drehteller Steuerung sehen.</p>
+        </div>
+        
+        <div class="installation-step">
+            <h3>9. Fehlersuche bei Installationsproblemen</h3>
+            <p>Wenn bei der Installation Probleme auftreten, können folgende Schritte helfen:</p>
+            <ul>
+                <li>Überprüfen Sie die Logdateien im Verzeichnis <code>logs</code></li>
+                <li>Führen Sie den Diagnose-Modus aus: <code>python diagnose_modules.py</code></li>
+                <li>Stellen Sie sicher, dass alle erforderlichen Berechtigungen vorhanden sind (besonders für USB-Geräte)</li>
+                <li>Unter Linux kann es erforderlich sein, den Benutzer zu den Gruppen <code>dialout</code> und <code>video</code> hinzuzufügen:
+                    <div class="command-block">sudo usermod -a -G dialout,video $USER</div>
+                </li>
+            </ul>
+        </div>
+    </main>
+    
+    <footer>
+        <p>&copy; 2025 360° Drehteller Steuerung</p>
+    </footer>
+</body>
+</html>

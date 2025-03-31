@@ -26,10 +26,12 @@
                 <p><strong>Beschreibung:</strong> {{ project.description or "Keine Beschreibung" }}</p>
                 <p><strong>Erstellt am:</strong> {{ project.created_at|datetime }}</p>
                 <p><strong>Winkelschritt:</strong> {{ project.angle_step }}°</p>
+                <p><strong>Gespeicherte Tellerposition:</strong> <span id="savedPosition">{{ project.current_position }}°</span></p>
             </div>
             
             <div class="project-actions">
                 <a href="/?project_id={{ project.id }}" class="btn btn-primary">Bilder aufnehmen</a>
+                <button id="moveToSavedPosition" class="btn btn-primary">Gespeicherte Position anfahren</button>
                 <a href="/projects" class="btn btn-secondary">Zurück zur Projektliste</a>
             </div>
             
@@ -76,5 +78,99 @@
     </footer>
     
     <script src="/static/js/project_view.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Button zum Anfahren der gespeicherten Position
+            const moveToSavedPositionBtn = document.getElementById('moveToSavedPosition');
+            if (moveToSavedPositionBtn) {
+                moveToSavedPositionBtn.addEventListener('click', function() {
+                    const projectId = "{{ project.id }}";
+                    const savedPosition = parseInt("{{ project.current_position }}");
+                    
+                    moveToSavedPosition(projectId, savedPosition);
+                });
+            }
+            
+            // Automatisch zur gespeicherten Position fahren, wenn ein Projekt geöffnet wird
+            const projectId = "{{ project.id }}";
+            const savedPosition = parseInt("{{ project.current_position }}");
+            // Nur anfahren, wenn eine Position gespeichert wurde und diese nicht 0 ist
+            if (savedPosition && savedPosition !== 0) {
+                // Kurze Verzögerung, um sicherzustellen, dass die Seite vollständig geladen ist
+                setTimeout(() => {
+                    moveToSavedPosition(projectId, savedPosition);
+                }, 1000);
+            }
+        });
+        
+        // Funktion zum Anfahren der gespeicherten Position
+        function moveToSavedPosition(projectId, position) {
+            // Statusmeldung
+            const statusDiv = document.createElement('div');
+            statusDiv.id = 'statusMessage';
+            statusDiv.className = 'status-message info';
+            statusDiv.textContent = `Fahre zur gespeicherten Position (${position}°)...`;
+            document.querySelector('main').prepend(statusDiv);
+            
+            // Berechne den Winkel, um den gedreht werden muss
+            // Dazu müssen wir die aktuelle Position aus dem localStorage holen
+            let currentPosition = 0;
+            if (localStorage.getItem('turntablePosition')) {
+                currentPosition = parseInt(localStorage.getItem('turntablePosition'));
+            }
+            
+            let degreesToMove = Math.abs(position - currentPosition);
+            if (degreesToMove > 180) {
+                degreesToMove = 360 - degreesToMove;
+            }
+            
+            // Richtung bestimmen (kürzester Weg)
+            let direction = 1; // vorwärts
+            if ((position > currentPosition && (position - currentPosition) > 180) || 
+                (position < currentPosition && (currentPosition - position) < 180)) {
+                direction = -1; // rückwärts
+            }
+            
+            // API-Anfrage zum Drehen des Tellers
+            const formData = new FormData();
+            formData.append('degrees', degreesToMove);
+            formData.append('project_id', projectId);
+            formData.append('mode', 'rotate_only');
+            
+            // URL definieren
+            const url = window.location.protocol + '//' + window.location.host + '/rotate';
+            
+            fetch(url, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Status aktualisieren
+                statusDiv.className = 'status-message success';
+                statusDiv.textContent = `Erfolgreich zur Position ${position}° gefahren.`;
+                
+                // Position im localStorage aktualisieren
+                localStorage.setItem('turntablePosition', position);
+                
+                // Nach 3 Sekunden Status-Meldung ausblenden
+                setTimeout(() => {
+                    statusDiv.style.opacity = '0';
+                    setTimeout(() => {
+                        statusDiv.remove();
+                    }, 500);
+                }, 3000);
+            })
+            .catch(error => {
+                statusDiv.className = 'status-message error';
+                statusDiv.textContent = `Fehler beim Anfahren der Position: ${error.message}`;
+            });
+        }
+    </script>
 </body>
 </html>

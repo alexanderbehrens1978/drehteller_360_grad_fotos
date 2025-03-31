@@ -60,6 +60,9 @@ class Project:
         self.sessions = []
         self.path = path or ""
         self.images = []
+        self.current_position = 0  # Aktuelle Position des Drehtellers für dieses Projekt
+        self.active_session = None  # ID der aktiven Session
+        self.last_captured_angle = None  # Zuletzt erfasster Winkel
         
         logger.debug(f"Projekt erstellt: {self.name} (ID: {self.id})")
 
@@ -107,52 +110,44 @@ class Project:
                 return True
         return False
     
-    def add_image(self, image_path, angle=None, timestamp=None):
+    def add_image(self, path, angle=None, timestamp=None):
         """
         Fügt ein Bild zum Projekt hinzu
         
         Args:
-            image_path: Pfad zum Bild
-            angle: Optional, Winkel bei dem das Bild aufgenommen wurde
-            timestamp: Optional, Zeitstempel wann das Bild aufgenommen wurde
-        
-        Returns:
-            True bei Erfolg, False bei Fehler
+            path: Pfad zum Bild
+            angle: Winkel des Bildes (optional)
+            timestamp: Zeitstempel (optional)
         """
-        try:
-            # Sicherstellen, dass das Bild existiert
-            if not os.path.exists(image_path):
-                logger.error(f"Bild existiert nicht: {image_path}")
-                return False
-                
-            # Sicherstellen, dass das Bild-Verzeichnis existiert
-            images_dir = os.path.join(self.path, 'images')
-            os.makedirs(images_dir, exist_ok=True)
-            
-            # Bildmetadaten speichern
-            image_info = {
-                'path': os.path.relpath(image_path, self.path),
-                'timestamp': timestamp or time.time(),
-                'angle': angle
-            }
-            
-            self.images.append(image_info)
-            self.updated_at = time.time()
-            
-            # Projekt speichern
-            self.save()
-            
-            return True
-        except Exception as e:
-            logger.error(f"Fehler beim Hinzufügen des Bildes: {str(e)}")
-            return False
-
+        # Relativen Pfad erstellen
+        rel_path = os.path.relpath(path, self.path) if self.path else path
+        
+        # Metadaten zum Bild erstellen
+        image = {
+            'path': rel_path,
+            'angle': angle,
+            'timestamp': timestamp or time.time()
+        }
+        
+        # Bild zur Liste hinzufügen
+        self.images.append(image)
+        
+        # Aktualisiere letzte Position und Winkel
+        if angle is not None:
+            self.last_captured_angle = angle
+            self.current_position = angle
+        
+        # Projekt-Metadaten aktualisieren
+        self.save_metadata()
+        
+        logger.debug(f"Bild zum Projekt {self.id} hinzugefügt: {rel_path} (Winkel: {angle}°)")
+    
     def to_dict(self):
         """
         Konvertiert das Projekt in ein Dictionary
         
         Returns:
-            Dictionary-Repräsentation des Projekts
+            Dictionary mit den Projekteigenschaften
         """
         return {
             'id': self.id,
@@ -161,9 +156,11 @@ class Project:
             'angle_step': self.angle_step,
             'created_at': self.created_at,
             'updated_at': self.updated_at,
-            'sessions': [session.to_dict() for session in self.sessions],
             'path': self.path,
-            'images': self.images
+            'images': [{'path': img['path'], 'angle': img['angle']} for img in self.images],
+            'current_position': self.current_position,
+            'active_session': self.active_session,
+            'last_captured_angle': self.last_captured_angle
         }
 
     @classmethod
@@ -192,6 +189,10 @@ class Project:
         # Sessions laden
         for session_data in data.get('sessions', []):
             project.sessions.append(PhotoSession.from_dict(session_data))
+
+        project.current_position = data.get('current_position', 0)
+        project.active_session = data.get('active_session', None)
+        project.last_captured_angle = data.get('last_captured_angle', None)
 
         return project
 
@@ -223,6 +224,71 @@ class Project:
             return True
         except Exception as e:
             logger.error(f"Fehler beim Speichern des Projekts {self.id}: {str(e)}")
+            return False
+
+    def start_session(self, session_id=None):
+        """
+        Startet eine neue Fotosession
+        
+        Args:
+            session_id: Session-ID (optional)
+            
+        Returns:
+            ID der Session
+        """
+        session_id = session_id or str(uuid.uuid4())
+        self.active_session = session_id
+        self.save_metadata()
+        logger.debug(f"Session {session_id} für Projekt {self.id} gestartet")
+        return session_id
+    
+    def end_session(self):
+        """
+        Beendet die aktive Fotosession
+        """
+        self.active_session = None
+        self.save_metadata()
+        logger.debug(f"Session für Projekt {self.id} beendet")
+    
+    def update_position(self, position):
+        """
+        Aktualisiert die aktuelle Position des Drehtellers für dieses Projekt
+        
+        Args:
+            position: Position in Grad (0-360)
+        """
+        self.current_position = position
+        self.save_metadata()
+        logger.debug(f"Position für Projekt {self.id} aktualisiert: {position}°")
+    
+    def save_metadata(self):
+        """
+        Speichert die Projekt-Metadaten in eine JSON-Datei
+        """
+        if not self.path:
+            logger.warning(f"Kann Metadaten nicht speichern: Kein Pfad für Projekt {self.id} definiert")
+            return False
+            
+        metadata_path = os.path.join(self.path, 'metadata.json')
+        project_path = os.path.join(self.path, 'project.json')
+        
+        try:
+            # Projekt-Dictionary erstellen
+            project_data = self.to_dict()
+            
+            # Metadaten-Datei speichern
+            with open(metadata_path, 'w') as f:
+                json.dump(project_data, f, indent=4)
+            
+            # Projekt-Datei speichern (damit die Bilder auch in der Projektübersicht angezeigt werden)
+            with open(project_path, 'w') as f:
+                json.dump(project_data, f, indent=4)
+            
+            self.updated_at = time.time()
+            logger.debug(f"Metadaten für Projekt {self.id} gespeichert: {metadata_path}")
+            return True
+        except Exception as e:
+            logger.error(f"Fehler beim Speichern der Metadaten für Projekt {self.id}: {e}")
             return False
 
 

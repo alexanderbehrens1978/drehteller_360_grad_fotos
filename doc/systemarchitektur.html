@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Systemarchitektur - 360° Drehteller Steuerung</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            margin: 0;
+        }
+        
+        nav {
+            margin-top: 1rem;
+        }
+        
+        nav a {
+            color: white;
+            margin-right: 1rem;
+            text-decoration: none;
+        }
+        
+        nav a:hover {
+            text-decoration: underline;
+        }
+        
+        main {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        
+        .module-info {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+        
+        .architecture-diagram {
+            display: block;
+            margin: 2rem auto;
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 1rem;
+            background: #f9f9f9;
+        }
+        
+        .component {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .data-flow {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #27ae60;
+        }
+        
+        pre {
+            background: #f5f5f5;
+            padding: 1rem;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 1rem;
+            background-color: #2c3e50;
+            color: white;
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Systemarchitektur - 360° Drehteller Steuerung</h1>
+        <nav>
+            <a href="index.html">Zurück zur Übersicht</a>
+        </nav>
+    </header>
+    
+    <main>
+        <div class="module-info">
+            <h2>Architekturübersicht</h2>
+            <p>Diese Dokumentation beschreibt die Systemarchitektur der 360° Drehteller Steuerungsanwendung. Sie umfasst die Hauptkomponenten, deren Zusammenspiel und den Datenfluss innerhalb des Systems.</p>
+        </div>
+        
+        <div class="architecture-diagram">
+            <pre>
++---------------------+    +------------------------+    +----------------------+
+|                     |    |                        |    |                      |
+|  Webanwendung       |    |  Anwendungslogik       |    |  Hardware-Steuerung  |
+|  (Flask Blueprints) |<-->|  (Controller & Utils)  |<-->|  (Arduino & Kamera)  |
+|                     |    |                        |    |                      |
++---------------------+    +------------------------+    +----------------------+
+            ^                           ^
+            |                           |
+            v                           v
++---------------------+    +------------------------+
+|                     |    |                        |
+|  Dateisystem        |    |  Konfiguration         |
+|  (Projekte & Fotos) |    |  (config.json)         |
+|                     |    |                        |
++---------------------+    +------------------------+
+            </pre>
+        </div>
+        
+        <h2>Hauptkomponenten</h2>
+        
+        <div class="component">
+            <h3>1. Webanwendung (Flask)</h3>
+            <p>Die Benutzeroberfläche der Anwendung ist als Flask-Webanwendung implementiert und in verschiedene Blueprints aufgeteilt:</p>
+            <ul>
+                <li><strong>main_bp</strong>: Hauptseiten und grundlegende Funktionalität</li>
+                <li><strong>api_bp</strong>: REST-API-Endpunkte</li>
+                <li><strong>settings_bp</strong>: Einstellungsverwaltung</li>
+                <li><strong>projects_bp</strong>: Projektverwaltung</li>
+                <li><strong>viewer_bp</strong>: 360° Viewer</li>
+            </ul>
+            <p>Die Blueprints werden in der <code>register_blueprints()</code> Funktion in app/__init__.py registriert und bilden die Struktur der Webanwendung.</p>
+        </div>
+        
+        <div class="component">
+            <h3>2. Controller</h3>
+            <p>Die Controller sind für die Steuerung der Hardware zuständig und bilden die Brücke zwischen Webanwendung und Hardware:</p>
+            <ul>
+                <li><strong>ArduinoController</strong>: Kommunikation mit dem Arduino über serielle Schnittstelle</li>
+                <li><strong>CameraController</strong>: Steuerung von Webcams und/oder gphoto2-kompatiblen Kameras</li>
+                <li><strong>TurntableController</strong>: Drehteller-Steuerung (nutzt den ArduinoController)</li>
+            </ul>
+            <p>Diese Controller werden in der <code>initialize_controllers()</code> Funktion in app/__init__.py initialisiert und sind als globale Variablen verfügbar.</p>
+        </div>
+        
+        <div class="component">
+            <h3>3. Utilities</h3>
+            <p>Die Utility-Klassen bieten gemeinsam genutzte Funktionalität für das gesamte Projekt:</p>
+            <ul>
+                <li><strong>ConfigManager</strong>: Verwaltung der Konfigurationseinstellungen</li>
+                <li><strong>PathManager</strong>: Verwaltung von Dateisystempfaden</li>
+                <li><strong>DeviceDetector</strong>: Erkennung von angeschlossenen Geräten</li>
+                <li><strong>ViewerGenerator</strong>: Generierung von 360° Viewer-HTML</li>
+            </ul>
+        </div>
+        
+        <div class="component">
+            <h3>4. Models</h3>
+            <p>Die Modelle repräsentieren die Datenstrukturen der Anwendung:</p>
+            <ul>
+                <li><strong>Project</strong>: Repräsentiert ein Fotoprojekt</li>
+                <li><strong>PhotoSession</strong>: Repräsentiert eine Fotosession innerhalb eines Projekts</li>
+            </ul>
+        </div>
+        
+        <h2>Datenfluss</h2>
+        
+        <div class="data-flow">
+            <h3>1. Startsequenz</h3>
+            <ol>
+                <li><code>run.py</code> parst Kommandozeilenargumente und erstellt die App-Instanz</li>
+                <li><code>create_app()</code> initialisiert die Anwendung, erstellt Verzeichnisse und initialisiert Controller</li>
+                <li>Die Blueprints werden registriert und die Anwendung gestartet</li>
+            </ol>
+            <pre>
+run.py ─→ parse_arguments()
+  ↓
+create_app() ─→ create_directories() ─→ initialize_controllers() ─→ configure_logging() ─→ register_blueprints()
+</pre>
+        </div>
+        
+        <div class="data-flow">
+            <h3>2. Projektbasierte Funktionen</h3>
+            <p>Der Workflow für projektbasierte Funktionen:</p>
+            <ol>
+                <li>Benutzer erstellt ein Projekt in der Weboberfläche (Formular auf /projects/new)</li>
+                <li>Der Projektcontroller speichert die Projektdetails</li>
+                <li>Im Hauptbereich kann der Benutzer den Drehteller steuern und Fotos aufnehmen</li>
+                <li>Die Fotos werden im Projektverzeichnis gespeichert</li>
+                <li>Der Benutzer kann eine 360°-Ansicht generieren, die im Viewer angezeigt werden kann</li>
+            </ol>
+            <pre>
+Web UI (Projekt erstellen) ─→ ProjectsController ─→ Dateisystem (Projektverzeichnis)
+               ↓
+Web UI (Drehteller steuern) ─→ TurntableController ─→ ArduinoController ─→ Hardware
+               ↓
+Web UI (Foto aufnehmen) ─→ CameraController ─→ Hardware
+               ↓
+Web UI (360° generieren) ─→ ViewerGenerator ─→ 360° HTML/JS Viewer
+</pre>
+        </div>
+        
+        <div class="data-flow">
+            <h3>3. Konfigurationsmanagement</h3>
+            <p>Der Workflow für die Konfigurationsverwaltung:</p>
+            <ol>
+                <li>Die Konfiguration wird beim Start aus config.json geladen</li>
+                <li>Der Benutzer kann Einstellungen in der Web-UI ändern</li>
+                <li>Die Änderungen werden in config.json gespeichert</li>
+                <li>Die Controller nutzen die Konfigurationswerte für ihre Operationen</li>
+            </ol>
+            <pre>
+config.json ─→ ConfigManager (laden) ─→ Controller nutzen Konfiguration
+   ↑
+Web UI (Einstellungen) ─→ ConfigManager (speichern)
+</pre>
+        </div>
+        
+        <h2>Funktionsfluss bei einer Fotosession</h2>
+        
+        <div class="data-flow">
+            <h3>Beispiel: 360° Fotosession</h3>
+            <p>Eine typische 360° Fotosession läuft wie folgt ab:</p>
+            <ol>
+                <li>Benutzer wählt ein Projekt aus und startet die Fotosession</li>
+                <li>Der Drehteller wird auf Position 0° zurückgesetzt</li>
+                <li>Für jeden Schritt (abhängig vom konfigurierten Winkelschritt):
+                    <ul>
+                        <li>Ein Foto wird mit der Kamera aufgenommen</li>
+                        <li>Das Foto wird im Projekt-Session-Verzeichnis gespeichert</li>
+                        <li>Der Drehteller wird um den konfigurierten Winkelschritt gedreht</li>
+                    </ul>
+                </li>
+                <li>Nach Abschluss kann der Benutzer einen 360° Viewer generieren</li>
+            </ol>
+            <pre>
+Web UI (Session starten) ─→ TurntableController.start_session()
+                                          ↓
+                            TurntableController.reset_position()
+                                          ↓
+                   ┌────────────── Für jeden Schritt ──────────────┐
+                   ↓                       ↓                       ↓
+CameraController.capture_photo() ─→ Foto speichern ─→ TurntableController.move_degrees()
+                                          ↓
+                            ViewerGenerator.generate_viewer()
+</pre>
+        </div>
+        
+        <div class="module-info">
+            <h2>Zusammenfassung</h2>
+            <p>Die 360° Drehteller Steuerung folgt einer klaren Architektur mit einer Trennung von:</p>
+            <ul>
+                <li><strong>Präsentation</strong>: Webanwendung mit Flask-Blueprints</li>
+                <li><strong>Geschäftslogik</strong>: Controller und Utilities</li>
+                <li><strong>Datenhaltung</strong>: Projekte, Fotos und Konfiguration</li>
+                <li><strong>Hardware-Interaktion</strong>: Arduino- und Kamera-Steuerung</li>
+            </ul>
+            <p>Diese Aufteilung ermöglicht eine gute Wartbarkeit und Erweiterbarkeit des Projekts. Fast alle definierten Funktionen werden aktiv genutzt, und die Kommunikation zwischen den Komponenten erfolgt über klar definierte Schnittstellen.</p>
+        </div>
+    </main>
+    
+    <footer>
+        <p>&copy; 2025 360° Drehteller Steuerung</p>
+    </footer>
+</body>
+</html>

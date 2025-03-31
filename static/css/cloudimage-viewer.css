@@ -55,6 +55,10 @@
 .controls {
     text-align: center;
     margin-top: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 5px;
 }
 
 /* Bottom Circle Indicator */
@@ -121,6 +125,34 @@
     width: 70px;
 }
 
+/* Verbesserte Einstellungsgruppen */
+.checkbox-group {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0;
+}
+
+.settings-select,
+.settings-input {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    width: 100%;
+    max-width: 150px;
+}
+
+.settings-actions {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+}
+
 /* Steuerungspfeile */
 .cloudimage-360-left, 
 .cloudimage-360-right {
@@ -182,4 +214,145 @@
 
 .view-360-circle.hidden {
     opacity: 0;
+}
+
+/* Toast-Benachrichtigung für Einstellungsspeicherung */
+.settings-toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: #4CAF50;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    font-size: 14px;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.3s, transform 0.3s;
+    z-index: 9999;
+}
+
+.settings-toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Responsives Design */
+@media (max-width: 768px) {
+    .viewer-container {
+        height: 350px;
+    }
+    
+    .control-btn {
+        padding: 10px 12px;
+        font-size: 14px;
+        flex-grow: 1;
+        flex-basis: calc(33.33% - 10px);
+        max-width: calc(50% - 10px);
+        white-space: nowrap;
+    }
+    
+    .settings-group {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .settings-item {
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+    }
+    
+    .settings-item label {
+        min-width: 50%;
+        margin-bottom: 5px;
+    }
+    
+    .settings-item select,
+    .settings-item input[type="number"] {
+        width: 100%;
+        margin-left: 0;
+        height: 40px;
+        font-size: 16px;
+    }
+    
+    .viewer-settings h3 {
+        font-size: 18px;
+        margin-bottom: 15px;
+    }
+    
+    .export-btn {
+        width: 100%;
+        margin-top: 10px;
+    }
+    
+    .btn {
+        display: block;
+        width: 100%;
+        margin: 8px 0;
+        padding: 12px;
+        font-size: 16px;
+        text-align: center;
+    }
+
+    /* Größere Checkboxen für Touch-Geräte */
+    input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+        margin-right: 10px;
+    }
+
+    /* Bessere Touch-Ziele für mobile Navigation */
+    header nav a {
+        padding: 12px 8px;
+        display: inline-block;
+    }
+}
+
+@media (max-width: 480px) {
+    .viewer-container {
+        height: 300px;
+    }
+    
+    .control-btn {
+        flex-basis: calc(50% - 10px);
+        font-size: 14px;
+    }
+    
+    .cloudimage-360-left, 
+    .cloudimage-360-right {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .settings-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .settings-actions button {
+        width: 100%;
+        padding: 12px;
+        font-size: 16px;
+    }
+    
+    /* Einstellungen besser strukturieren */
+    .settings-item {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .settings-item label {
+        width: 100%;
+        margin-bottom: 8px;
+    }
+    
+    /* Optimierte Checkboxen und Labels */
+    .settings-item input[type="checkbox"] + label {
+        display: inline-block;
+        padding-left: 8px;
+        padding-top: 3px;
+    }
 }

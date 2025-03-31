@@ -55,7 +55,7 @@
                 <div class="settings-group">
                     <div class="settings-item">
                         <label for="auto-play-behavior">Auto Play Verhalten:</label>
-                        <select id="auto-play-behavior">
+                        <select id="auto-play-behavior" class="settings-select">
                             <option value="spin-x" selected>Horizontal (spin-x)</option>
                             <option value="spin-xy">Horizontal und Vertikal (spin-xy)</option>
                         </select>
@@ -63,42 +63,42 @@
                     
                     <div class="settings-item">
                         <label for="auto-play-speed">Auto Play Geschwindigkeit (ms):</label>
-                        <input type="number" id="auto-play-speed" value="100" min="50" max="500">
+                        <input type="number" id="auto-play-speed" value="100" min="50" max="500" class="settings-input">
                     </div>
                     
                     <div class="settings-item">
                         <label for="drag-speed">Drag Geschwindigkeit:</label>
-                        <input type="number" id="drag-speed" value="120" min="50" max="300">
+                        <input type="number" id="drag-speed" value="120" min="50" max="300" class="settings-input">
                     </div>
                 </div>
                 
-                <div class="settings-group">
-                    <div class="settings-item">
+                <div class="settings-group checkbox-group">
+                    <div class="settings-item checkbox-item">
                         <input type="checkbox" id="auto-play" checked>
                         <label for="auto-play">Auto Play</label>
                     </div>
                     
-                    <div class="settings-item">
+                    <div class="settings-item checkbox-item">
                         <input type="checkbox" id="auto-play-once">
                         <label for="auto-play-once">Einmal abspielen</label>
                     </div>
                     
-                    <div class="settings-item">
+                    <div class="settings-item checkbox-item">
                         <input type="checkbox" id="auto-play-reverse">
                         <label for="auto-play-reverse">Rückwärts abspielen</label>
                     </div>
                     
-                    <div class="settings-item">
+                    <div class="settings-item checkbox-item">
                         <input type="checkbox" id="draggable" checked>
                         <label for="draggable">Drag-Funktion</label>
                     </div>
                     
-                    <div class="settings-item">
+                    <div class="settings-item checkbox-item">
                         <input type="checkbox" id="fullscreen">
                         <label for="fullscreen">Vollbild</label>
                     </div>
                     
-                    <div class="settings-item">
+                    <div class="settings-item checkbox-item">
                         <input type="checkbox" id="magnifier">
                         <label for="magnifier">Lupe</label>
                     </div>
@@ -106,7 +106,6 @@
                 
                 <div class="settings-actions">
                     <button id="save-settings-btn" class="btn btn-primary">Einstellungen speichern</button>
-                    <button id="load-settings-btn" class="btn btn-secondary">Einstellungen laden</button>
                 </div>
             </div>
             
@@ -182,7 +181,7 @@
     </main>
     
     <footer>
-        <p>&copy; 2025 Alexander Behrens 360° Drehteller Steuerung</p>
+        <p>&copy; 27.02.2025 Alexander Behrens 360° Drehteller Steuerung</p>
     </footer>
     
     <script src="/static/js/cloudimage-viewer.js"></script>

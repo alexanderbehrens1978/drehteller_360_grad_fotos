@@ -72,6 +72,26 @@ def create_project():
                 angle_step=angle_step
             )
             
+            # Aktuelle Tellerposition als Ausgangsposition für das neue Projekt verwenden
+            current_position = 0
+            if turntable_controller and hasattr(turntable_controller, 'get_position'):
+                try:
+                    current_position = turntable_controller.get_position()
+                    logger.debug(f"Aktuelle Tellerposition für neues Projekt übernommen: {current_position}°")
+                except Exception as e:
+                    logger.error(f"Fehler beim Abrufen der Tellerposition: {str(e)}")
+            
+            # Setze die Startposition des Drehtellers für das neue Projekt
+            project.current_position = current_position
+            
+            logger.debug(f"Neues Projekt erstellt: {project.name} (ID: {project.id})")
+            
+            # Stelle sicher, dass der project_manager korrekt initialisiert ist
+            global project_manager
+            if not project_manager or not hasattr(project_manager, 'save_project'):
+                logger.error("ProjectManager wurde nicht korrekt initialisiert")
+                project_manager = ProjectManager(path_manager.projects_dir)
+            
             # Projekt speichern
             success = project_manager.save_project(project)
             
@@ -130,18 +150,14 @@ def delete_project(project_id):
     """Löscht ein Projekt"""
     try:
         # Projekt-ID validieren
-        from app.models.project import ProjectManager
-        from app.utils.path_manager import PathManager
         from app.utils.secure_path import validate_project_id
 
         if not validate_project_id(project_id):
             logger.warning(f"Ungültige Projekt-ID: {project_id}")
             return render_template('error.html', message="Ungültige Projekt-ID"), 400
 
-        # Projekt löschen
-        path_manager = PathManager()
-        project_manager = ProjectManager(path_manager.projects_dir)
-
+        # Projekt löschen - verwende die bereits initialisierten Instanzen
+        # statt neue zu erstellen, um unerwünschte Seiteneffekte zu vermeiden
         success = project_manager.delete_project(project_id)
 
         if success:

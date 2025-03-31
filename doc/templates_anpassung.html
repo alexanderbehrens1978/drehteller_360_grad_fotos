@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Templates und Static Files - 360° Drehteller Steuerung</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            margin: 0;
+        }
+        
+        nav {
+            margin-top: 1rem;
+        }
+        
+        nav a {
+            color: white;
+            margin-right: 1rem;
+            text-decoration: none;
+        }
+        
+        nav a:hover {
+            text-decoration: underline;
+        }
+        
+        main {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        
+        .module-info {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+        
+        .section {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .section h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        
+        .code-example {
+            background: #2c3e50;
+            color: white;
+            padding: 1rem;
+            border-radius: 4px;
+            font-family: monospace;
+            overflow-x: auto;
+        }
+        
+        .tip {
+            background: #e8f4f8;
+            border-left: 4px solid #3498db;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 4px;
+        }
+        
+        .structure {
+            padding-left: 20px;
+            font-family: monospace;
+        }
+        
+        .highlight {
+            background-color: #fffacd;
+            padding: 2px 4px;
+            border-radius: 2px;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 1rem;
+            background-color: #2c3e50;
+            color: white;
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Templates und Static Files - 360° Drehteller Steuerung</h1>
+        <nav>
+            <a href="index.html">Zurück zur Übersicht</a>
+        </nav>
+    </header>
+    
+    <main>
+        <div class="module-info">
+            <h2>Templates und Static Files</h2>
+            <p>Diese Dokumentation erklärt die Struktur, Verwendung und Anpassung der Templates und statischen Dateien im 360° Drehteller Steuerungssystem.</p>
+        </div>
+        
+        <div class="section">
+            <h3>1. Projektstruktur</h3>
+            <p>Die Webanwendung verwendet das Flask-Framework und folgt dessen typischer Struktur:</p>
+            <div class="structure">
+                app/<br>
+                ├── static/             # Statische Dateien (CSS, JS, Bilder)<br>
+                │   ├── css/<br>
+                │   ├── js/<br>
+                │   └── images/<br>
+                ├── templates/          # HTML-Templates<br>
+                │   ├── base.html       # Basis-Template mit Header und Footer<br>
+                │   ├── index.html      # Startseite<br>
+                │   ├── projects/       # Projekt-bezogene Templates<br>
+                │   ├── settings/       # Einstellungs-Templates<br>
+                │   └── viewer/         # 360° Viewer Templates<br>
+                └── ... andere Dateien und Ordner
+            </div>
+        </div>
+        
+        <div class="section">
+            <h3>2. Wie Templates funktionieren</h3>
+            <p>Das System verwendet Jinja2 als Template-Engine, die in Flask integriert ist. Templates ermöglichen die Trennung von Logik und Darstellung.</p>
+            
+            <h4>2.1 Template-Vererbung</h4>
+            <p>Alle Templates erben von <code>base.html</code>, was eine einheitliche Struktur mit Header und Footer gewährleistet:</p>
+            <div class="code-example">
+&lt;!-- base.html -->
+&lt;!DOCTYPE html>
+&lt;html>
+&lt;head>
+    &lt;title>{% block title %}360° Drehteller{% endblock %}&lt;/title>
+    &lt;link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block head %}{% endblock %}
+&lt;/head>
+&lt;body>
+    &lt;header>
+        &lt;!-- Navigation -->
+    &lt;/header>
+    
+    &lt;main>
+        {% block content %}{% endblock %}
+    &lt;/main>
+    
+    &lt;footer>
+        &lt;p>&copy; 2025 360° Drehteller Steuerung&lt;/p>
+    &lt;/footer>
+    
+    &lt;script src="{{ url_for('static', filename='js/common.js') }}">&lt;/script>
+    {% block scripts %}{% endblock %}
+&lt;/body>
+&lt;/html>
+            </div>
+            
+            <p>Andere Templates erweitern dieses Basis-Template:</p>
+            <div class="code-example">
+&lt;!-- index.html -->
+{% extends "base.html" %}
+
+{% block title %}Startseite - 360° Drehteller{% endblock %}
+
+{% block content %}
+    &lt;h1>Willkommen zur 360° Drehteller Steuerung&lt;/h1>
+    &lt;!-- Weitere Inhalte -->
+{% endblock %}
+            </div>
+        </div>
+        
+        <div class="section">
+            <h3>3. Anpassung von Templates</h3>
+            
+            <h4>3.1 Ändern bestehender Templates</h4>
+            <p>Um bestehende Templates zu ändern, bearbeiten Sie einfach die entsprechende Datei im <code>templates</code>-Verzeichnis:</p>
+            <ol>
+                <li>Navigieren Sie zum <code>app/templates/</code>-Verzeichnis</li>
+                <li>Öffnen Sie die gewünschte Template-Datei mit einem Texteditor</li>
+                <li>Nehmen Sie Ihre Änderungen vor</li>
+                <li>Speichern Sie die Datei</li>
+                <li>Starten Sie die Flask-Anwendung neu, falls sie bereits läuft</li>
+            </ol>
+            <div class="tip">
+                <strong>Tipp:</strong> Flask hat einen Debug-Modus, der automatisch Template-Änderungen erkennt. Wenn die Anwendung mit <code>flask run --debug</code> gestartet wird, sind Änderungen sofort sichtbar, ohne Neustart.
+            </div>
+            
+            <h4>3.2 Ändern des Footers</h4>
+            <p>Der Footer ist im <code>base.html</code>-Template definiert und wird auf allen Seiten angezeigt:</p>
+            <ol>
+                <li>Öffnen Sie <code>app/templates/base.html</code></li>
+                <li>Suchen Sie den Footer-Bereich:</li>
+            </ol>
+            <div class="code-example">
+&lt;footer>
+    &lt;p>&copy; 2025 360° Drehteller Steuerung&lt;/p>
+&lt;/footer>
+            </div>
+            <p>Bearbeiten Sie diesen Abschnitt nach Ihren Wünschen. Beispiel:</p>
+            <div class="code-example">
+&lt;footer>
+    &lt;p>&copy; 2025 Ihre Firma - 360° Drehteller Steuerung&lt;/p>
+    &lt;p>Kontakt: info@example.com | Tel: +49 123 456789&lt;/p>
+&lt;/footer>
+            </div>
+            
+            <h4>3.3 Erstellen neuer Templates</h4>
+            <p>Um ein neues Template zu erstellen:</p>
+            <ol>
+                <li>Erstellen Sie eine neue .html-Datei im geeigneten Unterverzeichnis von <code>templates/</code></li>
+                <li>Beginnen Sie mit der Vererbung vom Base-Template: <code>{% extends "base.html" %}</code></li>
+                <li>Definieren Sie die benötigten Blöcke (title, content, scripts, etc.)</li>
+                <li>Fügen Sie Ihren HTML-Inhalt hinzu</li>
+            </ol>
+            <p>Beispiel für ein neues Template:</p>
+            <div class="code-example">
+{% extends "base.html" %}
+
+{% block title %}Meine neue Seite{% endblock %}
+
+{% block content %}
+    &lt;h1>Meine neue Funktionalität&lt;/h1>
+    &lt;p>Hier kommt der neue Inhalt.&lt;/p>
+    
+    {% if user_data %}
+        &lt;p>Hallo, {{ user_data.name }}!&lt;/p>
+    {% endif %}
+{% endblock %}
+            </div>
+        </div>
+        
+        <div class="section">
+            <h3>4. Statische Dateien anpassen</h3>
+            <p>Statische Dateien (CSS, JavaScript, Bilder) befinden sich im <code>static</code>-Verzeichnis.</p>
+            
+            <h4>4.1 CSS-Anpassungen</h4>
+            <p>Um das Erscheinungsbild der Anwendung zu ändern:</p>
+            <ol>
+                <li>Bearbeiten Sie <code>app/static/css/style.css</code></li>
+                <li>Fügen Sie neue CSS-Regeln hinzu oder ändern Sie bestehende</li>
+            </ol>
+            <div class="tip">
+                <strong>Tipp:</strong> Verwenden Sie den Browser-Inspektor (F12), um zu identifizieren, welche CSS-Regeln Sie ändern müssen.
+            </div>
+            
+            <h4>4.2 JavaScript-Anpassungen</h4>
+            <p>JavaScript-Dateien steuern die interaktiven Elemente der Oberfläche:</p>
+            <ol>
+                <li>Bearbeiten Sie die relevante JS-Datei in <code>app/static/js/</code></li>
+                <li>Testen Sie Ihre Änderungen im Browser</li>
+            </ol>
+            <p>Hauptskripte:</p>
+            <ul>
+                <li><code>common.js</code> - Auf allen Seiten verwendete Funktionen</li>
+                <li><code>projects.js</code> - Projektverwaltungsfunktionen</li>
+                <li><code>settings.js</code> - Einstellungsbezogene Funktionen</li>
+                <li><code>viewer.js</code> - 360° Viewer Funktionalität</li>
+            </ul>
+        </div>
+        
+        <div class="section">
+            <h3>5. Daten in Templates einfügen</h3>
+            
+            <h4>5.1 Variablen an Templates übergeben</h4>
+            <p>In den Flask-Routen werden Daten an Templates übergeben:</p>
+            <div class="code-example">
+# In einer Route-Funktion (app/blueprints/main.py oder ähnlich)
+@main.route('/')
+def index():
+    user_name = "Max Mustermann"
+    projects_count = 5
+    return render_template('index.html', 
+                           user_name=user_name, 
+                           projects_count=projects_count)
+            </div>
+            
+            <p>Im Template werden diese Variablen mit doppelten geschweiften Klammern angezeigt:</p>
+            <div class="code-example">
+&lt;!-- In templates/index.html -->
+&lt;p>Hallo, {{ user_name }}!&lt;/p>
+&lt;p>Sie haben {{ projects_count }} Projekte.&lt;/p>
+            </div>
+            
+            <h4>5.2 Neue Daten hinzufügen</h4>
+            <p>Um neue Daten in Templates anzuzeigen:</p>
+            <ol>
+                <li>Identifizieren Sie die Route, die das Template rendert (z.B. in <code>app/blueprints/main.py</code>)</li>
+                <li>Fügen Sie die neue Variable zur <code>render_template()</code>-Funktion hinzu</li>
+                <li>Aktualisieren Sie das Template, um die neue Variable anzuzeigen</li>
+            </ol>
+            <p>Beispiel:</p>
+            <div class="code-example">
+# Hinzufügen einer neuen Variable (app/blueprints/main.py)
+@main.route('/')
+def index():
+    # Bestehender Code
+    user_name = "Max Mustermann"
+    projects_count = 5
+    
+    # Neue Variable hinzufügen
+    last_login = "2025-03-30 10:15"
+    
+    return render_template('index.html', 
+                           user_name=user_name, 
+                           projects_count=projects_count,
+                           last_login=last_login)  # Neue Variable übergeben
+            </div>
+            
+            <p>Und im Template:</p>
+            <div class="code-example">
+&lt;!-- In templates/index.html -->
+&lt;p>Hallo, {{ user_name }}!&lt;/p>
+&lt;p>Sie haben {{ projects_count }} Projekte.&lt;/p>
+&lt;p>Letzte Anmeldung: {{ last_login }}&lt;/p>  &lt;!-- Neue Variable anzeigen -->
+            </div>
+            
+            <h4>5.3 Bereitstellen von globalen Daten für alle Templates</h4>
+            <p>Für Daten, die in jedem Template verfügbar sein sollen (z.B. Versionsinfo oder Systemstatus):</p>
+            <div class="code-example">
+# In app/__init__.py oder einer anderen Initialisierungsdatei
+
+@app.context_processor
+def inject_global_vars():
+    """Fügt allen Templates globale Variablen hinzu."""
+    return {
+        'app_version': '1.2.0',
+        'company_name': 'Ihre Firma GmbH',
+        'support_email': 'support@example.com'
+    }
+            </div>
+            
+            <p>Diese Variablen sind dann in jedem Template verfügbar:</p>
+            <div class="code-example">
+&lt;!-- In jedem Template nutzbar -->
+&lt;footer>
+    &lt;p>&copy; 2025 {{ company_name }} - 360° Drehteller Steuerung v{{ app_version }}&lt;/p>
+    &lt;p>Support: {{ support_email }}&lt;/p>
+&lt;/footer>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h3>6. Kontrollstrukturen in Templates</h3>
+            <p>Jinja2 bietet verschiedene Kontrollstrukturen für Templates:</p>
+            
+            <h4>6.1 Bedingungen (if/else)</h4>
+            <div class="code-example">
+{% if user_is_admin %}
+    &lt;div class="admin-panel">
+        &lt;h3>Administration&lt;/h3>
+        &lt;!-- Admin-Elemente -->
+    &lt;/div>
+{% else %}
+    &lt;p>Sie haben keinen Zugriff auf die Verwaltungsfunktionen.&lt;/p>
+{% endif %}
+            </div>
+            
+            <h4>6.2 Schleifen (for)</h4>
+            <div class="code-example">
+&lt;ul class="project-list">
+    {% for project in projects %}
+        &lt;li>
+            &lt;h4>{{ project.name }}&lt;/h4>
+            &lt;p>{{ project.description }}&lt;/p>
+        &lt;/li>
+    {% else %}
+        &lt;li>Keine Projekte vorhanden.&lt;/li>
+    {% endfor %}
+&lt;/ul>
+            </div>
+            
+            <h4>6.3 Einbinden anderer Templates</h4>
+            <div class="code-example">
+{# Einbinden eines allgemeinen Navigationsmenüs #}
+{% include 'components/navigation.html' %}
+
+{# Einbinden mit Variablen #}
+{% include 'components/project_card.html' with context %}
+            </div>
+        </div>
+        
+        <div class="section">
+            <h3>7. Werte im System abfragen und setzen</h3>
+            
+            <h4>7.1 Konfigurationswerte</h4>
+            <p>Die Anwendung verwendet eine zentrale Konfigurationsverwaltung:</p>
+            <div class="code-example">
+# Konfigurationswerte abfragen
+from app.utils.config_manager import ConfigManager
+
+config = ConfigManager()
+arduino_port = config.get('arduino', 'port')
+camera_type = config.get('camera', 'type')
+
+# Konfigurationswerte setzen
+config.set('arduino', 'port', 'COM3')
+config.set('camera', 'resolution', '1920x1080')
+config.save()  # Speichert die Änderungen in der Konfigurationsdatei
+            </div>
+            
+            <h4>7.2 Datenbankinformationen</h4>
+            <p>Projekte und andere Daten werden in einer Datenbank gespeichert:</p>
+            <div class="code-example">
+# Projekt abfragen
+from app.models.project import Project
+
+project = Project.get_by_id('project_12345')
+project_name = project.name
+photos_count = project.get_photos_count()
+
+# Projekt aktualisieren
+project.name = "Neuer Projektname"
+project.description = "Neue Beschreibung"
+project.save()
+            </div>
+            
+            <h4>7.3 Hardware-Status</h4>
+            <p>Der aktuelle Hardware-Status kann abgefragt werden:</p>
+            <div class="code-example">
+# Arduino-Status prüfen
+from app.controllers.arduino_controller import ArduinoController
+
+arduino = ArduinoController()
+connected = arduino.is_connected()
+position = arduino.get_current_position()
+
+# Kamera-Status prüfen
+from app.controllers.camera_controller import CameraController
+
+camera = CameraController()
+camera_ready = camera.is_ready()
+available_cameras = camera.get_available_cameras()
+            </div>
+        </div>
+        
+        <div class="section">
+            <h3>8. Praktische Beispiele</h3>
+            
+            <h4>Beispiel 1: Footer mit dynamischen Informationen</h4>
+            <p>Anpassung des Footers mit dynamischen Informationen:</p>
+            <ol>
+                <li>Globale Variablen definieren:</li>
+            </ol>
+            <div class="code-example">
+# In app/__init__.py
+@app.context_processor
+def inject_footer_info():
+    # Hier könnten Werte aus einer Datenbank oder Konfiguration kommen
+    return {
+        'company_name': 'Ihre Firma GmbH',
+        'current_year': datetime.now().year,
+        'version': '1.2.3',
+        'contact_email': 'info@example.com'
+    }
+            </div>
+            
+            <ol start="2">
+                <li>Footer in base.html anpassen:</li>
+            </ol>
+            <div class="code-example">
+&lt;footer>
+    &lt;div class="footer-content">
+        &lt;div class="copyright">
+            &lt;p>&copy; {{ current_year }} {{ company_name }} - 360° Drehteller Steuerung v{{ version }}&lt;/p>
+        &lt;/div>
+        &lt;div class="contact">
+            &lt;p>Kontakt: {{ contact_email }}&lt;/p>
+        &lt;/div>
+        &lt;div class="system-status">
+            {% if arduino_connected %}
+                &lt;span class="status-indicator connected">Arduino verbunden&lt;/span>
+            {% else %}
+                &lt;span class="status-indicator disconnected">Arduino nicht verbunden&lt;/span>
+            {% endif %}
+            
+            {% if camera_ready %}
+                &lt;span class="status-indicator connected">Kamera bereit&lt;/span>
+            {% else %}
+                &lt;span class="status-indicator disconnected">Kamera nicht bereit&lt;/span>
+            {% endif %}
+        &lt;/div>
+    &lt;/div>
+&lt;/footer>
+            </div>
+            
+            <h4>Beispiel 2: Neues Template mit benutzerdefinierten Daten</h4>
+            <p>Erstellen einer benutzerdefinierten Statistikseite:</p>
+            <ol>
+                <li>Neue Route definieren:</li>
+            </ol>
+            <div class="code-example">
+# In app/blueprints/main.py
+@main.route('/statistics')
+def statistics():
+    # Daten sammeln
+    stats = {
+        'total_projects': Project.count_all(),
+        'total_photos': PhotoSession.count_all_photos(),
+        'most_active_project': Project.get_most_active(),
+        'system_uptime': get_system_uptime(),
+        'disk_usage': get_disk_usage(),
+    }
+    
+    return render_template('statistics.html', stats=stats)
+            </div>
+            
+            <ol start="2">
+                <li>Neues Template erstellen (templates/statistics.html):</li>
+            </ol>
+            <div class="code-example">
+{% extends "base.html" %}
+
+{% block title %}Systemstatistiken{% endblock %}
+
+{% block content %}
+    &lt;div class="statistics-container">
+        &lt;h1>Systemstatistiken&lt;/h1>
+        
+        &lt;div class="stat-card">
+            &lt;h3>Projekte&lt;/h3>
+            &lt;p class="stat-number">{{ stats.total_projects }}&lt;/p>
+        &lt;/div>
+        
+        &lt;div class="stat-card">
+            &lt;h3>Fotos&lt;/h3>
+            &lt;p class="stat-number">{{ stats.total_photos }}&lt;/p>
+        &lt;/div>
+        
+        {% if stats.most_active_project %}
+            &lt;div class="stat-card">
+                &lt;h3>Aktivstes Projekt&lt;/h3>
+                &lt;p>{{ stats.most_active_project.name }}&lt;/p>
+                &lt;p>{{ stats.most_active_project.photos_count }} Fotos&lt;/p>
+            &lt;/div>
+        {% endif %}
+        
+        &lt;div class="stat-card">
+            &lt;h3>Systemlaufzeit&lt;/h3>
+            &lt;p>{{ stats.system_uptime }}&lt;/p>
+        &lt;/div>
+        
+        &lt;div class="stat-card">
+            &lt;h3>Speichernutzung&lt;/h3>
+            &lt;p>{{ stats.disk_usage.used }} von {{ stats.disk_usage.total }} ({{ stats.disk_usage.percent }}%)&lt;/p>
+            &lt;div class="progress-bar">
+                &lt;div class="progress" style="width: {{ stats.disk_usage.percent }}%">&lt;/div>
+            &lt;/div>
+        &lt;/div>
+    &lt;/div>
+{% endblock %}
+            </div>
+            
+            <ol start="3">
+                <li>Link zur Navigation hinzufügen (in base.html):</li>
+            </ol>
+            <div class="code-example">
+&lt;nav>
+    &lt;ul>
+        &lt;li>&lt;a href="{{ url_for('main.index') }}">Startseite&lt;/a>&lt;/li>
+        &lt;li>&lt;a href="{{ url_for('projects.list') }}">Projekte&lt;/a>&lt;/li>
+        &lt;li>&lt;a href="{{ url_for('settings.index') }}">Einstellungen&lt;/a>&lt;/li>
+        &lt;li>&lt;a href="{{ url_for('viewer.index') }}">360° Viewer&lt;/a>&lt;/li>
+        &lt;li>&lt;a href="{{ url_for('main.statistics') }}">Statistiken&lt;/a>&lt;/li>
+    &lt;/ul>
+&lt;/nav>
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+        <p>&copy; 2025 360° Drehteller Steuerung</p>
+    </footer>
+</body>
+</html>

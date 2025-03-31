@@ -80,8 +80,13 @@ def rotate():
         # Parameter extrahieren
         try:
             degrees = int(request.form['degrees'])
-            if degrees <= 0 or degrees > 360:
-                return jsonify({"error": "Ungültiger Drehwinkel. Muss zwischen 1 und 360 Grad liegen."}), 400
+            # Im photo_only-Modus erlauben wir auch 0 Grad
+            if mode == 'photo_only':
+                if degrees < 0 or degrees > 360:
+                    return jsonify({"error": "Ungültiger Drehwinkel. Muss zwischen 0 und 360 Grad liegen."}), 400
+            else:
+                if degrees <= 0 or degrees > 360:
+                    return jsonify({"error": "Ungültiger Drehwinkel. Muss zwischen 1 und 360 Grad liegen."}), 400
         except ValueError:
             return jsonify({"error": "Ungültiger Drehwinkel. Muss eine Zahl sein."}), 400
             
@@ -151,6 +156,13 @@ def rotate():
             if turntable_controller and turntable_controller.arduino and turntable_controller.arduino.is_connected():
                 logger.debug(f"Versuche über TurntableController zu drehen, Winkel: {degrees}°")
                 rotation_success = turntable_controller.move_degrees(degrees)
+                
+                if rotation_success:
+                    # Aktualisiere die Position im Projekt
+                    new_position = turntable_controller.current_position
+                    project.update_position(new_position)
+                    logger.debug(f"Position im Projekt aktualisiert: {new_position}°")
+                
                 logger.debug(f"TurntableController-Rotation erfolgreich: {rotation_success}")
             
             # Falls nicht erfolgreich, versuche direkt über den Arduino-Controller zu drehen
@@ -160,44 +172,37 @@ def rotate():
                 rotation_time_ms = int((float(degrees) / 0.8) * 1000)
                 logger.debug(f"Berechnete Rotationszeit: {rotation_time_ms} ms")
                 
-                # Direkter Fallback: Motor steuern ohne rotate_for_duration
-                try:
-                    logger.debug("Verwende direkten Fallback für die Motordrehung")
-                    # Motor einschalten
-                    motor_on = arduino_controller.turn_motor_on()
-                    logger.debug(f"Motor eingeschaltet: {motor_on}")
-                    
-                    # Warten für die berechnete Zeit
-                    logger.debug(f"Motor für {rotation_time_ms} ms eingeschaltet")
-                    time.sleep(rotation_time_ms / 1000.0)
-                    
-                    # Motor ausschalten
-                    motor_off = arduino_controller.turn_motor_off()
-                    logger.debug(f"Motor ausgeschaltet: {motor_off}")
-                    
-                    rotation_success = True
-                    logger.debug("Fallback-Rotation erfolgreich")
-                except Exception as e:
-                    logger.error(f"Fehler bei Fallback-Rotation: {str(e)}")
-                    # Extra Error handling
-                    try:
-                        arduino_controller.turn_motor_off()
-                    except:
-                        pass
-            
-            # Log für das Rotation-Ergebnis
-            if rotation_success:
-                logger.info(f"Drehteller erfolgreich um {degrees}° gedreht")
-            else:
-                logger.warning(f"Drehteller konnte nicht gedreht werden, Winkel: {degrees}°")
+                # Motorbefehl senden
+                rotation_success = arduino_controller.send_command(f"MOTOR:{rotation_time_ms}")
+                logger.debug(f"ArduinoController-Rotation erfolgreich: {rotation_success}")
+                
+                if rotation_success:
+                    # Wenn kein TurntableController existiert, manuell Position aktualisieren
+                    new_position = (project.current_position + degrees) % 360
+                    project.update_position(new_position)
+                    logger.debug(f"Position im Projekt manuell aktualisiert: {new_position}°")
         
-        return jsonify({
+        # Bei reset_position=true wird die Position auf 0 zurückgesetzt (z.B. bei Home-Position)
+        if request.form.get('reset_position') == 'true':
+            project.update_position(0)
+            if turntable_controller:
+                turntable_controller.current_position = 0
+            logger.debug("Position auf 0° zurückgesetzt (Home-Position)")
+        
+        # Antwortobjekt zusammenstellen
+        response = {
             "status": "success",
-            "photo": rel_path,
-            "angle": degrees,
-            "rotation_success": rotation_success
-        })
+            "message": "Aktion erfolgreich ausgeführt",
+            "position": project.current_position
+        }
         
+        if photo_path:
+            response["photo"] = rel_path
+            response["angle"] = degrees
+        
+        logger.info(f"Rotation/Foto für Projekt {project_id} erfolgreich: Position {project.current_position}°")
+        return jsonify(response)
+    
     except Exception as e:
         logger.error(f"Fehler bei der Foto-Aufnahme/Rotation: {str(e)}")
         return jsonify({

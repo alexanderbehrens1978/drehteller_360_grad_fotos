@@ -280,3 +280,126 @@ def camera_capabilities():
             "status": "error",
             "message": f"Fehler beim Abrufen der Kamera-Fähigkeiten: {str(e)}"
         }), 500
+
+@api_bp.route('/project/<project_id>/start_session', methods=['POST'])
+def start_project_session(project_id):
+    """
+    Startet eine neue Fotosession für ein Projekt
+    
+    Args:
+        project_id: ID des Projekts
+    """
+    try:
+        # Projekt-ID validieren
+        if not validate_project_id(project_id):
+            logger.warning(f"Versuch, eine Session für ungültige Projekt-ID zu starten: {project_id}")
+            return jsonify({"error": "Ungültige Projekt-ID"}), 400
+            
+        # Projektmanager verwenden
+        from app.utils.path_manager import PathManager
+        from app.models.project import ProjectManager
+        
+        path_manager = PathManager()
+        project_manager = ProjectManager(path_manager.projects_dir)
+        
+        # Projekt laden
+        project = project_manager.get_project(project_id)
+        
+        if not project:
+            return jsonify({"error": "Projekt nicht gefunden"}), 404
+        
+        # Neue Session starten
+        session_id = project.start_session()
+        
+        logger.info(f"Neue Session für Projekt {project_id} gestartet: {session_id}")
+        return jsonify({"status": "success", "session_id": session_id})
+    except Exception as e:
+        logger.error(f"Fehler beim Starten der Session: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@api_bp.route('/project/<project_id>/end_session', methods=['POST'])
+def end_project_session(project_id):
+    """
+    Beendet die aktive Fotosession eines Projekts
+    
+    Args:
+        project_id: ID des Projekts
+    """
+    try:
+        # Projekt-ID validieren
+        if not validate_project_id(project_id):
+            logger.warning(f"Versuch, eine Session für ungültige Projekt-ID zu beenden: {project_id}")
+            return jsonify({"error": "Ungültige Projekt-ID"}), 400
+            
+        # Projektmanager verwenden
+        from app.utils.path_manager import PathManager
+        from app.models.project import ProjectManager
+        
+        path_manager = PathManager()
+        project_manager = ProjectManager(path_manager.projects_dir)
+        
+        # Projekt laden
+        project = project_manager.get_project(project_id)
+        
+        if not project:
+            return jsonify({"error": "Projekt nicht gefunden"}), 404
+        
+        # Session beenden
+        project.end_session()
+        
+        logger.info(f"Session für Projekt {project_id} beendet")
+        return jsonify({"status": "success"})
+    except Exception as e:
+        logger.error(f"Fehler beim Beenden der Session: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@api_bp.route('/project/<project_id>/update_position', methods=['POST'])
+def update_project_position(project_id):
+    """
+    Aktualisiert die Position des Drehtellers für ein Projekt
+    
+    Args:
+        project_id: ID des Projekts
+    """
+    try:
+        # Daten validieren
+        if not request.is_json:
+            return jsonify({"error": "Keine JSON-Daten empfangen"}), 400
+            
+        data = request.json
+        if 'position' not in data:
+            return jsonify({"error": "Position nicht angegeben"}), 400
+            
+        try:
+            position = int(data['position'])
+            if position < 0 or position > 360:
+                return jsonify({"error": "Position muss zwischen 0 und 360 Grad liegen"}), 400
+        except (ValueError, TypeError):
+            return jsonify({"error": "Position muss eine ganze Zahl sein"}), 400
+            
+        # Projekt-ID validieren
+        if not validate_project_id(project_id):
+            logger.warning(f"Versuch, Position für ungültige Projekt-ID zu aktualisieren: {project_id}")
+            return jsonify({"error": "Ungültige Projekt-ID"}), 400
+            
+        # Projektmanager verwenden
+        from app.utils.path_manager import PathManager
+        from app.models.project import ProjectManager
+        
+        path_manager = PathManager()
+        project_manager = ProjectManager(path_manager.projects_dir)
+        
+        # Projekt laden
+        project = project_manager.get_project(project_id)
+        
+        if not project:
+            return jsonify({"error": "Projekt nicht gefunden"}), 404
+        
+        # Position aktualisieren
+        project.update_position(position)
+        
+        logger.info(f"Position für Projekt {project_id} aktualisiert: {position}°")
+        return jsonify({"status": "success", "position": position})
+    except Exception as e:
+        logger.error(f"Fehler beim Aktualisieren der Position: {e}")
+        return jsonify({"error": str(e)}), 500

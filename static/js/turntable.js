@@ -327,6 +327,13 @@ function generateViewer() {
     
     if (!viewerName) return;
     
+    // Projekt-ID überprüfen
+    if (!currentProjectId) {
+        console.error("Fehler: project_id fehlt!");
+        alert("Fehler: Keine Projekt-ID gefunden!");
+        return;
+    }
+    
     // Anfrage zum Generieren des Viewers senden
     const requestData = {
         project_id: currentProjectId,
@@ -334,62 +341,42 @@ function generateViewer() {
         photos: capturedPhotos.map(photo => photo.path)
     };
     
-
-
-
-
-//    fetch('/api/generate_360', {
- //       method: 'POST',
-  //      headers: {
-//            'Content-Type': 'application/json'
- //       },
-   //     body: JSON.stringify(requestData)
-  //  })
-
-// Hole die project_id aus der aktuellen URL oder einem Eingabefeld
-const project_id = new URLSearchParams(window.location.search).get("project_id");
-
-if (!project_id) {
-    console.error("Fehler: project_id fehlt!");
-    alert("Fehler: Keine Projekt-ID gefunden!");
-} else {
-    fetch('/generate_360', {
-        method: "POST",
+    // URL direkt definieren, um sicherzustellen, dass wir den richtigen Endpunkt ansprechen
+    const url = window.location.protocol + '//' + window.location.host + '/generate_360';
+    console.log(`Sende Viewer-Erstellungsanfrage an: ${url}`);
+    
+    // API-Anfrage senden
+    fetch(url, {
+        method: 'POST',
         headers: {
-            "Content-Type": "application/json"
+            'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ project_id: project_id }) // Projekt-ID korrekt übergeben
+        body: JSON.stringify(requestData)
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.json();
+    })
     .then(data => {
         console.log("Antwort vom Server:", data);
-        if (data.message) {
-            alert(data.message); // Erfolgsmeldung
-            window.location.href = `/viewer/cloudimage?project=${project_id}`; // GEÄNDERT: 'project' statt 'project_id'
-        }
-    })
-    .catch(error => console.error("Fehler beim Generieren:", error));
-}
-
-
-
-
-
-
-
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
+        if (data.status === 'success' || data.message) {
             alert(`360°-Viewer erfolgreich erstellt! Sie werden weitergeleitet.`);
             // Zur Viewer-Seite weiterleiten
-            window.location.href = data.url;
+            if (data.url) {
+                window.location.href = data.url;
+            } else {
+                // Fallback zur Viewer-Seite
+                window.location.href = `/viewer/exports?project=${currentProjectId}`;
+            }
         } else {
-            console.error('Fehler beim Generieren des Viewers:', data.error);
-            alert(`Fehler beim Generieren des 360°-Viewers: ${data.error}`);
+            console.error('Fehler beim Generieren des Viewers:', data.error || 'Unbekannter Fehler');
+            alert(`Fehler beim Generieren des 360°-Viewers: ${data.error || 'Unbekannter Fehler'}`);
         }
     })
     .catch(error => {
         console.error('Netzwerkfehler:', error);
-        alert('Netzwerkfehler beim Generieren des 360°-Viewers.');
+        alert('Netzwerkfehler beim Generieren des 360°-Viewers: ' + error.message);
     });
 }

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="800" height="600" xmlns="http://www.w3.org/2000/svg">
+  <!-- Hintergrund -->
+  <rect width="800" height="600" fill="#ffffff" rx="10" ry="10"/>
+  
+  <!-- Header -->
+  <rect width="800" height="150" fill="#3498db"/>
+  
+  <!-- 404 Text -->
+  <text x="400" y="100" font-family="Arial" font-size="120" font-weight="bold" text-anchor="middle" fill="#ffffff" filter="url(#shadow)">404</text>
+  
+  <!-- Schatten Filter -->
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000000" flood-opacity="0.2"/>
+    </filter>
+  </defs>
+  
+  <!-- Titel -->
+  <text x="400" y="150" font-family="Arial" font-size="28" font-weight="500" text-anchor="middle" fill="#ffffff">Seite nicht gefunden</text>
+  
+  <!-- Nachricht -->
+  <text x="400" y="220" font-family="Arial" font-size="18" text-anchor="middle" fill="#333333">Entschuldigung, die gewünschte Seite konnte nicht gefunden werden.</text>
+  <text x="400" y="250" font-family="Arial" font-size="18" text-anchor="middle" fill="#333333">Der Drehteller dreht sich, aber die Seite ist nirgendwo zu sehen.</text>
+  
+  <!-- Kamera-Symbol -->
+  <g transform="translate(350, 320)">
+    <!-- Kamera-Gehäuse -->
+    <rect x="0" y="20" width="100" height="70" rx="10" ry="10" fill="#2c3e50"/>
+    <!-- Kamera-Aufsatz -->
+    <rect x="30" y="0" width="40" height="20" rx="5" ry="5" fill="#2c3e50"/>
+    <!-- Kamera-Linse -->
+    <circle cx="50" cy="55" r="20" fill="#ecf0f1"/>
+    <circle cx="50" cy="55" r="15" fill="#3498db"/>
+  </g>
+  
+  <!-- Drehteller -->
+  <ellipse cx="400" cy="540" rx="100" ry="20" fill="#2c3e50"/>
+  <circle cx="400" cy="540" r="40" fill="#34495e"/>
+</svg>
