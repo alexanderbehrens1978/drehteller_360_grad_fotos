@@ -96,8 +96,12 @@ document.addEventListener('DOMContentLoaded', function() {
     if (projectSelect) {
         projectSelect.addEventListener('change', function() {
             const selectedProjectId = this.value;
-            if (selectedProjectId) {
-                // Neues Projekt ausgewählt -> laden
+            if (selectedProjectId === 'new') {
+                // Neues Projekt erstellen
+                projectModal.style.display = 'block';
+                this.selectedIndex = 0; // Zurücksetzen auf "Bitte wählen..."
+            } else if (selectedProjectId) {
+                // Bestehendes Projekt auswählen
                 window.location.href = `/?project_id=${selectedProjectId}`;
             }
         });
