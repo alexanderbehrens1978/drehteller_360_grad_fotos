@@ -1,0 +1,22 @@
+{
+    "id": "4051d10e-cf93-4a72-a8e4-9ef517e2e07c",
+    "name": "VSF 1",
+    "description": "",
+    "angle_step": 1,
+    "created_at": 1743533016.0819142,
+    "updated_at": 1743533016.0819142,
+    "path": "/d360/produktiv/static/projects/4051d10e-cf93-4a72-a8e4-9ef517e2e07c",
+    "images": [
+        {
+            "path": "images/photo_1743533304_0.jpg",
+            "angle": 0
+        },
+        {
+            "path": "images/photo_1743533316_1.jpg",
+            "angle": 1
+        }
+    ],
+    "current_position": 1,
+    "active_session": null,
+    "last_captured_angle": 1
+}
