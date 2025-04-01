@@ -1,0 +1,18 @@
+{
+    "id": "ecbcb3ee-60ed-493a-a93a-81a671617619",
+    "name": "VSF 15",
+    "description": "",
+    "angle_step": 15,
+    "created_at": 1743535204.6609821,
+    "updated_at": 1743535204.6609821,
+    "path": "/d360/produktiv/static/projects/ecbcb3ee-60ed-493a-a93a-81a671617619",
+    "images": [
+        {
+            "path": "images/photo_1743535243_30.jpg",
+            "angle": 30
+        }
+    ],
+    "current_position": 15.0,
+    "active_session": null,
+    "last_captured_angle": 30
+}
