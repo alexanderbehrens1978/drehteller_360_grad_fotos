@@ -185,6 +185,27 @@ def api_camera_status():
         'resolution': resolution
     })
 
+@api_bp.route('/status')
+def api_system_status():
+    """API-Endpunkt zum Abrufen des System-Status inkl. Debug-Modus"""
+    try:
+        # Debug-Status aus der Konfiguration abrufen
+        debug_mode = current_app.debug
+        
+        # Systemstatus sammeln
+        status = {
+            'debug_mode': debug_mode,
+            'version': current_app.config.get('VERSION', '1.0.0'),
+            'server_time': time.strftime('%Y-%m-%d %H:%M:%S'),
+            'environment': current_app.config.get('ENV', 'production')
+        }
+        
+        logger.debug(f"Systemstatus abgerufen: Debug-Modus={debug_mode}")
+        return jsonify(status)
+    except Exception as e:
+        logger.error(f"Fehler beim Abrufen des Systemstatus: {e}")
+        return jsonify({"error": "Fehler beim Abrufen des Systemstatus", "message": str(e)}), 500
+
 @api_bp.route('/test/camera', methods=['POST'])
 def test_camera():
     """

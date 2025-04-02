@@ -6,6 +6,7 @@ Initialisiert die Flask-Anwendung und registriert alle Blueprints.
 """
 
 import logging
+import os
 from flask import Flask, g
 from app.utils.config_manager import config_manager
 from app.controllers.arduino_controller import ArduinoController
@@ -18,17 +19,21 @@ arduino_controller = None
 camera_controller = None
 turntable_controller = None
 
+# Gemeinsam genutzte Hilfsprogramme
+path_manager = PathManager()
+
+# Standard-Log-Pfad
+LOG_DIR = '/d360/dev/logs'
+LOG_FILE = 'app.log'
+log_path = os.path.join(LOG_DIR, LOG_FILE)
+
+# Grundlegende Logging-Konfiguration
 logging.basicConfig(
-    filename='/d360/dev/logs/app.log',
+    filename=log_path,
     level=logging.DEBUG,
     format='%(name)s - %(levelname)s - %(message)s',
     datefmt='%d.%m.%Y %H:%M:%S'
 )
-
-
-
-# Gemeinsam genutzte Hilfsprogramme
-path_manager = PathManager()
 
 def create_app(config_name=None):
     """
@@ -47,9 +52,9 @@ def create_app(config_name=None):
                 template_folder="../templates")
     
     # Konfiguration laden
-    app.config.from_object('app.config.DevelopmentConfig')
-    if config_name == 'production':
-        app.config.from_object('app.config.ProductionConfig')
+    app.config.from_object('app.config.ProductionConfig')  # Standard: Production mit Debug = False
+    if config_name == 'development':
+        app.config.from_object('app.config.DevelopmentConfig')  # Entwicklungsmodus mit Debug = True
     elif config_name == 'testing':
         app.config.from_object('app.config.TestingConfig')
     
@@ -110,6 +115,9 @@ def create_app(config_name=None):
 def create_directories():
     """Stellt sicher, dass alle erforderlichen Verzeichnisse existieren"""
     path_manager.ensure_directories()
+    
+    # Stelle sicher, dass das Logs-Verzeichnis existiert
+    os.makedirs(LOG_DIR, exist_ok=True)
 
 def initialize_controllers():
     """Initialisiert die gemeinsam genutzten Controller"""
@@ -139,8 +147,8 @@ def configure_logging(app):
     log_level = logging.DEBUG if app.config['DEBUG'] else logging.INFO
     log_formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
     
-    # File Handler - auf den korrekten Pfad geändert
-    file_handler = logging.FileHandler('/d360/dev/logs/app.log')
+    # File Handler mit dem Standard-Pfad
+    file_handler = logging.FileHandler(log_path)
     file_handler.setLevel(log_level)
     file_handler.setFormatter(log_formatter)
     

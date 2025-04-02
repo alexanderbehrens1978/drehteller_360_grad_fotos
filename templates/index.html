@@ -45,6 +45,12 @@
                         <label for="angleInput">Drehwinkel pro Schritt:</label>
                         <input type="number" id="angleInput" value="{{ project.angle_step|default(15) }}" min="1" max="90">
                     </div>
+                    
+                    <div class="form-group">
+                        <label for="rotationTimeInput">Rotationszeit (Sekunden für 360°):</label>
+                        <input type="number" id="rotationTimeInput" value="15" min="5" max="120">
+                        <small class="form-text">Zeit für eine komplette Umdrehung (beeinflusst Zeitberechnung)</small>
+                    </div>
                 </div>
                 
                 <div class="controls">
@@ -64,6 +70,16 @@
                         Gespeicherte Position im Projekt: <span id="savedProjectPosition">{{ project.current_position }}°</span>
                     </div>
                     {% endif %}
+                </div>
+                
+                <div id="rotationProgress" class="progress-container hidden">
+                    <div class="progress-info">
+                        <span id="progressText">Drehung läuft...</span>
+                        <span id="remainingTime">Verbleibende Zeit: --:--</span>
+                    </div>
+                    <div class="progress">
+                        <div id="progressBar" class="progress-bar"></div>
+                    </div>
                 </div>
                 
                 <div id="rotationStatus" class="status-message">
