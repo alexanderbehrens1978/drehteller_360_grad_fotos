@@ -1,7 +1,7 @@
 {
     "camera": {
-        "device_path": "/dev/video0",
-        "type": "gphoto2",
+        "device_path": "/dev/video2",
+        "type": "webcam",
         "resolution": {
             "width": 2000,
             "height": 1000

@@ -30,6 +30,11 @@ class CameraController:
             camera_settings: Spezifische Kameraeinstellungen für gphoto2 (optional)
         """
         self.logger = logging.getLogger(__name__)
+        
+        # Explizite Überprüfung und Protokollierung des übergebenen Kameratyps
+        self.logger.info(f"CameraController wird initialisiert mit Typ={camera_type}, Gerät={device}")
+        
+        # Sicherstellen, dass camera_type korrekt ist und nicht überschrieben wird
         self.camera_type = camera_type
         self.device = device
         self.camera_settings = camera_settings or {}
@@ -236,12 +241,24 @@ class CameraController:
         """
         if self.webcam is None:
             try:
-                # cv2.VideoCapture mit Nummer (0, 1, ...) oder Pfad (/dev/video0, ...)
-                if self.device.isdigit():
+                # Verbesserte Geräte-ID-Extraktion für verschiedene Formate
+                device_id = self.device
+                
+                # Für numerische IDs (z.B. "0", "1", "2")
+                if str(self.device).isdigit():
                     device_id = int(self.device)
-                else:
-                    device_id = self.device
-
+                # Für /dev/videoX Pfade - extrahiere die Nummer
+                elif isinstance(self.device, str) and self.device.startswith('/dev/video'):
+                    try:
+                        # Extrahiere die Nummer aus "/dev/videoX"
+                        video_num = self.device.split('video')[1]
+                        if video_num.isdigit():
+                            device_id = int(video_num)
+                            self.logger.info(f"Verwende Gerätenummer {device_id} für {self.device}")
+                    except Exception as e:
+                        self.logger.warning(f"Konnte Gerätenummer nicht aus {self.device} extrahieren: {str(e)}")
+                
+                self.logger.info(f"Öffne Kamera mit device_id: {device_id}")
                 self.webcam = cv2.VideoCapture(device_id)
 
                 # Auflösung einstellen
@@ -367,6 +384,8 @@ class CameraController:
         Returns:
             True bei Erfolg, False bei Fehler
         """
+        self.logger.info(f"Foto wird aufgenommen mit Kameratyp: {self.camera_type}, Gerät: {self.device}")
+        
         if self.camera_type == 'webcam':
             return self.capture_webcam_photo(output_path)
         elif self.camera_type == 'gphoto2':

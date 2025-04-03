@@ -121,6 +121,22 @@ def rotate():
         rel_path = None
         
         if mode != 'rotate_only':
+            # WICHTIG: Hier die gespeicherte Kameraeinstellung aus der Konfiguration verwenden
+            # NICHT den globalen camera_controller, der möglicherweise beim Start initialisiert wurde
+            saved_camera_type = config_manager.get('camera.type', 'webcam')
+            saved_camera_device = config_manager.get('camera.device_path', '/dev/video0')
+            resolution = config_manager.get('camera.resolution')
+            
+            # Erstelle einen temporären Kamera-Controller mit den aktuellen Einstellungen
+            from app.controllers.camera_controller import CameraController
+            temp_camera_controller = CameraController(
+                camera_type=saved_camera_type,
+                device=saved_camera_device,
+                resolution=resolution
+            )
+            
+            logger.info(f"Verwende Kamera: Typ={saved_camera_type}, Gerät={saved_camera_device}")
+            
             # Foto aufnehmen
             timestamp = int(time.time())
             filename = f'photo_{timestamp}_{degrees}.jpg'
@@ -132,12 +148,12 @@ def rotate():
             # Vollständiger Pfad für das Bild
             photo_path = os.path.join(project_images_dir, filename)
             
-            # Foto aufnehmen
-            logger.debug("Nehme Foto auf...")
-            camera_success = camera_controller.capture_photo(photo_path)
+            # Foto aufnehmen mit dem temporären Kamera-Controller
+            logger.debug(f"Nehme Foto mit {saved_camera_type} auf...")
+            camera_success = temp_camera_controller.capture_photo(photo_path)
             
             if not camera_success:
-                raise Exception("Kamera konnte kein Foto aufnehmen.")
+                raise Exception(f"Kamera ({saved_camera_type}) konnte kein Foto aufnehmen.")
                 
             # Bild zum Projekt hinzufügen mit dem korrekten Winkel
             project.add_image(photo_path, angle=degrees, timestamp=timestamp)
