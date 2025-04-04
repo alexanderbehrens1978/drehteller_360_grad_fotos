@@ -91,13 +91,39 @@ case "$1" in
         echo -e "${GREEN}OpenCV headless-Version installiert. Starte Dienst neu...${NC}"
         sudo systemctl restart drehteller360.service
         ;;
+    fix-gphoto)
+        echo -e "${BLUE}Führe gphoto2-Fix aus...${NC}"
+        
+        if [ "$EUID" -ne 0 ]; then
+            echo -e "${RED}Dieser Befehl benötigt Administratorrechte.${NC}"
+            echo -e "${YELLOW}Bitte mit sudo ausführen: sudo $0 $1${NC}"
+            exit 1
+        fi
+        
+        # Systemabhängigkeiten sicherstellen
+        apt-get update
+        apt-get install -y libgphoto2-dev pkg-config
+        
+        echo -e "${YELLOW}Aktiviere virtuelle Umgebung...${NC}"
+        source myenv/bin/activate
+        
+        # Alte Version entfernen und neue installieren
+        echo -e "${YELLOW}Deinstalliere bestehende gphoto2-Version...${NC}"
+        pip uninstall -y gphoto2
+        
+        echo -e "${YELLOW}Installiere gphoto2 neu...${NC}"
+        pip install gphoto2>=2.3.5
+        
+        echo -e "${GREEN}gphoto2 repariert. Starte Dienst neu...${NC}"
+        systemctl restart drehteller360.service
+        ;;
     diagnose)
         echo -e "${BLUE}Führe Moduldiagnose aus...${NC}"
         source myenv/bin/activate
         python diagnose_modules.py
         ;;
     *)
-        echo -e "${BLUE}Verwendung: $0 {start|stop|restart|status|logs|fix-modules|install-headless|diagnose}${NC}"
+        echo -e "${BLUE}Verwendung: $0 {start|stop|restart|status|logs|fix-modules|install-headless|fix-gphoto|diagnose}${NC}"
         echo
         echo -e "${YELLOW}Verfügbare Befehle:${NC}"
         echo -e "  ${GREEN}start${NC}             - Startet den Dienst"
@@ -107,6 +133,7 @@ case "$1" in
         echo -e "  ${GREEN}logs${NC}              - Zeigt die Logs"
         echo -e "  ${GREEN}fix-modules${NC}       - Repariert NumPy/OpenCV Module"
         echo -e "  ${GREEN}install-headless${NC}  - Installiert OpenCV headless-Version"
+        echo -e "  ${GREEN}fix-gphoto${NC}        - Repariert gphoto2 Installation"
         echo -e "  ${GREEN}diagnose${NC}          - Führt Diagnose der Module durch"
         exit 1
         ;;

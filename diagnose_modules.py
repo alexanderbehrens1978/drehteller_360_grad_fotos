@@ -5,6 +5,7 @@ Diagnose-Skript für Module-Probleme im 360° Drehteller-System
 import sys
 import importlib
 import traceback
+import subprocess
 
 def test_import(module_name):
     try:
@@ -23,8 +24,26 @@ def test_import(module_name):
         traceback.print_exc()
         return False
 
+def check_libgphoto2():
+    try:
+        result = subprocess.run(['pkg-config', '--modversion', 'libgphoto2'], 
+                                capture_output=True, text=True, check=True)
+        print(f"✅ libgphoto2 installiert (Version: {result.stdout.strip()})")
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        print(f"❌ libgphoto2 nicht richtig installiert.")
+        print(f"   Fehler: {e}")
+        print("   Tipp: Installiere mit 'sudo apt-get install -y libgphoto2-dev pkg-config'")
+        return False
+
 def main():
     print(f"Python Version: {sys.version}")
+    
+    # Prüfe kritische Systembibliotheken
+    print("-" * 40)
+    print("Prüfe Systembibliotheken...")
+    check_libgphoto2()
+    print("-" * 40)
     
     modules_to_check = [
         "numpy", 

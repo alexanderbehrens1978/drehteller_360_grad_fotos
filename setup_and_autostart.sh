@@ -31,6 +31,7 @@ echo -e "${YELLOW}Nutzerverzeichnis: ${REAL_USER_HOME}${NC}"
 # 1. System-Abhängigkeiten installieren
 echo -e "\n${GREEN}1. Installiere System-Abhängigkeiten...${NC}"
 apt-get update
+# Hinzugefügt: libgphoto2-dev als Abhängigkeit für das Python gphoto2-Paket
 apt-get install -y \
     python3-venv \
     python3-dev \
@@ -42,7 +43,9 @@ apt-get install -y \
     git \
     curl \
     nginx \
-    gphoto2
+    gphoto2 \
+    libgphoto2-dev \
+    pkg-config
 
 # Installiere Arduino CLI
 if ! command -v arduino-cli &> /dev/null; then
@@ -106,10 +109,7 @@ opencv-python==4.11.0.86
 Pillow>=10.3.0
 
 # Kamerasteuerung
-gphoto2==2.3.4
-
-# Utilities
-python-dotenv==1.0.0
+gphoto2>=2.3.5
 EOL
 else
     echo -e "${YELLOW}Python ${PYTHON_VERSION} erkannt. Erstelle kompatible requirements.txt...${NC}"
@@ -134,10 +134,7 @@ opencv-python-headless==4.7.0.72
 Pillow>=10.3.0
 
 # Kamerasteuerung
-gphoto2==2.3.4
-
-# Utilities
-python-dotenv==1.0.0
+gphoto2>=2.3.5
 EOL
 fi
 
@@ -378,13 +375,39 @@ case "\$1" in
         echo -e "\${GREEN}OpenCV headless-Version installiert. Starte Dienst neu...\${NC}"
         sudo systemctl restart drehteller360.service
         ;;
+    fix-gphoto)
+        echo -e "\${BLUE}Führe gphoto2-Fix aus...\${NC}"
+        
+        if [ "\$EUID" -ne 0 ]; then
+            echo -e "\${RED}Dieser Befehl benötigt Administratorrechte.\${NC}"
+            echo -e "\${YELLOW}Bitte mit sudo ausführen: sudo \$0 \$1\${NC}"
+            exit 1
+        fi
+        
+        # Systemabhängigkeiten sicherstellen
+        apt-get update
+        apt-get install -y libgphoto2-dev pkg-config
+        
+        echo -e "\${YELLOW}Aktiviere virtuelle Umgebung...\${NC}"
+        source myenv/bin/activate
+        
+        # Alte Version entfernen und neue installieren
+        echo -e "\${YELLOW}Deinstalliere bestehende gphoto2-Version...\${NC}"
+        pip uninstall -y gphoto2
+        
+        echo -e "\${YELLOW}Installiere gphoto2 neu...\${NC}"
+        pip install gphoto2>=2.3.5
+        
+        echo -e "\${GREEN}gphoto2 repariert. Starte Dienst neu...\${NC}"
+        systemctl restart drehteller360.service
+        ;;
     diagnose)
         echo -e "\${BLUE}Führe Moduldiagnose aus...\${NC}"
         source myenv/bin/activate
         python diagnose_modules.py
         ;;
     *)
-        echo -e "\${BLUE}Verwendung: \$0 {start|stop|restart|status|logs|fix-modules|install-headless|diagnose}\${NC}"
+        echo -e "\${BLUE}Verwendung: \$0 {start|stop|restart|status|logs|fix-modules|install-headless|fix-gphoto|diagnose}\${NC}"
         echo
         echo -e "\${YELLOW}Verfügbare Befehle:\${NC}"
         echo -e "  \${GREEN}start\${NC}             - Startet den Dienst"
@@ -394,6 +417,7 @@ case "\$1" in
         echo -e "  \${GREEN}logs\${NC}              - Zeigt die Logs"
         echo -e "  \${GREEN}fix-modules\${NC}       - Repariert NumPy/OpenCV Module"
         echo -e "  \${GREEN}install-headless\${NC}  - Installiert OpenCV headless-Version"
+        echo -e "  \${GREEN}fix-gphoto\${NC}        - Repariert gphoto2 Installation"
         echo -e "  \${GREEN}diagnose\${NC}          - Führt Diagnose der Module durch"
         exit 1
         ;;
@@ -415,6 +439,7 @@ Diagnose-Skript für Module-Probleme im 360° Drehteller-System
 import sys
 import importlib
 import traceback
+import subprocess
 
 def test_import(module_name):
     try:
@@ -433,8 +458,26 @@ def test_import(module_name):
         traceback.print_exc()
         return False
 
+def check_libgphoto2():
+    try:
+        result = subprocess.run(['pkg-config', '--modversion', 'libgphoto2'], 
+                                capture_output=True, text=True, check=True)
+        print(f"✅ libgphoto2 installiert (Version: {result.stdout.strip()})")
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        print(f"❌ libgphoto2 nicht richtig installiert.")
+        print(f"   Fehler: {e}")
+        print("   Tipp: Installiere mit 'sudo apt-get install -y libgphoto2-dev pkg-config'")
+        return False
+
 def main():
     print(f"Python Version: {sys.version}")
+    
+    # Prüfe kritische Systembibliotheken
+    print("-" * 40)
+    print("Prüfe Systembibliotheken...")
+    check_libgphoto2()
+    print("-" * 40)
     
     modules_to_check = [
         "numpy", 
@@ -497,6 +540,7 @@ echo -e "  ${YELLOW}./drehteller.sh status${NC}            - Zeigt den Status"
 echo -e "  ${YELLOW}./drehteller.sh logs${NC}              - Zeigt die Logs"
 echo -e "  ${YELLOW}./drehteller.sh fix-modules${NC}       - Repariert NumPy/OpenCV Module"
 echo -e "  ${YELLOW}./drehteller.sh install-headless${NC}  - Installiert OpenCV headless-Version"
+echo -e "  ${YELLOW}./drehteller.sh fix-gphoto${NC}        - Repariert gphoto2 Installation"
 echo -e "  ${YELLOW}./drehteller.sh diagnose${NC}          - Diagnostiziert Modul-Probleme"
 
 echo -e "\n${GREEN}Viel Erfolg mit deinem 360° Drehteller-System!${NC}"

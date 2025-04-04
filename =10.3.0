@@ -1,0 +1,18 @@
+Collecting Flask
+  Using cached flask-3.1.0-py3-none-any.whl.metadata (2.7 kB)
+Collecting Werkzeug
+  Using cached werkzeug-3.1.3-py3-none-any.whl.metadata (3.7 kB)
+Collecting Jinja2==3.1.6
+  Using cached jinja2-3.1.6-py3-none-any.whl.metadata (2.9 kB)
+Collecting pyserial==3.5
+  Using cached pyserial-3.5-py2.py3-none-any.whl.metadata (1.6 kB)
+Collecting numpy==2.0.0
+  Using cached numpy-2.0.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (60 kB)
+Collecting opencv-python==4.11.0.86
+  Using cached opencv_python-4.11.0.86-cp37-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (20 kB)
+Collecting Pillow
+  Using cached pillow-11.1.0-cp312-cp312-manylinux_2_28_x86_64.whl.metadata (9.1 kB)
+Collecting gphoto2==2.3.4
+  Using cached gphoto2-2.3.4.tar.gz (556 kB)
+  Preparing metadata (setup.py): started
+  Preparing metadata (setup.py): finished with status 'error'
