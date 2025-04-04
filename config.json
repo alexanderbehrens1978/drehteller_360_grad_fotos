@@ -1,11 +1,13 @@
 {
     "camera": {
-        "device_path": "/dev/video1",
+        "device_path": "/dev/video2",
         "type": "webcam",
         "resolution": {
             "width": 2000,
             "height": 1000
-        }
+        },
+        "webcam_path": "/dev/video2",
+        "dslr_path": "/dev/video2"
     },
     "gphoto2_profiles": {
         "Canon EOS 1200D": {

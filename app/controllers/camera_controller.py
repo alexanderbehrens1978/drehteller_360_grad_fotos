@@ -79,47 +79,117 @@ class CameraController:
             'gphoto2': []
         }
         
-        # Webcams erkennen
+        # Alle Video-Geräte erkennen
         try:
-            from app.utils.webcam_detection_helper import find_working_webcam
-            
-            # Linux: Nach /dev/video* Geräten suchen
             import glob
             video_devices = glob.glob('/dev/video*')
             
             # Teste jedes Gerät
             for device in video_devices:
                 try:
+                    # Prüfen, ob es eine DSLR oder eine Webcam ist
+                    is_dslr = False
+                    device_name = f"Gerät an {device}"
+                    
+                    # Versuche, Kamerainformationen mit v4l2-ctl zu bekommen
+                    try:
+                        # Mehr Informationen über das Gerät sammeln
+                        device_manufacturer = ""
+                        device_product = ""
+                        device_model = ""
+                        
+                        # Versuche zuerst Informationen aus v4l2-ctl --info zu bekommen
+                        result = subprocess.run(['v4l2-ctl', '--device', device, '--info'],
+                                             stdout=subprocess.PIPE,
+                                             stderr=subprocess.PIPE,
+                                             text=True)
+                        
+                        if result.returncode == 0:
+                            for line in result.stdout.strip().split('\n'):
+                                if 'Card type' in line:
+                                    device_info = line.split(':', 1)[1].strip()
+                                    device_name = device_info
+                                    # Wenn im Namen Nikon oder Canon vorkommt, ist es eine DSLR
+                                    if any(brand in device_info for brand in ['Nikon', 'Canon', 'DSLR']):
+                                        is_dslr = True
+                                        break
+                                elif 'Driver name' in line:
+                                    device_model = line.split(':', 1)[1].strip()
+                        
+                        # Zusätzliche Informationen aus v4l2-ctl --list-devices und udevadm holen
+                        if not is_dslr:
+                            try:
+                                # Geräte-Details mit udevadm erfragen für zusätzliche Infos
+                                udev_result = subprocess.run(['udevadm', 'info', '--name=' + device, '--query=property'],
+                                                         stdout=subprocess.PIPE,
+                                                         stderr=subprocess.PIPE,
+                                                         text=True)
+                                
+                                if udev_result.returncode == 0:
+                                    for line in udev_result.stdout.strip().split('\n'):
+                                        if 'ID_VENDOR=' in line:
+                                            device_manufacturer = line.split('=', 1)[1].replace('_', ' ').title()
+                                        elif 'ID_MODEL=' in line:
+                                            device_product = line.split('=', 1)[1].replace('_', ' ').title()
+                                        elif 'ID_VENDOR_FROM_DATABASE=' in line:
+                                            device_manufacturer = line.split('=', 1)[1]
+                                        elif 'ID_MODEL_FROM_DATABASE=' in line:
+                                            device_product = line.split('=', 1)[1]
+                            except Exception as e:
+                                self.logger.debug(f"Fehler beim Abrufen der udevadm-Informationen: {str(e)}")
+                            
+                            # Sinnvollen Namen aus allen Informationen bilden
+                            if device_manufacturer and device_product:
+                                device_name = f"{device_manufacturer} {device_product}"
+                            elif device_manufacturer:
+                                device_name = f"{device_manufacturer} Webcam"
+                            elif device_product:
+                                device_name = device_product
+                            elif device_model:
+                                device_name = f"Webcam ({device_model})"
+                            else:
+                                device_name = f"Webcam an {device}"
+                    except Exception as e:
+                        self.logger.debug(f"Fehler beim Abrufen der Geräteinformationen mit v4l2-ctl: {str(e)}")
+                    
+                    # Testen, ob das Gerät funktioniert
                     cap = cv2.VideoCapture(device)
+                    device_working = False
+                    
                     if cap.isOpened():
                         ret, frame = cap.read()
-                        if ret:
-                            cameras['webcams'].append({
-                                'device': device,
-                                'name': f"Webcam an {device}",
-                                'model': 'Generic Webcam',
-                                'status': 'working'
-                            })
-                        else:
-                            cameras['webcams'].append({
-                                'device': device,
-                                'name': f"Webcam an {device}",
-                                'model': 'Generic Webcam',
-                                'status': 'error'
-                            })
-                    cap.release()
+                        device_working = ret
+                        cap.release()
+                    
+                    # Kamera dem passenden Typ zuordnen
+                    if is_dslr:
+                        # Wenn es eine DSLR ist, zur gphoto2-Liste hinzufügen
+                        cameras['gphoto2'].append({
+                            'device': device,
+                            'name': f"DSLR {device_name}",
+                            'model': 'DSLR via V4L2',
+                            'status': 'working' if device_working else 'detected'
+                        })
+                    else:
+                        # Andernfalls ist es eine Webcam
+                        cameras['webcams'].append({
+                            'device': device,
+                            'name': f"Webcam {device_name}",
+                            'model': 'Generic Webcam',
+                            'status': 'working' if device_working else 'error'
+                        })
                 except Exception as e:
                     self.logger.debug(f"Fehler beim Testen von {device}: {str(e)}")
         except Exception as e:
-            self.logger.error(f"Fehler bei der Webcam-Erkennung: {str(e)}")
+            self.logger.error(f"Fehler bei der Geräte-Erkennung: {str(e)}")
         
-        # gphoto2-Kameras erkennen
+        # Zusätzlich gphoto2-Kameras über den normalen Weg erkennen
         if self.gphoto2_available:
             try:
                 result = subprocess.run(['gphoto2', '--auto-detect'],
-                                        stdout=subprocess.PIPE,
-                                        stderr=subprocess.PIPE,
-                                        text=True)
+                                         stdout=subprocess.PIPE,
+                                         stderr=subprocess.PIPE,
+                                         text=True)
                 
                 if result.returncode == 0:
                     lines = result.stdout.strip().split('\n')
@@ -133,12 +203,20 @@ class CameraController:
                                     model = model.strip()
                                     port = "usb:" + port.strip()
                                     
-                                    cameras['gphoto2'].append({
-                                        'device': port,
-                                        'name': model,
-                                        'model': model,
-                                        'status': 'available'
-                                    })
+                                    # Prüfen, ob diese Kamera bereits in der Liste ist (falls sie auch als /dev/video erscheint)
+                                    already_added = False
+                                    for existing_cam in cameras['gphoto2']:
+                                        if model in existing_cam['name']:
+                                            already_added = True
+                                            break
+                                    
+                                    if not already_added:
+                                        cameras['gphoto2'].append({
+                                            'device': port,
+                                            'name': model,
+                                            'model': model,
+                                            'status': 'available'
+                                        })
                                 except Exception as e:
                                     self.logger.debug(f"Fehler beim Parsen der Kamerazeile: {line}, {str(e)}")
             except Exception as e:
@@ -247,11 +325,25 @@ class CameraController:
                 # Auflösung einstellen
                 self.webcam.set(cv2.CAP_PROP_FRAME_WIDTH, self.resolution[0])
                 self.webcam.set(cv2.CAP_PROP_FRAME_HEIGHT, self.resolution[1])
-
+                
+                # Kamera-Einstellungen für bessere Bildqualität
+                self.webcam.set(cv2.CAP_PROP_AUTOFOCUS, 1)  # Autofokus aktivieren
+                self.webcam.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1)  # Auto-Belichtung aktivieren
+                self.webcam.set(cv2.CAP_PROP_BRIGHTNESS, 100)  # Helligkeit erhöhen
+                
+                # Überprüfen, ob die Kamera geöffnet wurde
                 if not self.webcam.isOpened():
                     self.logger.error(f"Webcam konnte nicht geöffnet werden: {self.device}")
                     self.webcam = None
                     return False
+                
+                # Einige Test-Frames lesen, um die Kamera zu initialisieren
+                self.logger.info("Initialisiere Kamera mit Test-Frames...")
+                for i in range(10):  # Mehr Frames als zuvor
+                    ret, _ = self.webcam.read()
+                    if not ret:
+                        self.logger.warning(f"Test-Frame {i+1} konnte nicht gelesen werden")
+                    time.sleep(0.3)  # Längere Pause für bessere Initialisierung
 
                 self.logger.info(f"Webcam erfolgreich initialisiert: {self.device}")
                 return True
@@ -267,6 +359,35 @@ class CameraController:
             self.webcam.release()
             self.webcam = None
             self.logger.debug("Webcam-Verbindung geschlossen")
+
+    def _setup_gphoto2(self):
+        """
+        Überprüft, ob gphoto2-Kamera bereit ist
+        
+        Returns:
+            True bei Erfolg, False bei Fehler
+        """
+        if not self.gphoto2_available:
+            self.logger.error("gphoto2 ist nicht installiert. Es können keine DSLR-Kameras verwendet werden.")
+            return False
+            
+        port_option = []
+        
+        # Wenn ein bestimmter Gerätepfad angegeben wurde
+        if self.device and self.device.lower() != 'auto':
+            # Anpassung für gphoto2-Pfadformat
+            device_path = self.device
+            
+            # Wenn der Pfad bereits das usb-Format hat, aber Komma verwendet statt Punkt
+            if device_path.startswith('usb:') and ',' in device_path:
+                # Ersetze Komma durch Punkt für gphoto2
+                device_path = device_path.replace(',', '.')
+                self.logger.debug(f"DSLR-Pfad von {self.device} zu {device_path} formatiert")
+            
+            port_option = ['--port', device_path]
+            self.logger.debug(f"Verwende DSLR-Gerätepfad: {device_path}")
+        
+        return port_option
 
     def capture_webcam_photo(self, output_path):
         """
@@ -286,15 +407,46 @@ class CameraController:
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
             # Mehrere Frames lesen, um sicherzustellen, dass die Kamera sich angepasst hat
-            for _ in range(5):
+            frames = []
+            for i in range(15):  # Mehr Frames für bessere Anpassung
                 ret, frame = self.webcam.read()
                 if not ret:
-                    self.logger.error("Fehler beim Lesen des Webcam-Frames")
-                    return False
-                time.sleep(0.1)
+                    self.logger.error(f"Fehler beim Lesen des Webcam-Frames {i+1}")
+                    continue
+                
+                # Überprüfen, ob das Frame schwarz ist
+                if frame is not None and frame.size > 0:
+                    avg_brightness = cv2.mean(frame)[0]
+                    if avg_brightness > 5:  # Ignoriere zu dunkle Frames
+                        frames.append(frame)
+                        self.logger.debug(f"Frame {i+1} erfasst, Helligkeit: {avg_brightness:.2f}")
+                    else:
+                        self.logger.warning(f"Frame {i+1} zu dunkel (Helligkeit: {avg_brightness:.2f})")
+                
+                # Längere Pause zwischen den Frames
+                time.sleep(0.2)
+            
+            if not frames:
+                self.logger.error("Keine brauchbaren Frames gefunden - alle Bilder zu dunkel oder fehlerhaft")
+                return False
+                
+            # Das hellste Frame verwenden
+            best_frame = max(frames, key=lambda f: cv2.mean(f)[0])
+            self.logger.info(f"Verwende hellstes Frame (Helligkeit: {cv2.mean(best_frame)[0]:.2f})")
+            
+            # Verbessere Kontrast und Helligkeit wenn nötig
+            if cv2.mean(best_frame)[0] < 50:
+                self.logger.info("Verbessere Bild mit automatischer Kontrastanpassung")
+                # Normalisiere Helligkeit und Kontrast
+                lab = cv2.cvtColor(best_frame, cv2.COLOR_BGR2LAB)
+                l, a, b = cv2.split(lab)
+                clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+                cl = clahe.apply(l)
+                limg = cv2.merge((cl, a, b))
+                best_frame = cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
 
-            # Letzten Frame speichern
-            success = cv2.imwrite(output_path, frame)
+            # Frame speichern
+            success = cv2.imwrite(output_path, best_frame)
 
             if success:
                 self.logger.info(f"Webcam-Foto gespeichert: {output_path}")
@@ -335,8 +487,9 @@ class CameraController:
             ]
 
             # Wenn eine bestimmte Kamera ausgewählt wurde (Port)
-            if self.device and self.device != 'auto':
-                cmd.extend(['--port', self.device])
+            port_option = self._setup_gphoto2()
+            if port_option:
+                cmd.extend(port_option)
             
             # Kamera-spezifische Einstellungen hinzufügen, falls vorhanden
             for setting, value in self.camera_settings.items():

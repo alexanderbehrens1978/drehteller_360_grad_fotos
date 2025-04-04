@@ -410,6 +410,46 @@ textarea {
     border: 1px solid #f5c6cb;
 }
 
+/* Kamera-Einstellungen */
+.camera-specific-settings {
+    margin-top: 10px;
+    margin-bottom: 15px;
+    padding-left: 15px;
+    border-left: 3px solid #ddd;
+}
+
+/* Eingabefeld mit Button daneben */
+.input-with-button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 5px;
+}
+
+.input-with-button input {
+    flex: 1;
+}
+
+.action-btn-small {
+    padding: 6px 10px;
+    background-color: #0078d7;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.85em;
+    white-space: nowrap;
+}
+
+.action-btn-small:hover {
+    background-color: #0063b1;
+}
+
+.action-btn-small:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
 /* Footer */
 footer {
     text-align: center;

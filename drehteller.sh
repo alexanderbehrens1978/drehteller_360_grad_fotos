@@ -8,6 +8,9 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Projektverzeichnis bestimmen
+PROJECT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
 # Prüfe auf root-Rechte für bestimmte Befehle
 check_root() {
     if [ "$EUID" -ne 0 ]; then
@@ -42,8 +45,8 @@ case "$1" in
     fix-modules)
         echo -e "${BLUE}Führe NumPy/OpenCV-Fix aus...${NC}"
         
-        # Aktiviere virtuelle Umgebung
-        source myenv/bin/activate
+        # Aktiviere virtuelle Umgebung mit absolutem Pfad
+        source "${PROJECT_DIR}/myenv/bin/activate"
         
         # Python-Version ermitteln
         PYTHON_VERSION=$(python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
@@ -70,8 +73,8 @@ case "$1" in
     install-headless)
         echo -e "${BLUE}Installiere headless-Version von OpenCV...${NC}"
         
-        # Aktiviere virtuelle Umgebung
-        source myenv/bin/activate
+        # Aktiviere virtuelle Umgebung mit absolutem Pfad
+        source "${PROJECT_DIR}/myenv/bin/activate"
         
         # Python-Version ermitteln
         PYTHON_VERSION=$(python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
@@ -105,7 +108,7 @@ case "$1" in
         apt-get install -y libgphoto2-dev pkg-config
         
         echo -e "${YELLOW}Aktiviere virtuelle Umgebung...${NC}"
-        source myenv/bin/activate
+        source "${PROJECT_DIR}/myenv/bin/activate"
         
         # Alte Version entfernen und neue installieren
         echo -e "${YELLOW}Deinstalliere bestehende gphoto2-Version...${NC}"
@@ -119,7 +122,7 @@ case "$1" in
         ;;
     diagnose)
         echo -e "${BLUE}Führe Moduldiagnose aus...${NC}"
-        source myenv/bin/activate
+        source "${PROJECT_DIR}/myenv/bin/activate"
         python diagnose_modules.py
         ;;
     *)
@@ -134,7 +137,8 @@ case "$1" in
         echo -e "  ${GREEN}fix-modules${NC}       - Repariert NumPy/OpenCV Module"
         echo -e "  ${GREEN}install-headless${NC}  - Installiert OpenCV headless-Version"
         echo -e "  ${GREEN}fix-gphoto${NC}        - Repariert gphoto2 Installation"
-        echo -e "  ${GREEN}diagnose${NC}          - Führt Diagnose der Module durch"
+        echo -e "  ${GREEN}diagnose${NC}          - Diagnostiziert Modul-Probleme"
+
         exit 1
         ;;
 esac

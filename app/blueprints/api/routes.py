@@ -281,6 +281,31 @@ def camera_capabilities():
             "message": f"Fehler beim Abrufen der Kamera-Fähigkeiten: {str(e)}"
         }), 500
 
+@api_bp.route('/cameras/detect', methods=['GET'])
+def detect_cameras():
+    """
+    Erkennt verfügbare Kameras (Webcams und DSLR)
+    """
+    try:
+        from app.controllers.camera_controller import CameraController
+        
+        # CameraController-Instanz erstellen
+        camera_controller = CameraController()
+        
+        # Kameras erkennen
+        cameras = camera_controller.detect_cameras()
+        
+        return jsonify({
+            "status": "success",
+            "cameras": cameras
+        })
+    except Exception as e:
+        logger.error(f"Fehler bei der Kameraerkennung: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "message": f"Fehler bei der Kameraerkennung: {str(e)}"
+        }), 500
+
 @api_bp.route('/project/<project_id>/start_session', methods=['POST'])
 def start_project_session(project_id):
     """
