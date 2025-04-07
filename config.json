@@ -29,11 +29,17 @@
         }
     },
     "arduino": {
-        "port": "/dev/ttyACM0",
+        "port": null,
         "baudrate": 9600
     },
     "rotation": {
         "default_degrees": 15,
         "default_interval": 5
+    },
+    "rgb_arduino": {
+        "connection_type": "ethernet",
+        "ip_address": "192.168.188.177",
+        "port": 80,
+        "threshold": 0
     }
 }
