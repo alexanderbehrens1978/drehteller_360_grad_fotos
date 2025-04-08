@@ -359,20 +359,86 @@ class CameraController:
 
     def capture_photo(self, output_path):
         """
-        Nimmt ein Foto auf (je nach Kameratyp)
+        Nimmt ein Foto mit der aktuellen Kamera auf
         
         Args:
-            output_path: Pfad für das aufgenommene Foto
+            output_path: Pfad, an dem das Foto gespeichert werden soll
             
         Returns:
-            True bei Erfolg, False bei Fehler
+            True wenn erfolgreich, sonst False
         """
+        self.logger.info(f"Foto wird aufgenommen mit Kamera: {self.camera_type}, Gerät: {self.device}, Auflösung: {self.resolution}")
+        
         if self.camera_type == 'webcam':
-            return self.capture_webcam_photo(output_path)
-        elif self.camera_type == 'gphoto2':
-            return self.capture_gphoto2_photo(output_path)
+            try:
+                # Webcam initialisieren
+                if not self.webcam:
+                    self.webcam = cv2.VideoCapture(self.device)
+                    
+                # Auflösung setzen
+                if self.resolution:
+                    width, height = self.resolution
+                    self.webcam.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+                    self.webcam.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+                    self.logger.debug(f"Webcam-Auflösung gesetzt auf: {width}x{height}")
+                    
+                    # Tatsächliche Auflösung auslesen (kann von der gesetzten abweichen)
+                    actual_width = self.webcam.get(cv2.CAP_PROP_FRAME_WIDTH)
+                    actual_height = self.webcam.get(cv2.CAP_PROP_FRAME_HEIGHT)
+                    self.logger.debug(f"Tatsächliche Webcam-Auflösung: {actual_width}x{actual_height}")
+                
+                # Foto aufnehmen
+                ret, frame = self.webcam.read()
+                
+                if not ret:
+                    self.logger.error("Fehler beim Auslesen der Webcam")
+                    return False
+                    
+                # Bild speichern
+                os.makedirs(os.path.dirname(output_path), exist_ok=True)
+                cv2.imwrite(output_path, frame)
+                self.logger.info(f"Webcam-Foto gespeichert unter: {output_path}")
+                
+                return True
+            except Exception as e:
+                self.logger.error(f"Fehler bei der Webcam-Aufnahme: {str(e)}")
+                return False
+                
+        elif self.camera_type == 'gphoto2' and self.gphoto2_available:
+            try:
+                # Basisverzeichnis erstellen, falls es nicht existiert
+                os.makedirs(os.path.dirname(output_path), exist_ok=True)
+                
+                # Befehl vorbereiten
+                command = ['gphoto2', '--capture-image-and-download', '--filename', output_path]
+                
+                # Wenn ein bestimmtes Gerät gewählt wurde
+                if self.device and self.device != 'auto':
+                    command.extend(['--port', self.device])
+                
+                # Kameraeinstellungen hinzufügen, falls vorhanden
+                for setting, value in self.camera_settings.items():
+                    if setting and value:
+                        command.extend(['--set-config', f"{setting}={value}"])
+                
+                # Debug-Ausgabe des Befehls
+                self.logger.debug(f"gphoto2-Befehl: {' '.join(command)}")
+                
+                # Befehl ausführen
+                result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                
+                # Ergebnis prüfen
+                if result.returncode == 0:
+                    self.logger.info(f"DSLR-Foto gespeichert unter: {output_path}")
+                    return True
+                else:
+                    self.logger.error(f"Fehler beim Aufnehmen des DSLR-Fotos: {result.stderr}")
+                    return False
+            except Exception as e:
+                self.logger.error(f"Fehler bei der DSLR-Aufnahme: {str(e)}")
+                return False
         else:
-            self.logger.error(f"Unbekannter Kameratyp: {self.camera_type}")
+            self.logger.error(f"Nicht unterstützter Kameratyp: {self.camera_type}")
             return False
 
     def cleanup(self):

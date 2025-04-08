@@ -4,6 +4,7 @@ import logging
 from flask import render_template, request, jsonify, redirect, url_for
 from app.blueprints.settings import settings_bp
 from app.utils.config_manager import config_manager
+from app import update_camera_controller
 
 # Logger einrichten
 logger = logging.getLogger(__name__)
@@ -60,6 +61,11 @@ def save_config():
         
         if config_save_success:
             logger.info(f"Konfiguration erfolgreich gespeichert: {config_manager.config_path}")
+            
+            # CameraController aktualisieren, damit die neuen Einstellungen verwendet werden
+            update_camera_controller()
+            logger.info("Camera-Controller mit aktuellen Einstellungen aktualisiert")
+            
             return jsonify({
                 "status": "success", 
                 "message": "Konfiguration erfolgreich gespeichert",
@@ -208,6 +214,7 @@ def available_cameras():
                         # Wenn die Auflösung ungefähr stimmt (Toleranz für Rundungsfehler)
                         if (abs(actual_width - width) < 10) and (abs(actual_height - height) < 10):
                             resolution_str = f"{int(actual_width)}x{int(actual_height)}"
+                            logger.debug(f"Webcam {device} unterstützt Auflösung: {resolution_str}")
                             if resolution_str not in [r['resolution'] for r in resolutions]:
                                 resolutions.append({
                                     'resolution': resolution_str,
@@ -215,19 +222,45 @@ def available_cameras():
                                     'height': int(actual_height)
                                 })
                     
+                    # Falls keine Auflösungen gefunden wurden, Standardwerte hinzufügen
                     if not resolutions:
                         # Wenn keine der Standardauflösungen funktioniert, aktuelle Werte nehmen
                         width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
                         height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+                        resolution_str = f"{int(width)}x{int(height)}"
+                        logger.debug(f"Keine Standardauflösungen für Webcam {device} gefunden, verwende: {resolution_str}")
                         resolutions.append({
-                            'resolution': f"{int(width)}x{int(height)}",
+                            'resolution': resolution_str,
                             'width': int(width),
                             'height': int(height)
                         })
+                        
+                        # Füge mindestens VGA und HD hinzu, wenn nichts gefunden wurde
+                        logger.debug(f"Füge Standardauflösungen für Webcam {device} hinzu")
+                        for res in [(640, 480), (1280, 720), (1920, 1080)]:
+                            w, h = res
+                            res_str = f"{w}x{h}"
+                            if res_str not in [r['resolution'] for r in resolutions]:
+                                resolutions.append({
+                                    'resolution': res_str,
+                                    'width': w,
+                                    'height': h
+                                })
                             
                     cap.release()
+                    logger.info(f"Erkannte Auflösungen für {device}: {resolutions}")
             except Exception as e:
                 logger.error(f"Fehler beim Ermitteln der Auflösungen für {device}: {str(e)}")
+                # Standardauflösungen zurückgeben, wenn ein Fehler auftritt
+                for res in [(640, 480), (1280, 720), (1920, 1080)]:
+                    w, h = res
+                    res_str = f"{w}x{h}"
+                    resolutions.append({
+                        'resolution': res_str,
+                        'width': w,
+                        'height': h
+                    })
+                logger.info(f"Verwende Standardauflösungen für {device}: {resolutions}")
             
             return resolutions
         

@@ -2,7 +2,10 @@
     "camera": {
         "device_path": "/dev/video2",
         "type": "webcam",
-        "resolution": "",
+        "resolution": {
+            "width": 1920,
+            "height": 1080
+        },
         "selected_device": ""
     },
     "gphoto2_profiles": {

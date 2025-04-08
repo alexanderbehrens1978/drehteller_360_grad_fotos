@@ -1,0 +1,54 @@
+{
+    "id": "610c36ac-e3a1-4aaf-bb2c-b79452f4ccdb",
+    "name": "VSF 1",
+    "description": "",
+    "angle_step": 1,
+    "created_at": 1744127874.9738853,
+    "updated_at": 1744127874.9738853,
+    "path": "/d360/dev/static/projects/610c36ac-e3a1-4aaf-bb2c-b79452f4ccdb",
+    "images": [
+        {
+            "path": "images/photo_1744127877_60.jpg",
+            "angle": 60
+        },
+        {
+            "path": "images/photo_1744127878_61.jpg",
+            "angle": 61
+        },
+        {
+            "path": "images/photo_1744127880_62.jpg",
+            "angle": 62
+        },
+        {
+            "path": "images/photo_1744127881_63.jpg",
+            "angle": 63
+        },
+        {
+            "path": "images/photo_1744127883_64.jpg",
+            "angle": 64
+        },
+        {
+            "path": "images/photo_1744127885_65.jpg",
+            "angle": 65
+        },
+        {
+            "path": "images/photo_1744127886_66.jpg",
+            "angle": 66
+        },
+        {
+            "path": "images/photo_1744127888_67.jpg",
+            "angle": 67
+        },
+        {
+            "path": "images/photo_1744127889_68.jpg",
+            "angle": 68
+        },
+        {
+            "path": "images/photo_1744127891_69.jpg",
+            "angle": 69
+        }
+    ],
+    "current_position": 69,
+    "active_session": null,
+    "last_captured_angle": 69
+}

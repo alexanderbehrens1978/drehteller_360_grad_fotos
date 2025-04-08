@@ -6,6 +6,7 @@ Initialisiert die Flask-Anwendung und registriert alle Blueprints.
 """
 
 import logging
+import json
 from flask import Flask, g
 from app.utils.config_manager import config_manager
 from app.controllers.arduino_controller import ArduinoController
@@ -125,7 +126,12 @@ def initialize_controllers():
         # Kamera Controller
         camera_type = config_manager.get('camera.type', 'webcam')
         camera_device = config_manager.get('camera.device_path', '/dev/video0')
-        resolution = config_manager.get('camera.resolution')
+        
+        # Hier die Auflösung aus der Konfiguration extrahieren
+        resolution = None
+        if 'camera' in config_manager.config and 'resolution' in config_manager.config['camera']:
+            resolution = config_manager.config['camera']['resolution']
+        
         camera_controller = CameraController(camera_type, camera_device, resolution)
         
         # Drehteller Controller (nutzt den Arduino Controller)
@@ -133,6 +139,47 @@ def initialize_controllers():
                                                  config_manager.get('rotation.default_degrees', 15))
     except Exception as e:
         logging.error(f"Fehler bei der Controller-Initialisierung: {str(e)}")
+
+def update_camera_controller():
+    """Aktualisiert den CameraController mit den aktuellen Einstellungen aus der Konfiguration"""
+    global camera_controller
+    
+    try:
+        if camera_controller is None:
+            # Wenn der Controller noch nicht initialisiert wurde, initialisieren
+            initialize_controllers()
+            return
+            
+        # Aktuelle Konfiguration laden
+        camera_type = config_manager.get('camera.type', 'webcam')
+        camera_device = config_manager.get('camera.device_path', '/dev/video0')
+        
+        # Debug-Ausgabe der Konfiguration
+        logging.debug(f"Aktuelle Kamera-Konfiguration: {json.dumps(config_manager.config.get('camera', {}), indent=2)}")
+        
+        # Auflösung aus der Konfiguration extrahieren
+        resolution = None
+        if 'camera' in config_manager.config and 'resolution' in config_manager.config['camera']:
+            resolution = config_manager.config['camera']['resolution']
+            
+            # Debug-Ausgabe für Auflösung
+            logging.debug(f"Geladene Auflösung: {resolution}")
+            
+            # Sicherstellen, dass resolution ein Dictionary mit width und height ist
+            if isinstance(resolution, dict) and 'width' in resolution and 'height' in resolution:
+                camera_controller.resolution = (resolution['width'], resolution['height'])
+                logging.debug(f"CameraController-Auflösung gesetzt auf: {camera_controller.resolution}")
+            else:
+                logging.warning(f"Ungültiges Auflösungsformat: {resolution}")
+        
+        # Controller mit neuen Einstellungen aktualisieren
+        camera_controller.camera_type = camera_type
+        camera_controller.device = camera_device
+        
+        logging.info(f"Kamera-Controller aktualisiert: Typ={camera_type}, Gerät={camera_device}, Auflösung={camera_controller.resolution}")
+        
+    except Exception as e:
+        logging.error(f"Fehler bei der Aktualisierung des Camera-Controllers: {str(e)}")
 
 def configure_logging(app):
     """Konfiguriert das Logging für die App"""
@@ -181,6 +228,10 @@ def register_blueprints(app):
     # Blueprint für Projektverwaltung
     from app.blueprints.projects import projects_bp
     app.register_blueprint(projects_bp, url_prefix='/projects')
+    
+    # Blueprint für Sensor-Einstellungen
+    from app.blueprints.sensors import sensors_bp
+    app.register_blueprint(sensors_bp, url_prefix='/sensors')
     
     # Blueprint für den 360° Viewer
     from app.blueprints.viewer import viewer_bp

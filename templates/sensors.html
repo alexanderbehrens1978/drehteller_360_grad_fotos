@@ -1,0 +1,397 @@
+{% extends 'base.html' %}
+
+{% block title %}Sensor-Einstellungen{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="main-title">Sensor-Einstellungen</h1>
+    
+    <div id="statusMessage" class="status-message" style="display: none;"></div>
+    
+    <form id="sensorsForm">
+        <div class="settings-container">
+            <div class="settings-group">
+                <h2>Arduino-Verbindung</h2>
+                
+                <div class="setting-row">
+                    <div class="setting-label">Verbindungstyp</div>
+                    <div class="setting-control">
+                        <select id="connectionType" name="sensor_arduino.connection_type">
+                            <option value="ethernet">Ethernet</option>
+                            <option value="serial">Serielle Verbindung</option>
+                            <option value="disabled">Deaktiviert</option>
+                        </select>
+                        <div class="setting-description">Art der Verbindung zum Sensor-Arduino</div>
+                    </div>
+                </div>
+                
+                <!-- Ethernet-Einstellungen -->
+                <div id="ethernetSettings" class="connection-specific-settings">
+                    <div class="setting-row">
+                        <div class="setting-label">IP-Adresse</div>
+                        <div class="setting-control">
+                            <input type="text" id="ipAddress" name="sensor_arduino.ip_address" placeholder="z.B. 192.168.188.177">
+                            <div class="setting-description">IP-Adresse des Arduino mit Ethernet-Shield</div>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-row">
+                        <div class="setting-label">Port</div>
+                        <div class="setting-control">
+                            <input type="number" id="port" name="sensor_arduino.port" placeholder="80" min="1" max="65535">
+                            <div class="setting-description">Netzwerkport für die Kommunikation</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Serielle Verbindung -->
+                <div id="serialSettings" class="connection-specific-settings" style="display: none;">
+                    <div class="setting-row">
+                        <div class="setting-label">Serieller Port</div>
+                        <div class="setting-control">
+                            <input type="text" id="serialPort" name="sensor_arduino.serial_port" placeholder="/dev/ttyACM0 oder COM3">
+                            <div class="setting-description">Serieller Port des Arduino</div>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-row">
+                        <div class="setting-label">Baudrate</div>
+                        <div class="setting-control">
+                            <input type="number" id="baudrate" name="sensor_arduino.baudrate" placeholder="9600" min="1200" max="115200">
+                            <div class="setting-description">Baudrate für die serielle Kommunikation</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="settings-group">
+                <h2>Sensor-Konfiguration</h2>
+                
+                <div class="setting-row">
+                    <div class="setting-label">Sensor-Typ</div>
+                    <div class="setting-control">
+                        <select id="sensorType" name="sensor_arduino.sensor_type">
+                            <option value="proximity">Näherungssensor (LJ12A3-4-Z/BX)</option>
+                            <option value="rgb">RGB-Sensor</option>
+                        </select>
+                        <div class="setting-description">Art des am Arduino angeschlossenen Sensors</div>
+                    </div>
+                </div>
+                
+                <!-- Näherungssensor-Einstellungen -->
+                <div id="proximitySensorSettings" class="sensor-specific-settings">
+                    <div class="setting-row">
+                        <div class="setting-label">Pin-Nummer</div>
+                        <div class="setting-control">
+                            <input type="number" id="proximityPin" name="sensor_arduino.proximity_pin" value="2" min="0" max="53">
+                            <div class="setting-description">GPIO-Pin, an dem der Näherungssensor angeschlossen ist (Standard: 2)</div>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-row">
+                        <div class="setting-label">Inverses Signal</div>
+                        <div class="setting-control">
+                            <input type="checkbox" id="inverseSignal" name="sensor_arduino.inverse_signal">
+                            <div class="setting-description">Aktivieren, wenn das Sensorsignal umgekehrt werden soll (HIGH = kein Objekt, LOW = Objekt erkannt)</div>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-row">
+                        <div class="setting-label">Erkennungsverzögerung (ms)</div>
+                        <div class="setting-control">
+                            <input type="number" id="detectionDelay" name="sensor_arduino.detection_delay" value="100" min="0" max="5000">
+                            <div class="setting-description">Verzögerung in Millisekunden, bevor der Sensor den Status ändert (gegen Störungen)</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- RGB-Sensor-Einstellungen -->
+                <div id="rgbSensorSettings" class="sensor-specific-settings" style="display: none;">
+                    <div class="setting-row">
+                        <div class="setting-label">Schwellenwert</div>
+                        <div class="setting-control">
+                            <input type="number" id="threshold" name="sensor_arduino.threshold" placeholder="120" min="0" max="255">
+                            <div class="setting-description">Helligkeitsschwellenwert zur Erkennung von Schwarz/Weiß (0-255)</div>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-row">
+                        <div class="setting-label">LED-Farbe</div>
+                        <div class="setting-control">
+                            <select id="ledColor" name="sensor_arduino.led_color">
+                                <option value="white">Weiß</option>
+                                <option value="red">Rot</option>
+                                <option value="green">Grün</option>
+                                <option value="blue">Blau</option>
+                            </select>
+                            <div class="setting-description">Farbe der LED zur Beleuchtung</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="setting-row">
+                    <div class="setting-label">Sensor testen</div>
+                    <div class="setting-control">
+                        <button type="button" id="testSensor" class="btn">Sensor testen</button>
+                        <div class="setting-description">Verbindung und Funktionalität des Sensors überprüfen</div>
+                    </div>
+                </div>
+                
+                <div id="sensorTestResult" class="test-result" style="display: none;">
+                    <h4>Sensor-Test</h4>
+                    <div id="sensorTestMessage"></div>
+                    <div id="sensorTestStatus"></div>
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Speichern</button>
+                <a href="/" class="btn btn-secondary">Zurück</a>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const sensorsForm = document.getElementById('sensorsForm');
+        const statusMessage = document.getElementById('statusMessage');
+        const connectionType = document.getElementById('connectionType');
+        const ethernetSettings = document.getElementById('ethernetSettings');
+        const serialSettings = document.getElementById('serialSettings');
+        const sensorType = document.getElementById('sensorType');
+        const proximitySensorSettings = document.getElementById('proximitySensorSettings');
+        const rgbSensorSettings = document.getElementById('rgbSensorSettings');
+        
+        // CSS für die Testergebnisse
+        const style = document.createElement('style');
+        style.textContent = `
+            .test-result { 
+                margin: 15px 0; 
+                padding: 15px; 
+                border: 1px solid #ddd; 
+                border-radius: 5px; 
+                background-color: #f9f9f9; 
+            }
+            #sensorTestStatus { 
+                margin-top: 10px; 
+                font-weight: bold; 
+            }
+            .status-active {
+                color: green;
+            }
+            .status-inactive {
+                color: red;
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Verbindungstyp-Wechsel
+        connectionType.addEventListener('change', function() {
+            updateConnectionUIBasedOnType(this.value);
+        });
+        
+        // Sensor-Typ-Wechsel
+        sensorType.addEventListener('change', function() {
+            updateSensorUIBasedOnType(this.value);
+        });
+        
+        function updateConnectionUIBasedOnType(type) {
+            if (type === 'ethernet') {
+                ethernetSettings.style.display = 'block';
+                serialSettings.style.display = 'none';
+            } else if (type === 'serial') {
+                ethernetSettings.style.display = 'none';
+                serialSettings.style.display = 'block';
+            } else if (type === 'disabled') {
+                ethernetSettings.style.display = 'none';
+                serialSettings.style.display = 'none';
+            }
+        }
+        
+        function updateSensorUIBasedOnType(type) {
+            if (type === 'proximity') {
+                proximitySensorSettings.style.display = 'block';
+                rgbSensorSettings.style.display = 'none';
+            } else if (type === 'rgb') {
+                proximitySensorSettings.style.display = 'none';
+                rgbSensorSettings.style.display = 'block';
+            }
+        }
+        
+        // Aktuelle Konfiguration laden
+        fetch('/sensors/get_config')
+            .then(response => response.json())
+            .then(config => {
+                // Connection-Einstellungen
+                document.getElementById('connectionType').value = config?.sensor_arduino?.connection_type || 'ethernet';
+                document.getElementById('ipAddress').value = config?.sensor_arduino?.ip_address || '192.168.188.177';
+                document.getElementById('port').value = config?.sensor_arduino?.port || 80;
+                document.getElementById('serialPort').value = config?.sensor_arduino?.serial_port || '/dev/ttyACM0';
+                document.getElementById('baudrate').value = config?.sensor_arduino?.baudrate || 9600;
+                
+                // Sensor-Typ und spezifische Einstellungen
+                document.getElementById('sensorType').value = config?.sensor_arduino?.sensor_type || 'proximity';
+                
+                // Proximity-Sensor-Einstellungen
+                document.getElementById('proximityPin').value = config?.sensor_arduino?.proximity_pin || 2;
+                document.getElementById('inverseSignal').checked = config?.sensor_arduino?.inverse_signal || false;
+                document.getElementById('detectionDelay').value = config?.sensor_arduino?.detection_delay || 100;
+                
+                // RGB-Sensor-Einstellungen
+                document.getElementById('threshold').value = config?.sensor_arduino?.threshold || 120;
+                document.getElementById('ledColor').value = config?.sensor_arduino?.led_color || 'white';
+                
+                // UI basierend auf den Einstellungen aktualisieren
+                updateConnectionUIBasedOnType(config?.sensor_arduino?.connection_type || 'ethernet');
+                updateSensorUIBasedOnType(config?.sensor_arduino?.sensor_type || 'proximity');
+            })
+            .catch(error => {
+                console.error('Fehler beim Laden der Konfiguration:', error);
+                showStatus('Fehler beim Laden der Konfiguration. Bitte versuchen Sie es später erneut.', 'error');
+            });
+            
+        // Sensor testen
+        document.getElementById('testSensor').addEventListener('click', function() {
+            const sensorTestResult = document.getElementById('sensorTestResult');
+            const sensorTestMessage = document.getElementById('sensorTestMessage');
+            const sensorTestStatus = document.getElementById('sensorTestStatus');
+            
+            // Formular-Daten sammeln
+            const formData = new FormData(sensorsForm);
+            const testData = {};
+            
+            // FormData in verschachtelte Objekte umwandeln
+            formData.forEach((value, key) => {
+                // Checkbox-Werte in boolesche Werte umwandeln
+                if (key === 'sensor_arduino.inverse_signal') {
+                    value = document.getElementById('inverseSignal').checked;
+                }
+                
+                // Zahlen in numerische Werte umwandeln
+                if (key.includes('port') || key.includes('baudrate') || key.includes('pin') || 
+                    key.includes('threshold') || key.includes('delay')) {
+                    value = Number(value);
+                }
+                
+                // Punkt-Notation in verschachtelte Objekte umwandeln
+                const keys = key.split('.');
+                let current = testData;
+                
+                for (let i = 0; i < keys.length - 1; i++) {
+                    if (!current[keys[i]]) {
+                        current[keys[i]] = {};
+                    }
+                    current = current[keys[i]];
+                }
+                
+                current[keys[keys.length - 1]] = value;
+            });
+            
+            // Status anzeigen
+            sensorTestMessage.textContent = 'Sensor wird getestet...';
+            sensorTestStatus.textContent = '';
+            sensorTestStatus.className = '';
+            sensorTestResult.style.display = 'block';
+            
+            // API-Anfrage senden
+            fetch('/sensors/test_sensor', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(testData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    sensorTestMessage.textContent = data.message;
+                    
+                    if (data.sensor_active !== undefined) {
+                        const statusText = data.sensor_active ? 'AKTIV (Objekt erkannt)' : 'INAKTIV (Kein Objekt)';
+                        const statusClass = data.sensor_active ? 'status-active' : 'status-inactive';
+                        sensorTestStatus.textContent = 'Sensorstatus: ' + statusText;
+                        sensorTestStatus.className = statusClass;
+                    }
+                } else {
+                    sensorTestMessage.textContent = `Fehler: ${data.message}`;
+                    sensorTestStatus.textContent = '';
+                }
+            })
+            .catch(error => {
+                console.error('Fehler beim Testen des Sensors:', error);
+                sensorTestMessage.textContent = `Fehler: ${error.message}`;
+            });
+        });
+        
+        // Formular absenden
+        sensorsForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            // Formulardaten sammeln
+            const formData = new FormData(sensorsForm);
+            const configData = {};
+            
+            // FormData in verschachtelte Objekte umwandeln
+            formData.forEach((value, key) => {
+                // Checkbox-Werte in boolesche Werte umwandeln
+                if (key === 'sensor_arduino.inverse_signal') {
+                    value = document.getElementById('inverseSignal').checked;
+                }
+                
+                // Zahlen in numerische Werte umwandeln
+                if (key.includes('port') || key.includes('baudrate') || key.includes('pin') || 
+                    key.includes('threshold') || key.includes('delay')) {
+                    value = Number(value);
+                }
+                
+                // Punkt-Notation in verschachtelte Objekte umwandeln
+                const keys = key.split('.');
+                let current = configData;
+                
+                for (let i = 0; i < keys.length - 1; i++) {
+                    if (!current[keys[i]]) {
+                        current[keys[i]] = {};
+                    }
+                    current = current[keys[i]];
+                }
+                
+                current[keys[keys.length - 1]] = value;
+            });
+            
+            // Konfiguration speichern
+            fetch('/sensors/save_config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(configData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showStatus('Einstellungen erfolgreich gespeichert!', 'success');
+                } else {
+                    showStatus('Fehler beim Speichern der Einstellungen: ' + (data.message || 'Unbekannter Fehler'), 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Fehler beim Speichern der Konfiguration:', error);
+                showStatus('Fehler beim Speichern der Konfiguration. Bitte versuchen Sie es später erneut.', 'error');
+            });
+        });
+        
+        // Hilfsfunktion zum Anzeigen von Statusmeldungen
+        function showStatus(message, type) {
+            statusMessage.textContent = message;
+            statusMessage.className = 'status-message status-' + type;
+            statusMessage.style.display = 'block';
+            
+            // Nach 5 Sekunden ausblenden
+            setTimeout(() => {
+                statusMessage.style.display = 'none';
+            }, 5000);
+        }
+    });
+</script>
+{% endblock %}
