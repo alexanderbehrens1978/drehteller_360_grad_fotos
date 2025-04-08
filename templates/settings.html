@@ -85,21 +85,91 @@
                         </div>
                     </div>
                     
-                    <div class="setting-row">
-                        <div class="setting-label">Geräte-Pfad</div>
-                        <div class="setting-control">
-                            <input type="text" id="cameraPath" name="camera.device_path" placeholder="/dev/video0">
-                            <div class="setting-description">Pfad zum Kameragerät (z.B. /dev/video0)</div>
+                    <!-- Webcam-Einstellungen -->
+                    <div id="webcamSettings" class="camera-specific-settings">
+                        <div class="setting-row">
+                            <div class="setting-label">Webcam auswählen</div>
+                            <div class="setting-control">
+                                <select id="webcamSelect" name="camera.selected_device">
+                                    <option value="">Bitte wählen...</option>
+                                    <!-- Wird dynamisch befüllt -->
+                                </select>
+                                <button type="button" id="refreshWebcams" class="btn">Webcams aktualisieren</button>
+                                <div class="setting-description">Verfügbare Webcams auf dem System</div>
+                            </div>
+                        </div>
+                        
+                        <div class="setting-row">
+                            <div class="setting-label">Auflösung</div>
+                            <div class="setting-control">
+                                <select id="webcamResolution" name="camera.resolution">
+                                    <option value="">Bitte Webcam wählen...</option>
+                                    <!-- Wird dynamisch befüllt -->
+                                </select>
+                                <div class="setting-description">Verfügbare Auflösungen der Webcam</div>
+                            </div>
+                        </div>
+                        
+                        <div class="setting-row">
+                            <div class="setting-label">Testfoto</div>
+                            <div class="setting-control">
+                                <button type="button" id="testWebcam" class="btn">Testfoto aufnehmen</button>
+                                <div class="setting-description">Testbild mit der Webcam aufnehmen</div>
+                            </div>
+                        </div>
+                        
+                        <div id="webcamTestResult" class="test-result" style="display: none;">
+                            <h4>Testfoto</h4>
+                            <div id="webcamTestMessage"></div>
+                            <div id="webcamTestImage" class="test-image"></div>
                         </div>
                     </div>
                     
-                    <div class="setting-row">
-                        <div class="setting-label">Auflösung</div>
-                        <div class="setting-control" style="display: flex; gap: 10px;">
-                            <input type="number" id="resolutionWidth" name="camera.resolution.width" placeholder="Breite" min="320" max="4096" style="width: 100px;">
-                            <span>×</span>
-                            <input type="number" id="resolutionHeight" name="camera.resolution.height" placeholder="Höhe" min="240" max="3072" style="width: 100px;">
-                            <div class="setting-description" style="width: 100%">Bildauflösung in Pixeln</div>
+                    <!-- DSLR-Einstellungen -->
+                    <div id="dslrSettings" class="camera-specific-settings" style="display: none;">
+                        <div class="setting-row">
+                            <div class="setting-label">DSLR auswählen</div>
+                            <div class="setting-control">
+                                <select id="dslrSelect" name="camera.selected_device">
+                                    <option value="">Bitte wählen...</option>
+                                    <!-- Wird dynamisch befüllt -->
+                                </select>
+                                <button type="button" id="refreshDSLR" class="btn">DSLR aktualisieren</button>
+                                <div class="setting-description">Verfügbare DSLR-Kameras (gphoto2)</div>
+                            </div>
+                        </div>
+                        
+                        <div class="setting-row">
+                            <div class="setting-label">Auflösung</div>
+                            <div class="setting-control">
+                                <select id="dslrResolution" name="camera.resolution">
+                                    <option value="">Bitte DSLR wählen...</option>
+                                    <!-- Wird dynamisch befüllt -->
+                                </select>
+                                <div class="setting-description">Verfügbare Auflösungen der DSLR</div>
+                            </div>
+                        </div>
+                        
+                        <div class="setting-row">
+                            <div class="setting-label">Testfoto</div>
+                            <div class="setting-control">
+                                <button type="button" id="testDSLR" class="btn">Testfoto aufnehmen</button>
+                                <div class="setting-description">Testbild mit der DSLR aufnehmen</div>
+                            </div>
+                        </div>
+                        
+                        <div id="dslrTestResult" class="test-result" style="display: none;">
+                            <h4>Testfoto</h4>
+                            <div id="dslrTestMessage"></div>
+                            <div id="dslrTestImage" class="test-image"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-row" style="display: none;">
+                        <div class="setting-label">Geräte-Pfad</div>
+                        <div class="setting-control">
+                            <input type="text" id="cameraPath" name="camera.device_path" placeholder="/dev/video0 oder usb:XXX,XXX">
+                            <div class="setting-description">Pfad zur Kamera (z.B. /dev/video0 für Webcam)</div>
                         </div>
                     </div>
                 </div>
@@ -215,20 +285,67 @@
         document.addEventListener('DOMContentLoaded', function() {
             const settingsForm = document.getElementById('settingsForm');
             const statusMessage = document.getElementById('statusMessage');
+            const cameraType = document.getElementById('cameraType');
+            const webcamSettings = document.getElementById('webcamSettings');
+            const dslrSettings = document.getElementById('dslrSettings');
+            
+            // CSS für die Testergebnisse hinzufügen
+            const style = document.createElement('style');
+            style.textContent = `
+                .test-result { 
+                    margin: 15px 0; 
+                    padding: 15px; 
+                    border: 1px solid #ddd; 
+                    border-radius: 5px; 
+                    background-color: #f9f9f9; 
+                }
+                .test-image { 
+                    margin-top: 10px; 
+                    max-width: 100%; 
+                    overflow: hidden; 
+                    border-radius: 5px; 
+                }
+                .test-image img { 
+                    max-width: 100%; 
+                    max-height: 400px; 
+                }
+            `;
+            document.head.appendChild(style);
+            
+            // Globale Variablen für die Kamera-Daten
+            let webcamData = [];
+            let dslrData = [];
+            
+            // Kameratyp-Wechsel
+            cameraType.addEventListener('change', function() {
+                updateCameraUIBasedOnType(this.value);
+            });
+            
+            function updateCameraUIBasedOnType(type) {
+                if (type === 'webcam') {
+                    webcamSettings.style.display = 'block';
+                    dslrSettings.style.display = 'none';
+                    loadWebcams();
+                } else if (type === 'gphoto2') {
+                    webcamSettings.style.display = 'none';
+                    dslrSettings.style.display = 'block';
+                    loadDSLRCameras();
+                }
+            }
             
             // Aktuelle Konfiguration laden
             fetch('/get_config')
                 .then(response => response.json())
                 .then(config => {
-                    // Formularfelder mit aktuellen Werten füllen
+                    // Grundlegende Konfiguration
                     document.getElementById('cameraType').value = config?.camera?.type || 'webcam';
                     document.getElementById('cameraPath').value = config?.camera?.device_path || '/dev/video0';
-                    document.getElementById('resolutionWidth').value = config?.camera?.resolution?.width || 1280;
-                    document.getElementById('resolutionHeight').value = config?.camera?.resolution?.height || 720;
                     
+                    // Arduino-Einstellungen
                     document.getElementById('arduinoPort').value = config?.arduino?.port || '/dev/ttyACM0';
                     document.getElementById('arduinoBaudrate').value = config?.arduino?.baudrate || 9600;
                     
+                    // Rotations-Einstellungen
                     document.getElementById('defaultDegrees').value = config?.rotation?.default_degrees || 15;
                     document.getElementById('defaultInterval').value = config?.rotation?.default_interval || 5;
                     
@@ -238,12 +355,311 @@
                     document.getElementById('rgbPort').value = config?.rgb_arduino?.port || 80;
                     document.getElementById('rgbThreshold').value = config?.rgb_arduino?.threshold || 120;
                     
+                    // UI basierend auf dem Kameratyp aktualisieren
+                    updateCameraUIBasedOnType(config?.camera?.type || 'webcam');
                 })
                 .catch(error => {
                     console.error('Fehler beim Laden der Konfiguration:', error);
                     showStatus('Fehler beim Laden der Konfiguration. Bitte versuchen Sie es später erneut.', 'error');
                 });
+            
+            // Webcams laden und aktualisieren
+            document.getElementById('refreshWebcams').addEventListener('click', loadWebcams);
+            
+            // DSLR-Kameras laden und aktualisieren
+            document.getElementById('refreshDSLR').addEventListener('click', loadDSLRCameras);
+            
+            // Testfoto für Webcam
+            document.getElementById('testWebcam').addEventListener('click', function() {
+                const webcamSelect = document.getElementById('webcamSelect');
+                const webcamResolution = document.getElementById('webcamResolution');
                 
+                if (!webcamSelect.value) {
+                    showStatus('Bitte wählen Sie zuerst eine Webcam aus.', 'warning');
+                    return;
+                }
+                
+                const selectedResolution = webcamResolution.value.split('x');
+                if (selectedResolution.length !== 2) {
+                    showStatus('Bitte wählen Sie eine gültige Auflösung.', 'warning');
+                    return;
+                }
+                
+                takeTestPhoto('webcam', webcamSelect.value, parseInt(selectedResolution[0]), parseInt(selectedResolution[1]), 'webcamTestResult', 'webcamTestMessage', 'webcamTestImage');
+            });
+            
+            // Testfoto für DSLR
+            document.getElementById('testDSLR').addEventListener('click', function() {
+                const dslrSelect = document.getElementById('dslrSelect');
+                
+                if (!dslrSelect.value) {
+                    showStatus('Bitte wählen Sie zuerst eine DSLR-Kamera aus.', 'warning');
+                    return;
+                }
+                
+                takeTestPhoto('gphoto2', dslrSelect.value, 0, 0, 'dslrTestResult', 'dslrTestMessage', 'dslrTestImage');
+            });
+            
+            // Funktion zum Aufnehmen eines Testfotos
+            function takeTestPhoto(cameraType, cameraPath, width, height, resultContainerId, messageId, imageId) {
+                const resultContainer = document.getElementById(resultContainerId);
+                const messageContainer = document.getElementById(messageId);
+                const imageContainer = document.getElementById(imageId);
+                
+                // Status anzeigen
+                messageContainer.textContent = 'Nehme Testfoto auf...';
+                imageContainer.innerHTML = '';
+                resultContainer.style.display = 'block';
+                
+                // API-Anfrage senden
+                fetch('/settings/test_camera', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        camera_type: cameraType,
+                        camera_path: cameraPath,
+                        width: width,
+                        height: height
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        messageContainer.textContent = data.message;
+                        // Bild anzeigen (mit Timestamp, um Cache zu umgehen)
+                        const timestamp = new Date().getTime();
+                        imageContainer.innerHTML = `<img src="${data.image_path}?t=${timestamp}" alt="Testfoto">`;
+                    } else {
+                        messageContainer.textContent = `Fehler: ${data.message}`;
+                    }
+                })
+                .catch(error => {
+                    console.error('Fehler beim Aufnehmen des Testfotos:', error);
+                    messageContainer.textContent = `Fehler: ${error.message}`;
+                });
+            }
+            
+            // Funktion zum Laden der verfügbaren Webcams
+            function loadWebcams() {
+                const webcamSelect = document.getElementById('webcamSelect');
+                const devicePathInput = document.getElementById('cameraPath');
+                
+                // Status anzeigen
+                showStatus('Suche nach verfügbaren Webcams...', 'info');
+                
+                // Alle Kameras abrufen
+                fetch('/settings/available_cameras')
+                    .then(response => response.json())
+                    .then(data => {
+                        // Verfügbare Webcams speichern
+                        webcamData = data.webcams || [];
+                        
+                        // Aktuellen Wert speichern
+                        const currentValue = webcamSelect.value;
+                        
+                        // Dropdown leeren
+                        webcamSelect.innerHTML = '<option value="">Bitte wählen...</option>';
+                        
+                        // Webcams hinzufügen
+                        if (webcamData.length > 0) {
+                            webcamData.forEach(webcam => {
+                                const option = document.createElement('option');
+                                option.value = webcam.path;
+                                // Namen anzeigen, falls vorhanden, sonst Modell oder Pfad
+                                option.textContent = webcam.name || webcam.model || webcam.path;
+                                webcamSelect.appendChild(option);
+                            });
+                            
+                            showStatus(`${webcamData.length} Webcams gefunden!`, 'success');
+                        } else {
+                            showStatus('Keine Webcams gefunden!', 'warning');
+                        }
+                        
+                        // Vorherigen Wert wiederherstellen, wenn möglich
+                        if (currentValue) {
+                            webcamSelect.value = currentValue;
+                        }
+                        
+                        // Auflösungen der aktuell ausgewählten Webcam aktualisieren
+                        updateWebcamResolutions();
+                    })
+                    .catch(error => {
+                        console.error('Fehler beim Laden der Webcams:', error);
+                        showStatus('Fehler beim Laden der Webcams!', 'error');
+                    });
+            }
+            
+            // Funktion zum Laden der verfügbaren DSLR-Kameras
+            function loadDSLRCameras() {
+                const dslrSelect = document.getElementById('dslrSelect');
+                const devicePathInput = document.getElementById('cameraPath');
+                
+                // Status anzeigen
+                showStatus('Suche nach verfügbaren DSLR-Kameras...', 'info');
+                
+                // Alle Kameras abrufen
+                fetch('/settings/available_cameras')
+                    .then(response => response.json())
+                    .then(data => {
+                        // Verfügbare DSLR-Kameras speichern
+                        dslrData = data.gphoto2 || [];
+                        
+                        // Aktuellen Wert speichern
+                        const currentValue = dslrSelect.value;
+                        
+                        // Dropdown leeren
+                        dslrSelect.innerHTML = '<option value="">Bitte wählen...</option>';
+                        
+                        // DSLR-Kameras hinzufügen
+                        if (dslrData.length > 0) {
+                            dslrData.forEach(camera => {
+                                const option = document.createElement('option');
+                                option.value = camera.device;
+                                option.textContent = camera.name || camera.model || camera.device;
+                                dslrSelect.appendChild(option);
+                            });
+                            
+                            showStatus(`${dslrData.length} DSLR-Kameras gefunden!`, 'success');
+                        } else {
+                            showStatus('Keine DSLR-Kameras gefunden! Prüfen Sie die Verbindung.', 'warning');
+                        }
+                        
+                        // Vorherigen Wert wiederherstellen, wenn möglich
+                        if (currentValue) {
+                            dslrSelect.value = currentValue;
+                        }
+                        
+                        // Auflösungen der aktuell ausgewählten DSLR aktualisieren
+                        updateDSLRResolutions();
+                    })
+                    .catch(error => {
+                        console.error('Fehler beim Laden der DSLR-Kameras:', error);
+                        showStatus('Fehler beim Laden der DSLR-Kameras!', 'error');
+                    });
+            }
+            
+            // Event-Listener für Webcam-Auswahl
+            document.getElementById('webcamSelect').addEventListener('change', function() {
+                if (this.value) {
+                    document.getElementById('cameraPath').value = this.value;
+                    updateWebcamResolutions();
+                }
+            });
+            
+            // Event-Listener für DSLR-Auswahl
+            document.getElementById('dslrSelect').addEventListener('change', function() {
+                if (this.value) {
+                    document.getElementById('cameraPath').value = this.value;
+                    updateDSLRResolutions();
+                }
+            });
+            
+            // Funktion zum Aktualisieren der Webcam-Auflösungen
+            function updateWebcamResolutions() {
+                const webcamSelect = document.getElementById('webcamSelect');
+                const resolutionSelect = document.getElementById('webcamResolution');
+                
+                // Dropdown leeren
+                resolutionSelect.innerHTML = '<option value="">Bitte wählen...</option>';
+                
+                if (!webcamSelect.value) {
+                    return;
+                }
+                
+                // Webcam suchen
+                const selectedWebcam = webcamData.find(webcam => webcam.path === webcamSelect.value);
+                
+                // Debug-Ausgabe hinzufügen
+                console.log("Ausgewählte Webcam:", selectedWebcam);
+                
+                if (!selectedWebcam || !selectedWebcam.resolutions || !Array.isArray(selectedWebcam.resolutions) || selectedWebcam.resolutions.length === 0) {
+                    console.log("Keine Auflösungen gefunden oder ungültiges Format");
+                    
+                    // Standardauflösungen hinzufügen, wenn keine verfügbar sind
+                    const standardResolutions = [
+                        {resolution: "640x480", width: 640, height: 480},
+                        {resolution: "800x600", width: 800, height: 600},
+                        {resolution: "1280x720", width: 1280, height: 720},
+                        {resolution: "1920x1080", width: 1920, height: 1080}
+                    ];
+                    
+                    standardResolutions.forEach(res => {
+                        const option = document.createElement('option');
+                        option.value = res.resolution;
+                        option.textContent = `${res.resolution} (${(res.width * res.height / 1000000).toFixed(1)} MP)`;
+                        resolutionSelect.appendChild(option);
+                    });
+                    
+                    // Standardmäßig 1280x720 auswählen
+                    const defaultRes = "1280x720";
+                    for (let i = 0; i < resolutionSelect.options.length; i++) {
+                        if (resolutionSelect.options[i].value === defaultRes) {
+                            resolutionSelect.selectedIndex = i;
+                            break;
+                        }
+                    }
+                    
+                    return;
+                }
+                
+                // Auflösungen sortieren (höchste zuerst)
+                const sortedResolutions = [...selectedWebcam.resolutions].sort((a, b) => {
+                    return (b.width * b.height) - (a.width * a.height);
+                });
+                
+                // Auflösungen hinzufügen
+                sortedResolutions.forEach(res => {
+                    const option = document.createElement('option');
+                    option.value = res.resolution;
+                    option.textContent = `${res.resolution} (${(res.width * res.height / 1000000).toFixed(1)} MP)`;
+                    resolutionSelect.appendChild(option);
+                });
+                
+                // Standardmäßig die erste (höchste) Auflösung auswählen
+                if (resolutionSelect.options.length > 1) {
+                    resolutionSelect.selectedIndex = 1;
+                }
+            }
+            
+            // Funktion zum Aktualisieren der DSLR-Auflösungen
+            function updateDSLRResolutions() {
+                const dslrSelect = document.getElementById('dslrSelect');
+                const resolutionSelect = document.getElementById('dslrResolution');
+                
+                // Dropdown leeren
+                resolutionSelect.innerHTML = '<option value="">Bitte wählen...</option>';
+                
+                if (!dslrSelect.value) {
+                    return;
+                }
+                
+                // DSLR suchen
+                const selectedDSLR = dslrData.find(camera => camera.device === dslrSelect.value);
+                if (!selectedDSLR || !selectedDSLR.resolutions) {
+                    return;
+                }
+                
+                // Auflösungen sortieren (höchste zuerst)
+                const sortedResolutions = [...selectedDSLR.resolutions].sort((a, b) => {
+                    return (b.width * b.height) - (a.width * a.height);
+                });
+                
+                // Auflösungen hinzufügen
+                sortedResolutions.forEach(res => {
+                    const option = document.createElement('option');
+                    option.value = res.resolution;
+                    option.textContent = `${res.resolution} (${(res.width * res.height / 1000000).toFixed(1)} MP)`;
+                    resolutionSelect.appendChild(option);
+                });
+                
+                // Standardmäßig die erste (höchste) Auflösung auswählen
+                if (resolutionSelect.options.length > 1) {
+                    resolutionSelect.selectedIndex = 1;
+                }
+            }
+            
             // Formular absenden
             settingsForm.addEventListener('submit', function(event) {
                 event.preventDefault();
@@ -257,8 +673,23 @@
                     // Checkbox-Werte in boolesche Werte umwandeln
                     
                     // Zahlen in numerische Werte umwandeln
-                    if (key.includes('resolution') || key.includes('degrees') || key.includes('interval') || key.includes('baudrate') || key.includes('port') || key.includes('threshold')) {
+                    if (key.includes('degrees') || key.includes('interval') || 
+                        key.includes('baudrate') || key.includes('port') || 
+                        key.includes('threshold')) {
                         value = Number(value);
+                    }
+                    
+                    // Auflösung konvertieren
+                    if (key === 'camera.resolution') {
+                        const resolution = value.split('x');
+                        if (resolution.length === 2) {
+                            configData.camera = configData.camera || {};
+                            configData.camera.resolution = {
+                                width: parseInt(resolution[0]),
+                                height: parseInt(resolution[1])
+                            };
+                            return;
+                        }
                     }
                     
                     // Punkt-Notation in verschachtelte Objekte umwandeln

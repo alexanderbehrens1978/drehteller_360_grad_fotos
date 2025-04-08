@@ -1,11 +1,9 @@
 {
     "camera": {
-        "device_path": "/dev/video0",
-        "type": "gphoto2",
-        "resolution": {
-            "width": 2000,
-            "height": 1000
-        }
+        "device_path": "/dev/video2",
+        "type": "webcam",
+        "resolution": "",
+        "selected_device": ""
     },
     "gphoto2_profiles": {
         "Canon EOS 1200D": {
@@ -40,6 +38,6 @@
         "connection_type": "ethernet",
         "ip_address": "192.168.188.177",
         "port": 80,
-        "threshold": 0
+        "threshold": 120
     }
 }

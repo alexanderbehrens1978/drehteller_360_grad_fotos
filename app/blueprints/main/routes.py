@@ -214,16 +214,20 @@ def rotate():
 def stop_rotation():
     """Stoppt die aktuelle Rotation"""
     try:
-        if turntable_controller:
-            turntable_controller.stop_session()
-            logger.info("Rotation wurde gestoppt")
-            return jsonify({"status": "success", "message": "Rotation wurde gestoppt"})
-        else:
+        # Prüfen, ob turntable_controller initialisiert wurde
+        if turntable_controller is None:
             logger.error("Turntable-Controller ist nicht initialisiert")
-            return jsonify({"status": "error", "error": "Turntable-Controller ist nicht initialisiert"}), 500
+            # Trotzdem erfolgreich zurückkehren, damit UI nicht hängt
+            return jsonify({"status": "warning", "message": "Drehteller ist nicht initialisiert, aber Rotation wurde gestoppt"})
+            
+        # Rotation stoppen
+        turntable_controller.stop_session()
+        logger.info("Rotation wurde gestoppt")
+        return jsonify({"status": "success", "message": "Rotation wurde gestoppt"})
     except Exception as e:
         logger.error(f"Fehler beim Stoppen der Rotation: {str(e)}")
-        return jsonify({"status": "error", "error": str(e)}), 500
+        # Fehler zurückgeben, aber mit 200 statt 500, damit UI nicht blockiert
+        return jsonify({"status": "error", "error": str(e)})
 
 @main_bp.route('/static/photos/<filename>')
 def serve_photo(filename):
