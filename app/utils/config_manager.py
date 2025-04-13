@@ -40,7 +40,10 @@ class ConfigManager:
         },
         'rotation': {
             'default_degrees': 15,
-            'default_interval': 5
+            'default_interval': 5,
+            'motor_degree_per_second': 0.8,
+            'control_mode': 'standard',
+            'turntable_size': 'large'
         }
     }
 

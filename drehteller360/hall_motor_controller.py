@@ -357,8 +357,20 @@ class HallMotorController:
             # Bei sehr kleinen Winkeln ein Minimum setzen, um Unterdrehung zu vermeiden
             # Aber auch nicht zu viel drehen lassen für 1°
             min_ms = 100  # Mindestens 100ms drehen
-            max_ms_for_1_degree = int(self.full_rotation_time_ms / 180.0)  # Maximal 1/180 einer vollen Umdrehung
             
+            # Lese Drehteller-Konfiguration aus den Einstellungen
+            turntable_size = config_manager.config.get('rotation', {}).get('turntable_size', 'large')
+            
+            # Verwende unterschiedliche Divisoren je nach Drehtellergröße
+            if turntable_size == 'small':  # Kleiner Testteller (12cm Umfang, 1:36 Übersetzung)
+                max_ms_for_1_degree = int(self.full_rotation_time_ms / 180.0)  # Feiner Divisor für präzise Kontrolle
+                logger.debug(f"Verwende small turntable settings (Divisor: 180.0)")
+            else:  # Großer Teller (113cm Umfang, Standard-Übersetzung)
+                max_ms_for_1_degree = int(self.full_rotation_time_ms / 45.0)  # Gröberer Divisor für merkbare Bewegung
+                logger.debug(f"Verwende large turntable settings (Divisor: 45.0)")
+            
+            # Bei sehr kleinen Winkeln ein Minimum setzen, um Unterdrehung zu vermeiden
+            # Aber auch nicht zu viel drehen lassen für 1°
             if degrees <= 1.0:
                 # Für sehr kleine Winkel (<= 1°) besonderen Schutz einbauen
                 rotation_time_ms = max(min_ms, min(rotation_time_ms, max_ms_for_1_degree))

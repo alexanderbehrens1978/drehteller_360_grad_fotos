@@ -172,8 +172,8 @@ def rotate():
                 rotation_time_ms = int((float(degrees) / 0.8) * 1000)
                 logger.debug(f"Berechnete Rotationszeit: {rotation_time_ms} ms")
                 
-                # Motorbefehl senden
-                rotation_success = arduino_controller.send_command(f"MOTOR:{rotation_time_ms}")
+                # Nutze die rotate_for_duration Methode statt des direkten Befehls
+                rotation_success = arduino_controller.rotate_for_duration(rotation_time_ms)
                 logger.debug(f"ArduinoController-Rotation erfolgreich: {rotation_success}")
                 
                 if rotation_success:

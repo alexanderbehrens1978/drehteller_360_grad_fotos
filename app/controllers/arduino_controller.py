@@ -141,22 +141,44 @@ class ArduinoController:
         """
         self.logger.debug("Sende Befehl: Motor ausschalten (0)")
         try:
-            # Mehrere Versuche, um sicherzustellen, dass der Motor wirklich stoppt
-            for attempt in range(3):
-                self.serial.write("0\n".encode())
-                self.serial.flush()  # Wichtig: Stellt sicher, dass die Daten gesendet werden
-                time.sleep(0.2)  # Kurze Pause zwischen den Versuchen
-                
-                # Antwort lesen, aber nicht unbedingt auf "OK" prüfen
+            # Eingangs- und Ausgangspuffer leeren, bevor wir den Befehl senden
+            self.serial.reset_input_buffer()
+            self.serial.reset_output_buffer()
+            
+            # Befehl senden und sicherstellen, dass er übertragen wird
+            self.serial.write("0\n".encode())
+            self.serial.flush()
+            
+            # Längere Pause nach dem Senden - gibt dem Arduino Zeit zu antworten
+            time.sleep(0.5)
+            
+            # Antwort überprüfen
+            if self.serial.in_waiting > 0:
                 response = self.serial.readline().decode().strip()
-                self.logger.debug(f"Arduino-Antwort (Versuch {attempt+1}): {response}")
+                self.logger.debug(f"Arduino-Antwort: {response}")
                 
-                if "OK" in response:
+                if "ausgeschaltet" in response or "gestoppt" in response or "OK" in response:
                     self.logger.debug("Motor erfolgreich ausgeschaltet")
                     return True
             
-            # Selbst wenn keine "OK" Antwort kam, gehen wir davon aus, dass der Befehl gesendet wurde
-            self.logger.warning("Keine Bestätigung vom Arduino erhalten, aber Stopp-Befehl wurde gesendet")
+            # Falls keine erkennbare Antwort - zweiter Versuch nach kurzer Pause
+            self.logger.debug("Keine erkennbare Antwort, zweiter Versuch...")
+            time.sleep(0.5)
+            
+            # Puffer erneut leeren und Befehl erneut senden
+            self.serial.reset_input_buffer()
+            self.serial.reset_output_buffer()
+            self.serial.write("0\n".encode())
+            self.serial.flush()
+            
+            # Erneut auf Antwort warten
+            time.sleep(0.5)
+            if self.serial.in_waiting > 0:
+                response = self.serial.readline().decode().strip()
+                self.logger.debug(f"Arduino-Antwort (zweiter Versuch): {response}")
+            
+            # Selbst wenn wir keine klare Bestätigung bekommen, gehen wir davon aus, dass der Befehl ankam
+            self.logger.debug("Motor sollte ausgeschaltet sein - Bestätigung nicht eindeutig")
             return True
         except Exception as e:
             self.logger.error(f"Fehler beim Ausschalten des Motors: {str(e)}")
@@ -167,46 +189,6 @@ class ArduinoController:
                 self.connect()
             except:
                 pass
-            return False
-
-    def rotate_for_duration(self, duration_ms):
-        """
-        Dreht den Motor für eine bestimmte Zeit
-    
-        Args:
-            duration_ms: Dauer in Millisekunden
-            
-        Returns:
-            True bei Erfolg, False bei Fehler
-        """
-        try:
-            self.logger.debug(f"Rotiere Motor für {duration_ms} ms")
-        
-            # Motor einschalten und Erfolg prüfen
-            motor_on_success = self.turn_motor_on()
-            if not motor_on_success:
-                self.logger.error("Motor konnte nicht eingeschaltet werden, Rotation abgebrochen")
-                return False
-            
-            # Warten für die berechnete Zeit
-            self.logger.debug(f"Warte für {duration_ms/1000.0} Sekunden")
-            time.sleep(duration_ms / 1000.0)
-        
-            # Motor ausschalten
-            motor_off_success = self.turn_motor_off()
-            if not motor_off_success:
-                self.logger.error("Motor konnte nicht ausgeschaltet werden")
-                return False
-            
-            self.logger.debug(f"Rotation für {duration_ms} ms erfolgreich abgeschlossen")
-            return True
-        except Exception as e:
-            self.logger.error(f"Fehler während der Motordrehung: {str(e)}")
-            # Im Fehlerfall unbedingt versuchen, den Motor auszuschalten
-            try:
-                self.turn_motor_off()
-            except Exception as e2:
-                self.logger.error(f"Fehler beim Ausschalten nach fehlgeschlagener Rotation: {str(e2)}")
             return False
 
     def rotate_for_duration(self, duration_ms):

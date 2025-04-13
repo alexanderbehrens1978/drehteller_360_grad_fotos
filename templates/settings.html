@@ -105,6 +105,14 @@
                     </div>
                     
                     <div class="setting-row">
+                        <div class="setting-label">Motorgeschwindigkeit</div>
+                        <div class="setting-control">
+                            <input type="number" id="motorDegreePerSecond" name="rotation.motor_degree_per_second" min="0.1" max="300" step="0.1">
+                            <div class="setting-description">Drehgeschwindigkeit des Motors in Grad pro Sekunde. Für den großen Drehteller (113cm): 6° pro Sekunde (60s für 360°). Für den kleinen Drehteller: 277° pro Sekunde (1,3s für 360°).</div>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-row">
                         <div class="setting-label">Steuerungsmodus</div>
                         <div class="setting-control">
                             <select id="controlMode" name="rotation.control_mode">
@@ -173,6 +181,7 @@
                     
                     document.getElementById('defaultDegrees').value = config?.rotation?.default_degrees || 15;
                     document.getElementById('defaultInterval').value = config?.rotation?.default_interval || 5;
+                    document.getElementById('motorDegreePerSecond').value = config?.rotation?.motor_degree_per_second || 1;
                     
                     document.getElementById('controlMode').value = config?.rotation?.control_mode || 'standard';
                     
@@ -198,7 +207,7 @@
                     // Checkbox-Werte in boolesche Werte umwandeln
                     
                     // Zahlen in numerische Werte umwandeln
-                    if (key.includes('resolution') || key.includes('degrees') || key.includes('interval') || key.includes('baudrate') || key.includes('threshold')) {
+                    if (key.includes('resolution') || key.includes('degrees') || key.includes('interval') || key.includes('baudrate') || key.includes('threshold') || key.includes('motor_degree_per_second')) {
                         value = Number(value);
                     }
                     

@@ -35,8 +35,10 @@
     "rotation": {
         "default_degrees": 15,
         "default_interval": 5,
-        "control_mode": "hall",
-        "full_rotation_time_ms": 1417
+        "motor_degree_per_second": 100,
+        "control_mode": "standard",
+        "turntable_size": "large",
+        "full_rotation_time_ms": 1545
     },
     "hall_sensor": {
         "port": "/dev/ttyACM1",

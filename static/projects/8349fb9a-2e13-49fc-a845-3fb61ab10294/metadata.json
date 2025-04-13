@@ -1,0 +1,118 @@
+{
+    "id": "8349fb9a-2e13-49fc-a845-3fb61ab10294",
+    "name": "VSF 1",
+    "description": "",
+    "angle_step": 1,
+    "created_at": 1744574554.927098,
+    "updated_at": 1744574798.1809938,
+    "path": "/d360/dev/static/projects/8349fb9a-2e13-49fc-a845-3fb61ab10294",
+    "images": [
+        {
+            "path": "images/photo_1744574788_1.jpg",
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1744574820_0.jpg",
+            "angle": 0
+        },
+        {
+            "path": "images/photo_1744574833_1.jpg",
+            "angle": 1
+        },
+        {
+            "path": "images/photo_1744574846_2.jpg",
+            "angle": 2
+        },
+        {
+            "path": "images/photo_1744574859_3.jpg",
+            "angle": 3
+        },
+        {
+            "path": "images/photo_1744574871_4.jpg",
+            "angle": 4
+        },
+        {
+            "path": "images/photo_1744574884_5.jpg",
+            "angle": 5
+        },
+        {
+            "path": "images/photo_1744574897_6.jpg",
+            "angle": 6
+        },
+        {
+            "path": "images/photo_1744574910_7.jpg",
+            "angle": 7
+        },
+        {
+            "path": "images/photo_1744574923_8.jpg",
+            "angle": 8
+        },
+        {
+            "path": "images/photo_1744574936_9.jpg",
+            "angle": 9
+        },
+        {
+            "path": "images/photo_1744574948_10.jpg",
+            "angle": 10
+        },
+        {
+            "path": "images/photo_1744574961_11.jpg",
+            "angle": 11
+        },
+        {
+            "path": "images/photo_1744574974_12.jpg",
+            "angle": 12
+        },
+        {
+            "path": "images/photo_1744574987_13.jpg",
+            "angle": 13
+        },
+        {
+            "path": "images/photo_1744575000_14.jpg",
+            "angle": 14
+        },
+        {
+            "path": "images/photo_1744575013_15.jpg",
+            "angle": 15
+        },
+        {
+            "path": "images/photo_1744575026_16.jpg",
+            "angle": 16
+        },
+        {
+            "path": "images/photo_1744575038_17.jpg",
+            "angle": 17
+        },
+        {
+            "path": "images/photo_1744575051_18.jpg",
+            "angle": 18
+        },
+        {
+            "path": "images/photo_1744575064_19.jpg",
+            "angle": 19
+        },
+        {
+            "path": "images/photo_1744575077_20.jpg",
+            "angle": 20
+        },
+        {
+            "path": "images/photo_1744575090_21.jpg",
+            "angle": 21
+        },
+        {
+            "path": "images/photo_1744575103_22.jpg",
+            "angle": 22
+        },
+        {
+            "path": "images/photo_1744575115_23.jpg",
+            "angle": 23
+        },
+        {
+            "path": "images/photo_1744575128_24.jpg",
+            "angle": 24
+        }
+    ],
+    "current_position": 3.0,
+    "active_session": null,
+    "last_captured_angle": 24
+}
