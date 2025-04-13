@@ -103,6 +103,45 @@
                             <div class="setting-description">Standardintervall zwischen Fotos in Sekunden</div>
                         </div>
                     </div>
+                    
+                    <div class="setting-row">
+                        <div class="setting-label">Steuerungsmodus</div>
+                        <div class="setting-control">
+                            <select id="controlMode" name="rotation.control_mode">
+                                <option value="standard">Standard (Zeit-gesteuert)</option>
+                                <option value="hall">Hall-Sensor (Magnet-gesteuert)</option>
+                            </select>
+                            <div class="setting-description">Art der Drehteller-Steuerung</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="settings-group" id="hallSensorSettings">
+                    <h2>Hall-Sensor Einstellungen</h2>
+                    
+                    <div class="setting-row">
+                        <div class="setting-label">Hall-Sensor Port</div>
+                        <div class="setting-control">
+                            <input type="text" id="hallSensorPort" name="hall_sensor.port" placeholder="/dev/ttyACM1">
+                            <div class="setting-description">Pfad zum Hall-Sensor-Arduino (z.B. /dev/ttyACM1)</div>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-row">
+                        <div class="setting-label">Schwellenwert</div>
+                        <div class="setting-control">
+                            <input type="number" id="hallThreshold" name="hall_sensor.threshold" min="1" max="200" value="30">
+                            <div class="setting-description">Schwellenwert für die Erkennung eines Magneten (niedrigere Werte = stärkeres Magnetfeld)</div>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-row">
+                        <div class="setting-label">Kalibrierung</div>
+                        <div class="setting-control">
+                            <button type="button" id="calibrateHallSensor" class="action-btn">Drehteller mit Hall-Sensor kalibrieren</button>
+                            <div class="setting-description">Teller kalibrieren und die Position des Magneten finden</div>
+                        </div>
+                    </div>
                 </div>
                 
                 <button type="submit" class="save-btn">Einstellungen speichern</button>
@@ -135,6 +174,11 @@
                     document.getElementById('defaultDegrees').value = config?.rotation?.default_degrees || 15;
                     document.getElementById('defaultInterval').value = config?.rotation?.default_interval || 5;
                     
+                    document.getElementById('controlMode').value = config?.rotation?.control_mode || 'standard';
+                    
+                    document.getElementById('hallSensorPort').value = config?.hall_sensor?.port || '/dev/ttyACM1';
+                    document.getElementById('hallThreshold').value = config?.hall_sensor?.threshold || 30;
+                    
                 })
                 .catch(error => {
                     console.error('Fehler beim Laden der Konfiguration:', error);
@@ -154,7 +198,7 @@
                     // Checkbox-Werte in boolesche Werte umwandeln
                     
                     // Zahlen in numerische Werte umwandeln
-                    if (key.includes('resolution') || key.includes('degrees') || key.includes('interval') || key.includes('baudrate')) {
+                    if (key.includes('resolution') || key.includes('degrees') || key.includes('interval') || key.includes('baudrate') || key.includes('threshold')) {
                         value = Number(value);
                     }
                     
@@ -200,11 +244,73 @@
                 statusMessage.className = 'status-message status-' + type;
                 statusMessage.style.display = 'block';
                 
-                // Nach 5 Sekunden ausblenden
-                setTimeout(() => {
+                // Statusnachricht nach 5 Sekunden ausblenden
+                setTimeout(function() {
                     statusMessage.style.display = 'none';
                 }, 5000);
             }
+            
+            // Hall-Sensor-Einstellungen je nach Modus ein-/ausblenden
+            document.getElementById('controlMode').addEventListener('change', function() {
+                const hallSensorSettings = document.getElementById('hallSensorSettings');
+                if (this.value === 'hall') {
+                    hallSensorSettings.style.display = 'block';
+                } else {
+                    hallSensorSettings.style.display = 'none';
+                }
+            });
+            
+            // Initial Hall-Sensor-Einstellungen je nach Modus ein-/ausblenden
+            window.addEventListener('load', function() {
+                const controlMode = document.getElementById('controlMode').value;
+                const hallSensorSettings = document.getElementById('hallSensorSettings');
+                if (controlMode === 'hall') {
+                    hallSensorSettings.style.display = 'block';
+                } else {
+                    hallSensorSettings.style.display = 'none';
+                }
+            });
+            
+            // Kalibrierungsbutton-Handler
+            document.getElementById('calibrateHallSensor').addEventListener('click', function(event) {
+                event.preventDefault();
+                
+                // UI-Feedback
+                const originalText = this.textContent;
+                this.textContent = 'Kalibrierung läuft...';
+                this.disabled = true;
+                
+                // Kalibrierungsanfrage senden
+                fetch('/settings/calibrate_hall_sensor', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        hall_sensor: {
+                            port: document.getElementById('hallSensorPort').value,
+                            threshold: Number(document.getElementById('hallThreshold').value)
+                        }
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    this.textContent = originalText;
+                    this.disabled = false;
+                    
+                    if (data.status === 'success') {
+                        showStatus('Kalibrierung erfolgreich abgeschlossen!', 'success');
+                    } else {
+                        showStatus('Fehler bei der Kalibrierung: ' + (data.message || 'Unbekannter Fehler'), 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Fehler bei der Kalibrierung:', error);
+                    this.textContent = originalText;
+                    this.disabled = false;
+                    showStatus('Fehler bei der Kalibrierung. Bitte versuchen Sie es später erneut.', 'error');
+                });
+            });
         });
     </script>
 </body>

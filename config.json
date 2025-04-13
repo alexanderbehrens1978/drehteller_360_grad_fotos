@@ -34,6 +34,12 @@
     },
     "rotation": {
         "default_degrees": 15,
-        "default_interval": 5
+        "default_interval": 5,
+        "control_mode": "hall",
+        "full_rotation_time_ms": 1417
+    },
+    "hall_sensor": {
+        "port": "/dev/ttyACM1",
+        "threshold": 30
     }
 }
