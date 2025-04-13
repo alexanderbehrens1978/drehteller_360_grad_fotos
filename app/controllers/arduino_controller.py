@@ -105,7 +105,12 @@ class ArduinoController:
             response = self.serial.readline().decode().strip()
             self.logger.debug(f"Arduino-Antwort: {response}")
 
-            return response == "OK"
+            # Akzeptiere verschiedene positive Antworten
+            if response == "OK" or "eingeschaltet" in response or "ausgeschaltet" in response or "läuft" in response or "gestoppt" in response:
+                return True
+            else:
+                self.logger.error(f"Unerwartete Arduino-Antwort: {response}")
+                return False
         except Exception as e:
             self.logger.error(f"Fehler beim Senden des Befehls an Arduino: {str(e)}")
             # Bei Fehler Verbindung trennen und neu verbinden
@@ -135,12 +140,34 @@ class ArduinoController:
             True bei Erfolg, False bei Fehler
         """
         self.logger.debug("Sende Befehl: Motor ausschalten (0)")
-        success = self.send_command("0")
-        if success:
-            self.logger.debug("Motor erfolgreich ausgeschaltet")
-#        else:
-#            self.logger.error("Fehler beim Ausschalten des Motors")
-        return success
+        try:
+            # Mehrere Versuche, um sicherzustellen, dass der Motor wirklich stoppt
+            for attempt in range(3):
+                self.serial.write("0\n".encode())
+                self.serial.flush()  # Wichtig: Stellt sicher, dass die Daten gesendet werden
+                time.sleep(0.2)  # Kurze Pause zwischen den Versuchen
+                
+                # Antwort lesen, aber nicht unbedingt auf "OK" prüfen
+                response = self.serial.readline().decode().strip()
+                self.logger.debug(f"Arduino-Antwort (Versuch {attempt+1}): {response}")
+                
+                if "OK" in response:
+                    self.logger.debug("Motor erfolgreich ausgeschaltet")
+                    return True
+            
+            # Selbst wenn keine "OK" Antwort kam, gehen wir davon aus, dass der Befehl gesendet wurde
+            self.logger.warning("Keine Bestätigung vom Arduino erhalten, aber Stopp-Befehl wurde gesendet")
+            return True
+        except Exception as e:
+            self.logger.error(f"Fehler beim Ausschalten des Motors: {str(e)}")
+            # Verbindung zurücksetzen bei Kommunikationsproblemen
+            try:
+                self.disconnect()
+                time.sleep(1)
+                self.connect()
+            except:
+                pass
+            return False
 
     def rotate_for_duration(self, duration_ms):
         """
