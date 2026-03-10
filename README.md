@@ -182,6 +182,9 @@ grep -rnw "360° Drehteller Steuerung" .
 sudo lsof /dev/ttyACM0
 ```
 
+### Lizenz
+MIT License
+
 ### Problemlösung
 
 - Überprüfen ob die Kamera eingeschaltet ist
