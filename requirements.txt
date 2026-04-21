@@ -24,4 +24,4 @@ Pillow>=10.3.0
 gphoto2==2.3.4
 
 # Utilities
-python-dotenv==1.0.0
+python-dotenv==1.2.2
